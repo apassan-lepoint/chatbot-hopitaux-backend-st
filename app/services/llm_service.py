@@ -10,6 +10,7 @@ from langchain_community.chat_models import ChatOpenAI
 import pandas as pd
 from dotenv import load_dotenv
 
+from app.config import DATA_DIR
 from app.utils.prompts import prompt_instructions
 from app.utils.specialties import specialties_dict
 from app.utils.formatting import format_mapping_words_csv, format_correspondance_list
@@ -39,9 +40,9 @@ class Appels_LLM:
         # Define the base directory and paths for data files
         BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
         self.paths={
-                "mapping_word_path": os.path.join(BASE_DIR, "data", "resultats_llm_v5.csv"),
-                "palmares_path": os.path.join(BASE_DIR, "data", "classments-hopitaux-cliniques-2024.xlsx"),
-                "coordonnees_path": os.path.join(BASE_DIR, "data", "fichier_hopitaux_avec_coordonnees_avec_privacitée.xlsx")
+                "mapping_word_path": os.path.join(DATA_DIR, "resultats_llm_v5.csv"),
+                "palmares_path": os.path.join(DATA_DIR, "classments-hopitaux-cliniques-2024.xlsx"),
+                "coordonnees_path": os.path.join(DATA_DIR,"data", "fichier_hopitaux_avec_coordonnees_avec_privacitée.xlsx")
 
             }
         

@@ -15,6 +15,7 @@ import unicodedata
 import csv
 from datetime import datetime
 
+from app.config import REPO_ROOT, DATA_DIR, HISTORY_DIR
 from app.services.llm_service import Appels_LLM
 from app.utils.formatting import enlever_accents
 from app.utils.distance import exget_coordinates, get_coordinates, distance_to_query
@@ -54,12 +55,13 @@ class Processing:
         self.établissement_mentionné = None
         
         self.paths={
-                "mapping_word_path":r"data\resultats_llm_v5.csv",
-                "palmares_path":r"data\classments-hopitaux-cliniques-2024.xlsx",
-                "palmares_general_private_path":r"data\Tableaux_d'honneur_2024_PRIVE.csv",
-                "palmares_general_public_path":r"data\Tableaux_d'honneur_2024_PUBLIC.csv",
-                "coordonnees_path":r"data\fichier_hopitaux_avec_coordonnees_avec_privacitée.xlsx",
-                "history_path":r"historique\results_history.csv"
+                "mapping_word_path": os.path.join(DATA_DIR, "resultats_llm_v5.csv"),
+                "palmares_path": os.path.join(DATA_DIR, "classments-hopitaux-cliniques-2024.xlsx"),
+                "palmares_general_private_path": os.path.join(DATA_DIR, "Tableaux_d'honneur_2024_PRIVE.csv"),
+                "palmares_general_public_path": os.path.join(DATA_DIR, "Tableaux_d'honneur_2024_PUBLIC.csv"),
+                "coordonnees_path": os.path.join(DATA_DIR,"data", "fichier_hopitaux_avec_coordonnees_avec_privacitée.xlsx"),
+                "history_path": os.path.join(HISTORY_DIR,"data", "results_history.csv")
+                
             }
            
     def get_infos(self, prompt: str) -> None:
