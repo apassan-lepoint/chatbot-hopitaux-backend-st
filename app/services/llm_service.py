@@ -6,7 +6,7 @@ This file defines the Appels_LLM class, which handles all LLM-based extraction o
 """
 
 import os
-from langchain_community.chat_models import ChatOpenAI
+from langchain_openai import ChatOpenAI
 import pandas as pd
 from dotenv import load_dotenv
 
