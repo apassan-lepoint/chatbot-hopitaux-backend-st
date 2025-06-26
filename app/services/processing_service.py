@@ -85,7 +85,7 @@ class Processing:
         return None
 
     def _generate_lien_classement(self, matching_rows: str = None) -> str:
-         """
+        """
         Generates web links to the relevant ranking pages based on specialty and institution type.
 
         Args: CHECK IF STR OR DATAFRAME!!!!
@@ -94,8 +94,9 @@ class Processing:
         Returns:
             list or None: List of generated URLs or None if not applicable.
         """
-        
+
         self.lien_classement_web=[]
+
         if self.specialty== 'aucune correspondance':
             # Suggest general ranking links if no specialty is found
             if self.ispublic == 'Public':
@@ -128,7 +129,7 @@ class Processing:
         return self.lien_classement_web
 
     def _load_and_transform_for_no_specialty(self, category: str) -> pd.DataFrame:
-         """
+        """
         Loads and merges the general tables (tableau d'honneur) (public and/or private) for queries
             that do not mention a specific specialty.
 
@@ -162,6 +163,7 @@ class Processing:
             df['Catégorie'] = category
         
         df = df.rename(columns={'Score final': 'Note / 20', 'Nom Print': 'Etablissement'})
+    
         return df
     
     def load_excel_sheets(self, matching_rows: pd.DataFrame) -> pd.DataFrame:
