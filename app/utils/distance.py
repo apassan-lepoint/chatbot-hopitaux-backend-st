@@ -46,13 +46,13 @@ def get_coordinates(self, city_name: str) -> tuple:
     latitude, longitude = result.iloc[0]
     return (latitude,longitude)
     
-def distance_to_query(city):
+def distance_to_query(query_coords: tuple, city: str) -> float:
     """
     Calculate the geodesic distance in kilometers between a query location and a city.
 
     Args:
-        city (str): Name of the city to compare.
         query_coords (tuple): (latitude, longitude) of the query location.
+        city (str): Name of the city to compare.
 
     Returns:
         float: Distance in kilometers if successful, otherwise None.

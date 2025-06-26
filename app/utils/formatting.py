@@ -45,7 +45,7 @@ def format_correspondance_list(self, liste_spe : str) -> str:
     return self.specialty
     
 def enlever_accents(self, chaine: str)-> str:
-     """
+    """
     Remove accents from a string and replace apostrophes with hyphens.
 
     Args:
