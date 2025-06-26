@@ -7,7 +7,7 @@ import os
 # File paths for different modules in repo
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 DATA_DIR = os.path.join(REPO_ROOT, "data")
-HISTORY_DIR = os.path.join(REPO_ROOT, "historique")
+HISTORY_DIR = os.path.join(REPO_ROOT, "history")
 
 PATHS={
     "mapping_word_path": os.path.join(DATA_DIR, "resultats_llm_v5.csv"),
