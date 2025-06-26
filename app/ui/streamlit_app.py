@@ -8,8 +8,6 @@ This file defines the StreamlitChatbot class and main UI logic, enabling interac
 import sys
 import os
 
-from app.config import REPO_ROOT
-
 # Go 2 levels up to add the repo root to sys.path
 # This needs to happen before importing any modules from the repo
 current_dir = os.path.dirname(__file__)
