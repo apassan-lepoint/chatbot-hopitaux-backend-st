@@ -275,7 +275,6 @@ class Processing:
         self.df_with_cities['Distance'] = self.df_with_cities['City'].apply(
             lambda city: distance_to_query(
                 query_coords,
-                get_coordinates(self.df_with_cities, city),
                 city,
                 self.df_with_cities,
                 self.geopy_problem

@@ -47,7 +47,7 @@ def get_coordinates(df_with_cities: pd.DataFrame, city_name: str) -> tuple:
     latitude, longitude = result.iloc[0]
     return (latitude,longitude)
     
-def distance_to_query(query_coords: tuple, city: str, city_coords: tuple, df_with_cities: pd.DataFrame, geopy_problem: bool) -> float:
+def distance_to_query(query_coords: tuple, city: str, df_with_cities: pd.DataFrame, geopy_problem: bool) -> float:
     """
     Calculate the geodesic distance in kilometers between a query location and a city.
 
