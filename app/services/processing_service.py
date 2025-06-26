@@ -268,9 +268,19 @@ class Processing:
 
         def _distance(city):
             city_coords = get_coordinates(self.df_with_cities, city)
-            return distance_to_query(query_coords, city_coords, city, self.df_with_cities)
+            return distance_to_query(query_coords, city_coords, city, self.df_with_cities, self.geopy_problem)
         
         self.df_with_cities['Distance'] = self.df_with_cities['City'].apply(distance_to_query)
+        
+        self.df_with_cities['Distance'] = self.df_with_cities['City'].apply(
+            lambda city: distance_to_query(
+                query_coords,
+                get_coordinates(self.df_with_cities, city),
+                city,
+                self.df_with_cities,
+                self.geopy_problem
+            )
+        )
         self.df_with_distances = self.df_with_cities
         return self.df_with_distances
 
