@@ -8,7 +8,7 @@ This file provides helpers to convert DataFrames to text, remove accents,
 import pandas as pd
 import unicodedata         
 
-def format_mapping_words_csv(self, file_path: str) -> str:
+def format_mapping_words_csv(file_path: str) -> str:
     """
     Convert a CSV file of specialty mapping words into a string for prompt injection.
 
@@ -24,7 +24,7 @@ def format_mapping_words_csv(self, file_path: str) -> str:
     resultat = colonne.astype(str).str.cat(sep="\n")
     return resultat
 
-def format_correspondance_list(self, liste_spe : str) -> str:
+def format_correspondance_list(liste_spe: str) -> str:
     """
     Format a string containing multiple specialty correspondences into 
         a clean, deduplicated list.
@@ -41,10 +41,10 @@ def format_correspondance_list(self, liste_spe : str) -> str:
     options_list = [element.replace('.', '') for element in options_list]
     options_list = [element.strip() for element in options_list]
     resultat = [element for element in options_list if element in liste_spe]
-    self.specialty="plusieurs correspondances:"+",".join(resultat)
-    return self.specialty
+    specialty="plusieurs correspondances:"+",".join(resultat)
+    return specialty
     
-def enlever_accents(self, chaine: str)-> str:
+def enlever_accents(chaine: str)-> str:
     """
     Remove accents from a string and replace apostrophes with hyphens.
 
@@ -60,7 +60,7 @@ def enlever_accents(self, chaine: str)-> str:
     chaine_sans_accents = chaine_sans_accents.replace("'", '-')
     return chaine_sans_accents
     
-def tableau_en_texte(self, df: pd.DataFrame)-> str:
+def tableau_en_texte(df: pd.DataFrame, no_city: bool)-> str:
     """
     Convert a DataFrame of hospital results into a formatted text response.
 
@@ -72,7 +72,7 @@ def tableau_en_texte(self, df: pd.DataFrame)-> str:
     """
     descriptions = []
     # Format results without city information
-    if self.no_city:
+    if no_city:
         for index, row in df.iterrows():
             description = (
                 f"{row['Etablissement']}:"

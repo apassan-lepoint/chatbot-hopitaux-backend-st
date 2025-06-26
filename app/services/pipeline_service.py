@@ -151,7 +151,7 @@ class Pipeline:
         self.sorted_df = filtered_df.nlargest(top_k, "Note / 20")
         if self.sorted_df.shape[0] == top_k:
             # Format the top_k results as a text table
-            res_str= tableau_en_texte(self.sorted_df)
+            res_str= tableau_en_texte(self.sorted_df, self§.no_city)
             if self.specialty=='aucune correspondance':
                 reponse=f"Voici les {top_k} meilleurs établissements du palmarès général dans un rayon de {rayon_max}km autour de {self.city}:\n{res_str}"
             else:

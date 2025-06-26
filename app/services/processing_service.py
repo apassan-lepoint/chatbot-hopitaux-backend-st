@@ -266,7 +266,7 @@ class Processing:
             pd.DataFrame or None: DataFrame with distance information, or None if geolocation fails.
         """
 
-        query_coords = exget_coordinates(self.city)
+        query_coords = exget_coordinates(self.city, self.geopy_problem)
         if self.geopy_problem:
             return None
            
@@ -274,7 +274,7 @@ class Processing:
 
         def _distance(city):
             city_coords = get_coordinates(self.df_with_cities, city)
-            return distance_to_query(query_coords, city_coords)
+            return distance_to_query(query_coords, city_coords, city, self.df_with_cities)
         
         self.df_with_cities['Distance'] = self.df_with_cities['City'].apply(distance_to_query)
         self.df_with_distances = self.df_with_cities

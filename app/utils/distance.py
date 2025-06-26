@@ -5,10 +5,11 @@ This file provides helpers to compute distances between cities and hospitals,
     and to retrieve geographic coordinates for use in ranking/filtering.
 """
 
+import pandas as pd
 from geopy.geocoders import Nominatim  
 from geopy.distance import geodesic 
 
-def exget_coordinates(self, city_name: str) -> tuple:
+def exget_coordinates(city_name: str, geopy_problem: bool) -> tuple:
     """
     Retrieve the geographic coordinates (latitude, longitude) of a given city using geopy.
 
@@ -27,10 +28,10 @@ def exget_coordinates(self, city_name: str) -> tuple:
         else:
             return None
     except Exception as e:
-        self.geopy_problem=True
+        geopy_problem=True
         return None
     
-def get_coordinates(self, city_name: str) -> tuple:
+def get_coordinates(df_with_cities: pd.DataFrame, city_name: str) -> tuple:
     """
     Retrieve the geographic coordinates (latitude, longitude) of a city from 
         the hospitals DataFrame.
@@ -41,12 +42,12 @@ def get_coordinates(self, city_name: str) -> tuple:
     Returns:
         tuple: (latitude, longitude) if found, otherwise raises an error.
     """
-    df=self.df_with_cities
+    df=df_with_cities
     result = df[df['City'] == city_name][['Latitude', 'Longitude']]
     latitude, longitude = result.iloc[0]
     return (latitude,longitude)
     
-def distance_to_query(query_coords: tuple, city: str) -> float:
+def distance_to_query(query_coords: tuple, city: str, city_coords: tuple, df_with_cities: pd.DataFrame, geopy_problem: bool) -> float:
     """
     Calculate the geodesic distance in kilometers between a query location and a city.
 
@@ -58,13 +59,13 @@ def distance_to_query(query_coords: tuple, city: str) -> float:
         float: Distance in kilometers if successful, otherwise None.
     """
     
-    city_coords = self.get_coordinates(city)
+    city_coords = get_coordinates(df_with_cities, city)
     if city_coords:
         try: 
             res=geodesic(query_coords, city_coords).kilometers
             return res
         except Exception as e:
-            self.geopy_problem=True
+            geopy_problem=True
             return None
     else:
         return None
