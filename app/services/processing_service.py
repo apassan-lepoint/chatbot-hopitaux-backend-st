@@ -206,7 +206,7 @@ class Processing:
         self.specialty_df = self.load_excel_sheets(matching_rows)
         return self.specialty_df
 
-    def find_excel_sheet_with_privacy(self,cprompt: str) -> pd.DataFrame:
+    def find_excel_sheet_with_privacy(self,prompt: str) -> pd.DataFrame:
         """
         Finds and loads ranking data based on both specialty and institution type.
 
