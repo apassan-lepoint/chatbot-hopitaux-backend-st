@@ -52,7 +52,7 @@ class Appels_LLM:
             ChatOpenAI: An instance of the ChatOpenAI model.
         """
         
-        api_key = os.getenv("API_KEY")
+        api_key = os.getenv("OPENAI_API_KEY")
         self.model = ChatOpenAI(
             openai_api_key=api_key,
             model="gpt-4o-mini"
