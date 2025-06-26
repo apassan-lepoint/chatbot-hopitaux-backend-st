@@ -1,3 +1,10 @@
+"""
+Snowflake database connection utilities.
+
+This file manages the connection to the Snowflake data warehouse and provides
+    helper functions for executing queries and retrieving results.
+"""
+
 import snowflake.connector
 import os
 from dotenv import load_dotenv

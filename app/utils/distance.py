@@ -1,3 +1,13 @@
+"""
+Utility functions for geolocation and distance calculations.
+
+This file provides helpers to compute distances between cities and hospitals,
+    and to retrieve geographic coordinates for use in ranking/filtering.
+"""
+
+from geopy.geocoders import Nominatim  
+from geopy.distance import geodesic 
+
 def exget_coordinates(self, 
     city_name: str #Ville de la question
     ) -> tuple:

@@ -1,3 +1,10 @@
+"""
+Service for processing and transforming hospital ranking data.
+
+This file defines the Processing class, which loads, merges, and filters ranking and
+    location data, and prepares results for the chatbot pipeline.
+"""
+
 import os
 import re
 import pandas as pd
@@ -11,7 +18,6 @@ from datetime import datetime
 from app.services.llm_service import Appels_LLM
 from app.utils.formatting import enlever_accents
 from app.utils.distance import exget_coordinates, get_coordinates, distance_to_query
-
 
 
 class Processing:

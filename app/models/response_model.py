@@ -1,3 +1,10 @@
+"""
+Pydantic models for API responses.
+
+This file defines data validation and serialization models for responses returned
+    by the chatbot API, ensuring consistent output structure.
+"""
+
 from pydantic import BaseModel
 from typing import List
 

@@ -1,3 +1,10 @@
+"""
+Defines all API endpoints for the hospital ranking chatbot.
+
+This file registers the main routes for user queries, health checks, and other
+    API functionalities, and organizes them using FastAPI's router system.
+"""
+
 from fastapi import APIRouter, Body 
 from app.services.pipeline_service import Pipeline
 from app.models.query_model import UserQuery

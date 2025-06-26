@@ -1,3 +1,10 @@
+"""
+Database query utilities.
+
+This file provides functions for querying hospital and ranking data from the database,
+    abstracting SQL logic for use throughout the application.
+"""
+
 from .snowflake_connector import get_snowflake_connection
 
 def run_sql(sql: str):

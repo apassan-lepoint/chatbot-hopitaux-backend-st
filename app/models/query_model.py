@@ -1,3 +1,10 @@
+"""
+Pydantic models for user queries.
+
+This file defines data validation and serialization models for incoming user queries,
+    ensuring correct structure and types for API endpoints.
+"""
+
 from pydantic import BaseModel
 
 class UserQuery(BaseModel):

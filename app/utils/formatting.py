@@ -1,4 +1,12 @@
+"""
+Utility functions for formatting chatbot responses and data.
+
+This file provides helpers to convert DataFrames to text, remove accents,
+    and format lists or mappings for display or prompt injection.
+"""
+
 import pandas as pd
+import unicodedata         
 
 def format_mapping_words_csv(
     self, 

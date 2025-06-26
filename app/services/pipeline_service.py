@@ -1,3 +1,10 @@
+"""
+Main pipeline orchestration for chatbot query processing.
+
+This file defines the Pipeline class, which coordinates the extraction, filtering,
+    ranking, and formatting of hospital data in response to user queries.
+"""
+
 import os
 import re
 import pandas as pd

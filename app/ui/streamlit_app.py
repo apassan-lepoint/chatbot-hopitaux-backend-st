@@ -1,3 +1,10 @@
+"""
+Streamlit-based user interface for the hospital ranking chatbot.
+
+This file defines the StreamlitChatbot class and main UI logic, enabling interactive
+    conversations with the chatbot and displaying results in a web app.
+"""
+
 import streamlit as st
 from app.services.pipeline_service import Pipeline
 from app.services.llm_service import AppelsLLM
@@ -5,8 +12,9 @@ from app.services.llm_service import AppelsLLM
 class StreamlitChatbot:
     """
     Streamlit-based chatbot UI for hospital ranking queries.
-    Provides methods to manage session state, handle user input,
-    interact with LLM services, and display conversation history.
+    
+    Provides methods to manage session state, handle user input,interact with 
+        LLM services, and display conversation history.
     """
     
     def __init__(self):

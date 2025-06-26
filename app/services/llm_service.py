@@ -1,3 +1,10 @@
+"""
+Service for interacting with the language model (LLM).
+
+This file defines the Appels_LLM class, which handles all LLM-based extraction of
+    specialties, cities, institution types, and other information from user queries.
+"""
+
 import os
 from langchain_community.chat_models import ChatOpenAI
 import pandas as pd
