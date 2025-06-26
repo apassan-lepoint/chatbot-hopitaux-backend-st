@@ -3,7 +3,7 @@ Entry point for the FastAPI application.
 
 This file creates and configures the FastAPI app, sets up CORS middleware,
     and includes all API routes for the hospital ranking chatbot backend.
-""" 
+"""
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
