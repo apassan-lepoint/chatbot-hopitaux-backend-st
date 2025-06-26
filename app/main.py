@@ -4,10 +4,15 @@ from app.api.routes import router
 
 def create_app() -> FastAPI:
     """
-    Objective: Create and configure a FastAPI application with CORS middleware.
+    Create and configure the FastAPI application.
     
-    Input: None
-    Returns: FastAPI application instance with CORS enabled for all origins.
+    Sets up the FastAPI app with metadata, enables CORS middleware for cross-origin requests,
+    and includes the API routes.
+
+    Args: 
+        None
+    Returns:
+        FastAPI: Configured FastAPI application instance.
     """
 
     app = FastAPI(
@@ -16,16 +21,17 @@ def create_app() -> FastAPI:
         version="1.0.0"
     )
 
-    # CORS middleware for frontend/backend separation
+    # Add CORS middleware to allow frontend-backend communication
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],  # Adjust for production!
+        allow_origins=["*"],  # Allow all origins; restrict in production!
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
     )
-
+    # Include API routes from the router
     app.include_router(router)
     return app
 
+# Instantiate the FastAPI app
 app = create_app()

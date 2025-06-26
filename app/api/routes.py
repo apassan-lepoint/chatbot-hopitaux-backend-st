@@ -8,17 +8,23 @@ router = APIRouter()
 # Initialize the pipeline service to use its methods to process incoming requests
 pipeline = Pipeline() 
 
-# Defines a POST endpoint at /ask using the router. This endpoint handles incoming POST requests.
+# Defines a POST endpoint at /ask using the router. 
+# This endpoint handles incoming POST requests.
 @router.post("/ask", response_model=AskResponse)
+
 def ask_question(query: UserQuery):
-    """
-    Inputs: 
-    - prompt: question/prompt to be answered by the chatbot
-        - Extracted from the request body
-        - It expectes a JSON object with a "prompt" key
-    - specialty_st: An optional specialty string to guide the chatbot's response
-   
-    Output: JSON object with final answer and links
+   """
+    Handles POST requests to the /ask endpoint.
+    Processes a user query by passing the prompt and optional specialty to the pipeline,
+        and returns the chatbot's response and related links.
+
+    Args:
+        query (UserQuery): The user's query containing the prompt and optional specialty.
+            Extracted from the request body 
+            Expects a JSON object with "prompt" keys.
+             CHECK IF SPECIALTY TOO!!!
+    Returns:
+        dict: JSON object with the chatbot's final answer and links.
     """
     
     # Call pipeline.final_answer and pass the prompt and specialty_st, unpack results

@@ -7,20 +7,31 @@ from app.services.llm_service import Appels_LLM
 from app.utils.formatting import tableau_en_texte
 
 class Pipeline:
+    """
+    Orchestrates the pipeline for processing user queries about hospital and clinic rankings.
+    
+    Handles extraction of query information, data retrieval, filtering, and response formatting.
+    """
+    
     def __init__(self):
+        """
+        Initializes the Pipeline class, sets up file paths, and prepares variables for query processing.
+        """
         self.palmares_path=r"data\classments-hopitaux-cliniques-2024.xlsx"
-        self.specialty= None#Variable qui contient le nom de la spécialité dans la question de l'utilisateur
-        self.ispublic= None#Variable qui contient le type d'établissement public/privé de la question de l'utilisateur
-        self.city = None#Variable qui contient la ville de la question de l'utilisateur
-        self.no_city= None
-        self.df_gen = None
+        self.specialty= None
+        self.ispublic= None
+        self.city = None
+        self.no_city= None # Flag indicating if no city was found in the query
+        self.df_gen = None # DF for results 
         self.établissement_mentionné=None
         self.etablissement_name=None
         self.answer=Processing()
         self.appel_LLM=Appels_LLM()
-#--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
     def reset_attributes(self):
-        #Cette fonction réinitialise mes variables lorsque une nouvelle question est posée
+        """
+        Resets pipeline attributes for a new user query.
+        """
         self.specialty = None
         self.ispublic = None
         self.city = None
@@ -32,12 +43,19 @@ class Pipeline:
         self.df_gen = None
         return None
 
+    def get_infos_pipeline(self, prompt: str)->str:
+        """
+        Retrieves key aspects of the user query: city, institution type, and specialty.
+        
+        Updates instance variables accordingly.
 
-#--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-    def get_infos_pipeline(self,
-    prompt: str#question de l'utilisateur
-    )->str:
-            #Récupère les trois aspects clés de la question: la ville, l'aspect publique/privé et la spécialité médicale concernée
+        Args:
+            prompt (str): The user's question.
+
+        Returns:
+            str: The detected specialty.
+        """
+        
         if self.specialty is None:
             self.specialty=self.answer.specialty
         self.city=self.answer.city
@@ -46,13 +64,18 @@ class Pipeline:
         self.etablissement_name=self.answer.etablissement_name
         return self.specialty
 
-#--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+    def from_prompt_to_ranking_df_with_distances(self, prompt: str, excel_path: str )-> pd.DataFrame:
+        """
+        Retrieves the ranking DataFrame based on the user query, including distance calculations if a city is specified.
 
-    def from_prompt_to_ranking_df_with_distances(self, 
-    prompt: str,  #Question de l'utilisateur
-    excel_path: str,  #chemin du fichier palmarès
-    )-> pd.DataFrame:
-        # Trouve le classement des meilleurs hôpitaux correspondant aux critères de la question
+        Args:
+            prompt (str): The user's question.
+            excel_path (str): Path to the ranking Excel file.
+
+        Returns:
+            pd.DataFrame: DataFrame with ranking and distance information, or general results if no city is found.
+        """
+        
         self.df_gen=self.answer.find_excel_sheet_with_privacy(prompt)
         self.get_infos_pipeline(prompt)
         if self.answer.classement_non_trouve:
@@ -66,138 +89,160 @@ class Pipeline:
             df_with_distances=self.answer.get_df_with_distances()
             return df_with_distances
 
-#--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+    def get_filtered_and_sorted_df(self, df: pd.DataFrame, rayon_max: int, top_k: int, prompt:str) -> str:
+         """
+        Filters and sorts the ranking DataFrame by distance and score, and formats the response.
 
-    def get_filtered_and_sorted_df(self, 
-    df, #Dataframe avec les hôpitaux et leur distance
-    rayon_max: int, # Rayon en km dans lequel on cherche des hôpitaux
-    top_k: int,# Nombre d'hôpitaux qu'on cherche dans notre top
-    prompt:str#Question de l'utilisateur
-    ) -> str:
-        #Filtre et trie le classement des hôpitaux, formate la réponse
+        Args:
+            df (pd.DataFrame): DataFrame with hospitals and their distances.
+            rayon_max (int): Maximum search radius in kilometers.
+            top_k (int): Number of top hospitals to return.
+            prompt (str): The user's question.
+
+        Returns:
+            str: Formatted response string.
+        """
+        
+        # If an institution was mentioned in user 's query, check if it exists in the DataFrame.
         if self.établissement_mentionné==True:
-            validity=False      
+            validity=False
+            
+            # Check if the institution is present in the DataFrame
             if df['Etablissement'].str.contains(self.etablissement_name).any():
                 validity=True
+            
+            # If not present, return an appropriate message depending on specialty context
             if validity == False:
                 if self.specialty=='aucune correspondance':
                     return f"Cet établissement ne fait pas partie des 50 meilleurs établissements du palmarès global"
                 else: 
                     return f"Cet établissement n'est pas présent pour la pathologie {self.specialty}, vous pouvez cependant consulter le classement suivant:"
-                
+            
+            # If present, find its position in the sorted DataFrame
             df_sorted=df.sort_values(by='Note / 20', ascending=False).reset_index(drop=True)
-            position = df_sorted.index[df_sorted["Etablissement"].str.contains(self.etablissement_name, case=False, na=False)][0] + 1  # +1 pour avoir une position humaine (1ère place au lieu de 0)
+            position = df_sorted.index[df_sorted["Etablissement"].str.contains(self.etablissement_name, case=False, na=False)][0] + 1  # +1 for human-readable ranking (starts at 1)
+            # Build a detailed description of all ranked institutions
             descriptions = []
             for index, row in df_sorted.iterrows():
                 description=row[['Etablissement','Catégorie','Note / 20']]
-                        
-                        # Joindre toutes les descriptions avec des sauts de ligne
+
                 descriptions.append(str(description))
             texte_final = "<br>\n".join(descriptions)
 
+            #  Build the response string with the institution's rank and context
             response=f"{self.etablissement_name} est classé n°{position} "
             if self.specialty=='aucune correspondance':
                 response=response+f"du palmarès général"
-                    
             else:
                 response=response+f"du palmarès {self.specialty}."
             if self.ispublic!='aucune correspondance':
                         response=response+f" {self.ispublic}."
             return response
 
-
+        # If no specific institution is mentioned, filter hospitals by distance and select the top_k by score
         filtered_df = df[df["Distance"] <= rayon_max]
         self.sorted_df = filtered_df.nlargest(top_k, "Note / 20")
         if self.sorted_df.shape[0] == top_k:
+            # Format the top_k results as a text table
             res_str= self.tableau_en_texte(self.sorted_df)
             if self.specialty=='aucune correspondance':
                 reponse=f"Voici les {top_k} meilleurs établissements du palmarès général dans un rayon de {rayon_max}km autour de {self.city}:\n{res_str}"
             else:
                 reponse=f"Voici les {top_k} meilleurs établissements pour la pathologie: {self.specialty} dans un rayon de {rayon_max}km autour de {self.city}:\n{res_str}"
-            
+            # Save the query and response to history
             self.answer.create_csv(question=prompt, reponse=reponse)
             return reponse
-        
+        # If the search radius is at its maximum, return all found institutions (even if less than top_k)
         elif rayon_max==500:
             res_str= self.tableau_en_texte(self.sorted_df)
             if self.specialty=='aucune correspondance':
                 reponse=f"Voici les {self.sorted_df.shape[0]} meilleurs établissements au classement général dans un rayon de {rayon_max}km autour de {self.city}:<br>\n{res_str}"
             else:
                 reponse=f"Voici les {self.sorted_df.shape[0]} meilleurs établissements pour la pathologie {self.specialty} dans un rayon de {rayon_max}km autour de {self.city}:<br>\n{res_str}"
-            
             self.answer.create_csv(question=prompt, reponse=reponse)
             return reponse
+        # If no results found, return None so the caller can try with a larger radius
         return None
 
 
-#--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
     def final_answer(self, 
-        prompt: str,  # Question de l'utilisateur
-        top_k: int = 3,  # Nombre d'hôpitaux qu'on cherche dans notre top
-        rayon_max: int = 50,  # Rayon en km dans lequel on cherche des hôpitaux
-        specialty_st: str=None
-        ) -> str:
-        #reprend toutes les fonctions pour donner une réponse à partir de la question de l'utilisateur
+        prompt: str, top_k: int = 3, rayon_max: int = 50, specialty_st: str=None) -> str:
+        """
+        Main entry point: processes the user question and returns a formatted answer with ranking and links.
 
+        Args:
+            prompt (str): The user's question.
+            top_k (int, optional): Number of top hospitals to return. Defaults to 3.
+            rayon_max (int, optional): Search radius in kilometers. Defaults to 50.
+            specialty_st (str, optional): Specialty to use if already known.
+
+        Returns:
+            str or tuple: The formatted answer and any relevant links.
+        """
+
+        # Reset relevant attributes for a new query
         self.reset_attributes()
         self.specialty= specialty_st
 
+        # Check if the user specified a different top_k in their prompt
         top_kbis =self.appel_LLM.get_topk(prompt)
         if top_kbis!='non mentionné':
             top_k=top_kbis
 
+        # Set the specialty in the processing service
         if self.specialty is not None:
             self.answer.specialty= specialty_st
         else:
             self.answer.specialty= None
         relevant_file=self.palmares_path
         
+        # Retrieve the DataFrame with ranking and (if applicable) distances
         df = self.from_prompt_to_ranking_df_with_distances(prompt, relevant_file)
+        
+        # Handle geolocation API errors
         if self.answer.geopy_problem:
             return "Dû à une surutilisation de l'API de Geopy, le service de calcul des distances est indisponible pour le moment, merci de réessayer plus tard ou de recommencer avec une question sans localisation spécifique "
 
         self.link=self.answer.lien_classement_web
 
+        # Handle cases where no results are found for the requested specialty/type
         if self.answer.classement_non_trouve :
             if self.answer.ispublic=='Public':   
                 return "Nous n'avons pas d'établissement publique pour cette pathologie, mais un classement des établissements privés existe. ", self.link
             elif self.answer.ispublic=='Privé': 
                 return "Nous n'avons pas d'établissement privé pour cette pathologie, mais un classement des établissements publics existe. ", self.link
 
+        # If a specific institution is mentioned, return its ranking and the link
         if self.établissement_mentionné:
             res=self.get_filtered_and_sorted_df(df, rayon_max, top_k,prompt)
             return res, self.link
         
-
-
+        # If a city was found, try to find results within increasing radii
         if self.no_city== False:
-
-            # Essaie avec rayon_max initial
+            # Try with initial radius
             res = self.get_filtered_and_sorted_df(df, rayon_max, top_k,prompt)
             if res:
                 return res, self.link
-
-            # Si aucun résultat trouvé, essaie avec rayon_max augmenté (100 km)
+            # If no result, try with 100km radius
             rayon_max2 = 100
             res = self.get_filtered_and_sorted_df(df, rayon_max2, top_k,prompt)
             if res:
                 self.answer.create_csv(question=prompt, reponse=res)
                 return res, self.link
-             # Si aucun résultat trouvé, essaie avec rayon_max augmenté (200 km)
+             # If still no result, try with 200 km
             rayon_max2 = 200
             res = self.get_filtered_and_sorted_df(df, rayon_max2, top_k,prompt)
             if res:
                 self.answer.create_csv(question=prompt, reponse=res)
                 return res, self.link
-
-            # Si aucun résultat trouvé, essaie avec rayon_max augmenté à 500 km
+            # If still no result, try with 500 km (maximum)
             rayon_max3 = 500
             res=self.get_filtered_and_sorted_df(df, rayon_max3, top_k,prompt)
             self.answer.create_csv(question=prompt, reponse=res)
             return res, self.link
         
-        else: 
+        else:
+            # If no city was found, return the top_k institutions from the general ranking 
             self.get_infos_pipeline(prompt)
             res_tab=self.df_gen.nlargest(top_k, "Note / 20")
             res_str = self.tableau_en_texte(res_tab)

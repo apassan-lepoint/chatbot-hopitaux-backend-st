@@ -1,3 +1,17 @@
+"""
+This module defines a dictionary mapping medical specialties to 
+    associated words that a user could refer to in their prompt. 
+
+This dictionary is used to help identify the medical specialty
+
+Attributes:
+    specialties_dict (dict): 
+        Keys (str): main medical specialties .
+        Values (List[str]): lists of sub-specialties, procedures, and associated terms.
+"""
+
+# Dictionary mapping main specialties to their sub-specialties or procedures
+
 specialties_dict = {
         "Maternités": ["Accouchements normaux", "Accouchements à risques"],
         "Cardiologie": ["Angioplastie coronaire", "Cardiologie interventionnelle", "Chirurgie cardiaque adulte", "Chirurgie cardiaque de l’enfant et de l’adolescent", "Infarctus du myocarde", "Insuffisance cardiaque", "Rythmologie"],

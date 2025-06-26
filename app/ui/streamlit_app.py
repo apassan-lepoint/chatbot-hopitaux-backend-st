@@ -5,10 +5,14 @@ from app.services.llm_service import AppelsLLM
 class StreamlitChatbot:
     """
     Streamlit-based chatbot UI for hospital ranking queries.
-
+    Provides methods to manage session state, handle user input,
+    interact with LLM services, and display conversation history.
     """
     
     def __init__(self):
+        """
+        Initialize LLM service and max conversation length.
+        """
         self.appel_LLM = Appels_LLM()
         self.MAX_MESSAGES = 4 
 

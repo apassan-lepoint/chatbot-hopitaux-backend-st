@@ -67,4 +67,3 @@ A class Pipeline_class that orchestrates the entire flow and functions of the ot
 You can contact Alexis CALVEZ from the company Eulidia at the following email address: acalvez@eulidia.com .
 
 
-

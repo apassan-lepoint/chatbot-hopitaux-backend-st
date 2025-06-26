@@ -1,3 +1,18 @@
+"""
+This module contains prompt templates for interacting with the LLM.
+
+Each prompt is designed for a specific task: identifying medical specialties,
+    detecting off-topic questions, extracting city names, or continuing conversations.
+
+The prompts use placeholders (e.g., {prompt}, {liste_spe}) to be filled dynamically
+at runtime.
+
+Attributes:
+    prompt_instructions (dict): 
+        Keys (str): Names of the prompts.
+        Values (str): Template strings for each prompt.
+"""
+
 prompt_instructions = {
     "get_speciality_prompt":
         """
