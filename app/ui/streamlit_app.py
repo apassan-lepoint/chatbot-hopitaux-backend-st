@@ -7,17 +7,18 @@ This file defines the StreamlitChatbot class and main UI logic, enabling interac
 
 import sys
 import os
-import streamlit as st
-from app.services.pipeline_service import Pipeline
-from app.services.llm_service import AppelsLLM
-
 
 # Go 2 levels up to add the repo root to sys.path
+# This needs to happeb n before importing any modules from the repo
 current_dir = os.path.dirname(__file__)
 repo_root = os.path.abspath(os.path.join(current_dir, "../../"))
 if repo_root not in sys.path:
     sys.path.insert(0, repo_root)
     print("✅ sys.path:", sys.path)
+
+import streamlit as st
+from app.services.pipeline_service import Pipeline
+from app.services.llm_service import AppelsLLM
 
 
 class StreamlitChatbot:
