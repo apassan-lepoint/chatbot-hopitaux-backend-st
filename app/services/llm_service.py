@@ -87,7 +87,12 @@ class Appels_LLM:
         liste_spe=self.get_specialty_list()
         #On fait appel au LLM pour déterminer la spécialité concernée
         get_speciality_prompt_formatted=prompt_instructions["get_speciality_prompt"].format(liste_spe=liste_spe,prompt=prompt)
-        self.specialty = self.model.invoke(get_speciality_prompt_formatted).strip()
+        #self.specialty = self.model.invoke(get_speciality_prompt_formatted).strip()
+        response1 = self.model.invoke(get_speciality_prompt_formatted)
+        if hasattr(response1, "content"):
+            self.specialty = response1.content.strip()
+        else:
+            self.specialty = str(response1).strip()
 
         specialties = specialties_dict
         
@@ -108,7 +113,13 @@ class Appels_LLM:
                 # Retry with keyword mapping if no match is found
                 mapping_words=self.key_words
                 second_get_speciality_prompt_formatted=prompt_instructions["second_get_speciality_prompt"].format(prompt=prompt,mapping_words=mapping_words)
-                self.specialty = self.model.invoke(second_get_speciality_prompt_formatted).strip()
+                #self.specialty = self.model.invoke(second_get_speciality_prompt_formatted).strip()
+                response2 = self.model.invoke(second_get_speciality_prompt_formatted)
+                if hasattr(response2, "content"):
+                    self.specialty = response2.content.strip()
+                else:
+                    self.specialty = str(response2).strip()
+                    
                 return self.specialty
         return self.specialty
 
@@ -124,7 +135,12 @@ class Appels_LLM:
         """
         
         formatted_prompt=prompt_instructions["get_offtopic_approfondi_prompt"].format(prompt=prompt)
-        res = self.model.invoke(formatted_prompt).strip()
+        #res = self.model.invoke(formatted_prompt).strip()
+        response = self.model.invoke(formatted_prompt)
+        if hasattr(response, "content"):
+            res = response.content.strip()
+        else:
+            res = str(response).strip()
         return res
     
     def get_offtopic(self, prompt: str) -> str:
@@ -139,7 +155,12 @@ class Appels_LLM:
         """
 
         formatted_prompt=prompt_instructions["get_offtopic_prompt"].format(prompt=prompt)
-        self.isofftopic = self.model.invoke(formatted_prompt).strip()
+        #self.isofftopic = self.model.invoke(formatted_prompt).strip()
+        response = self.model.invoke(formatted_prompt)
+        if hasattr(response, "content"):
+            self.isofftopic = response.content.strip()
+        else:
+            self.isofftopic = str(response).strip()
         return self.isofftopic
 
     def get_city(self, prompt: str) -> str:
@@ -156,12 +177,22 @@ class Appels_LLM:
         """
         # Check with the llm if the city or department mentioned in the prompt is ambiguous (homonyms, incomplete names, etc.)
         formatted_prompt = prompt_instructions["get_city_prompt"].format(prompt=prompt)
-        self.city = self.model.invoke(formatted_prompt).strip()
+        #self.city = self.model.invoke(formatted_prompt).strip()
+        response1 = self.model.invoke(formatted_prompt)
+        if hasattr(response1, "content"):
+            self.city = response1.content.strip()
+        else:
+            self.city = str(response1).strip()
 
         # If there is no ambiguity, retrieve the city name in a second LLM call
         if self.city=='correct':
             formatted_prompt = prompt_instructions["get_city_prompt_2"].format(prompt=prompt)
-            self.city = self.model.invoke(formatted_prompt).strip()
+            #self.city = self.model.invoke(formatted_prompt).strip()
+            response2 = self.model.invoke(formatted_prompt)
+            if hasattr(response2, "content"):
+                self.city = response2.content.strip()
+            else:
+                self.city = str(response2).strip()
         return self.city
 
     def get_topk(self, prompt: str):
@@ -177,7 +208,12 @@ class Appels_LLM:
             int or str: The number of institutions to display, or 'non mentionné' if not specified or above 50.
         """
         formatted_prompt = prompt_instructions["get_topk_prompt"].format(prompt=prompt)
-        topk = self.model.invoke(formatted_prompt).strip()
+        #topk = self.model.invoke(formatted_prompt).strip()
+        response = self.model.invoke(formatted_prompt)
+        if hasattr(response, "content"):
+            topk = response.content.strip()
+        else:
+            topk = str(response).strip()
         if topk!='non mentionné':
             if int(topk)>50:
                 topk='non mentionné'
@@ -222,8 +258,12 @@ class Appels_LLM:
 
         #On va ensuite appeler notre LLM qui va pouvoir détecter si l'un des établissements est mentionné dans la question de l'utilisateur
         formatted_prompt =prompt_instructions["is_public_or_private_prompt"].format(liste_etablissement=liste_etablissement,prompt=prompt) 
-        self.etablissement_name = self.model.invoke(formatted_prompt).strip()
-
+        #self.etablissement_name = self.model.invoke(formatted_prompt).strip()
+        response1 = self.model.invoke(formatted_prompt)
+        if hasattr(response1, "content"):
+            self.etablissement_name = response1.content.strip()
+        else:
+            self.etablissement_name = str(response1).strip()
   
         if self.etablissement_name in liste_etablissement:
             self.établissement_mentionné = True
@@ -236,7 +276,12 @@ class Appels_LLM:
         else:
             # If no institution is detected, check if a public/private criterion is mentioned
             formatted_prompt = prompt_instructions["is_public_or_private_prompt2"].format(prompt=prompt) 
-            ispublic = self.model.invoke(formatted_prompt).strip()
+            #ispublic = self.model.invoke(formatted_prompt).strip()
+            response2 = self.model.invoke(formatted_prompt)
+            if hasattr(response2, "content"):
+                ispublic = response2.content.strip()
+            else:
+                ispublic = str(response2).strip()
             self.établissement_mentionné = False
             self.ispublic = ispublic
         return self.ispublic
@@ -254,5 +299,10 @@ class Appels_LLM:
         """
 
         formatted_prompt = prompt_instructions["continuer_conv_prompt"].format(prompt=prompt,conv_history=conv_history) 
-        self.newanswer  = self.model.invoke(formatted_prompt).strip()
+        #self.newanswer  = self.model.invoke(formatted_prompt).strip()
+        response = self.model.invoke(formatted_prompt)
+        if hasattr(response, "content"):
+            self.newanswer = response.content.strip()
+        else:
+            self.newanswer = str(response).strip()
         return self.newanswer
