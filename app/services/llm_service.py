@@ -27,7 +27,7 @@ class Appels_LLM:
             parameters for the query, and preparing file paths and keyword mappings.
         """
         
-        load_dotenv()
+        load_dotenv(override = False) 
         self.model = self.init_model()
         self.palmares_df = None
         self.etablissement_name=None
