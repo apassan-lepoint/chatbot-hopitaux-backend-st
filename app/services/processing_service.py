@@ -134,9 +134,9 @@ class Processing:
             pd.DataFrame: The combined DataFrame of relevant institutions.
         """
         
+        dfs=[]
         if category== 'aucune correspondance':
-            dfs=[]
-
+            # Load both public and private rankings if no specific category is requested
             df_private=pd.read_csv(self.paths["palmares_general_private_path"] )
             df_private['Catégorie']='Privé'
             dfs.append(df_private)
@@ -147,15 +147,16 @@ class Processing:
 
             df= pd.concat(dfs, join="inner", ignore_index=True)
         
-        if category == 'Public':
-            csv_path=self.paths["palmares_general_public_path"]
-            df = pd.read_csv(csv_path)
-            df['Catégorie'] = category
+        elif category == 'Public':
+            df = pd.read_csv(self.paths["palmares_general_public_path"])
+            df['Catégorie'] = 'Public'
         elif category == 'Privé':
-            csv_path=self.paths["palmares_general_private_path"]
-            df = pd.read_csv(csv_path)
-            df['Catégorie'] = category
+            df = pd.read_csv(self.paths["palmares_general_private_path"])
+            df['Catégorie'] = 'Privé'
+        else:
+            raise ValueError(f"Unknown category: {category}")
         
+        # Rename columns for consistency
         df = df.rename(columns={'Score final': 'Note / 20', 'Nom Print': 'Etablissement'})
     
         return df
