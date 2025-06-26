@@ -28,7 +28,7 @@ class Processing:
         merging with location data, and saving query history.
     """
     
-     def __init__(self):
+    def __init__(self):
         """
         Initializes the Processing class, sets up file paths, loads the LLM service, and prepares variables 
         for query processing.
