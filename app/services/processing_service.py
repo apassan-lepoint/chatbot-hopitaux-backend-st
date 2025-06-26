@@ -28,24 +28,25 @@ class Processing:
         merging with location data, and saving query history.
     """
     
-    def __init__(self):
-         """
+     def __init__(self):
+        """
         Initializes the Processing class, sets up file paths, loads the LLM service, and prepares variables 
-            for query processing.
+        for query processing.
         """
         
         self.palmares_df = None
-        self.appel_LLM=Appels_LLM()
+        self.appel_LLM = Appels_LLM()
         self.specialty_df = None
-        self.etablissement_name=None
-        self.classement_non_trouve=False
-        self.lien_classement_web=None
-        self.geopy_problem=False
+        self.etablissement_name = None
+        self.classement_non_trouve = False
+        self.lien_classement_web = None
+        self.geopy_problem = False
         
         self.weblinks={
                 "public":"https://www.lepoint.fr/hopitaux/classements/tableau-d-honneur-public.php",
                 "privé":"https://www.lepoint.fr/hopitaux/classements/tableau-d-honneur-prive.php"
         }
+        
         self.specialty= None
         self.ispublic= None
         self.city = None
