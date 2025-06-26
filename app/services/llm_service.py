@@ -36,10 +36,13 @@ class Appels_LLM:
         self.city = None
         self.établissement_mentionné = None
         
+        # Define the base directory and paths for data files
+        BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
         self.paths={
-                "mapping_word_path":r"data\resultats_llm_v5.csv",
-                "palmares_path":r"data\classments-hopitaux-cliniques-2024.xlsx",
-                "coordonnees_path":r"data\fichier_hopitaux_avec_coordonnees_avec_privacitée.xlsx"
+                "mapping_word_path": os.path.join(BASE_DIR, "data", "resultats_llm_v5.csv"),
+                "palmares_path": os.path.join(BASE_DIR, "data", "classments-hopitaux-cliniques-2024.xlsx"),
+                "coordonnees_path": os.path.join(BASE_DIR, "data", "fichier_hopitaux_avec_coordonnees_avec_privacitée.xlsx")
+
             }
         
         self.key_words=format_mapping_words_csv(self.paths["mapping_word_path"])
