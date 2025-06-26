@@ -116,7 +116,7 @@ class Processing:
             lien_classement_web = self.specialty.replace(' ', '-')
             lien_classement_web='https://www.lepoint.fr/hopitaux/classements/'+ lien_classement_web + '-'+etat+'.php'
             lien_classement_web=lien_classement_web.lower()
-            lien_classement_web=self.enlever_accents(lien_classement_web)
+            lien_classement_web=enlever_accents(lien_classement_web)
             self.lien_classement_web.append(lien_classement_web)
             return self.lien_classement_web
 
@@ -124,7 +124,7 @@ class Processing:
             lien_classement_web = row["Spécialité"].replace(' ', '-')
             lien_classement_web='https://www.lepoint.fr/hopitaux/classements/'+ lien_classement_web + '-'+row["Catégorie"] +'.php'
             lien_classement_web=lien_classement_web.lower()
-            lien_classement_web=self.enlever_accents(lien_classement_web)
+            lien_classement_web=enlever_accents(lien_classement_web)
             self.lien_classement_web.append(lien_classement_web)
         return self.lien_classement_web
 
@@ -266,7 +266,7 @@ class Processing:
             pd.DataFrame or None: DataFrame with distance information, or None if geolocation fails.
         """
 
-        query_coords = self.exget_coordinates(self.city)
+        query_coords = exget_coordinates(self.city)
         if self.geopy_problem:
             return None
            

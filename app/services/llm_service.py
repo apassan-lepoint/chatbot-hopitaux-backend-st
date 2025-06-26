@@ -42,7 +42,7 @@ class Appels_LLM:
                 "coordonnees_path":r"data\fichier_hopitaux_avec_coordonnees_avec_privacitée.xlsx"
             }
         
-        self.key_words=self.format_mapping_words_csv(self.paths["mapping_word_path"])
+        self.key_words=format_mapping_words_csv(self.paths["mapping_word_path"])
 
     def init_model(self) -> ChatOpenAI:
         """
@@ -102,7 +102,7 @@ class Appels_LLM:
                     if any(keyword.lower() in message.lower() for keyword in keywords):
                         return "plusieurs correspondances:"+f"{','.join(keywords)}"
             liste_spe= get_specialty_keywords(self.specialty, specialties)
-            self.specialty=self.format_correspondance_list(liste_spe)
+            self.specialty=format_correspondance_list(liste_spe)
             return self.specialty
         else:
             if self.specialty == 'aucune correspondance':

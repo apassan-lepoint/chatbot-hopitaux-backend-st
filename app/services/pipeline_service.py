@@ -151,7 +151,7 @@ class Pipeline:
         self.sorted_df = filtered_df.nlargest(top_k, "Note / 20")
         if self.sorted_df.shape[0] == top_k:
             # Format the top_k results as a text table
-            res_str= self.tableau_en_texte(self.sorted_df)
+            res_str= tableau_en_texte(self.sorted_df)
             if self.specialty=='aucune correspondance':
                 reponse=f"Voici les {top_k} meilleurs établissements du palmarès général dans un rayon de {rayon_max}km autour de {self.city}:\n{res_str}"
             else:
@@ -161,7 +161,7 @@ class Pipeline:
             return reponse
         # If the search radius is at its maximum, return all found institutions (even if less than top_k)
         elif rayon_max==500:
-            res_str= self.tableau_en_texte(self.sorted_df)
+            res_str= tableau_en_texte(self.sorted_df)
             if self.specialty=='aucune correspondance':
                 reponse=f"Voici les {self.sorted_df.shape[0]} meilleurs établissements au classement général dans un rayon de {rayon_max}km autour de {self.city}:<br>\n{res_str}"
             else:
@@ -252,7 +252,7 @@ class Pipeline:
             # If no city was found, return the top_k institutions from the general ranking 
             self.get_infos_pipeline(prompt)
             res_tab=self.df_gen.nlargest(top_k, "Note / 20")
-            res_str = self.tableau_en_texte(res_tab)
+            res_str = tableau_en_texte(res_tab)
             if top_k==1:
                 res=f"Voici le meilleur établissement "
             else: 
