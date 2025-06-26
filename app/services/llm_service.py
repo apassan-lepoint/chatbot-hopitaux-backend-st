@@ -207,7 +207,7 @@ class Appels_LLM:
         return liste_etablissement
 
     def is_public_or_private(self, prompt: str) -> str:
-         """
+        """
         Determines if the user's question mentions a public or private hospital, or none.
         
         Also detects if a specific institution is mentioned.
