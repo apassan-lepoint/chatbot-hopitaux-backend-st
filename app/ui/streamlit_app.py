@@ -5,9 +5,16 @@ This file defines the StreamlitChatbot class and main UI logic, enabling interac
     conversations with the chatbot and displaying results in a web app.
 """
 
+import sys
+import os
 import streamlit as st
 from app.services.pipeline_service import Pipeline
 from app.services.llm_service import AppelsLLM
+
+
+# Add the root of the repo (BackendChatbotHopitaux/) to the Python path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
+
 
 class StreamlitChatbot:
     """
