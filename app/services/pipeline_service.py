@@ -97,7 +97,7 @@ class Pipeline:
             return df_with_distances
 
     def get_filtered_and_sorted_df(self, df: pd.DataFrame, rayon_max: int, top_k: int, prompt:str) -> str:
-         """
+        """
         Filters and sorts the ranking DataFrame by distance and score, and formats the response.
 
         Args:
