@@ -18,7 +18,7 @@ if repo_root not in sys.path:
 
 import streamlit as st
 from app.services.pipeline_service import Pipeline
-from app.services.llm_service import AppelsLLM
+from app.services.llm_service import Appels_LLM
 
 
 class StreamlitChatbot:
@@ -114,19 +114,10 @@ class StreamlitChatbot:
                 f"Je ne parviens pas à détecter votre localisation, merci de reformuler avec une autre ville."
             )
             st.stop()
-            
-    def _display_conversation(self):
-        """Display the conversation history with chat-like styling."""
-
-        for user_msg, bot_msg in st.session_state.conversation:
-            # User message
-            st.chat_message("user").write(user_msg)
-            # Bot message 
-            st.chat_message("assistant").write(bot_msg, unsafe_allow_html=True) 
      
     def _display_conversation(self):
         """
-        Display the conversation history.
+        Display the conversation history with chat-like styling.
         """
         for user_msg, bot_msg in st.session_state.conversation:
             st.chat_message("user").write(user_msg)
