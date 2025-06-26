@@ -11,7 +11,6 @@ Attributes:
 """
 
 # Dictionary mapping main specialties to their sub-specialties or procedures
-
 specialties_dict = {
         "Maternités": ["Accouchements normaux", "Accouchements à risques"],
         "Cardiologie": ["Angioplastie coronaire", "Cardiologie interventionnelle", "Chirurgie cardiaque adulte", "Chirurgie cardiaque de l’enfant et de l’adolescent", "Infarctus du myocarde", "Insuffisance cardiaque", "Rythmologie"],
