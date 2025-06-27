@@ -212,8 +212,6 @@ class StreamlitChatbot:
             user_input = st.chat_input("Votre message")
             if user_input:
                 logger.info(f"User input: {user_input}")
-                # Reset session state for new conversation 
-                self.reset_session_state()
                 st.session_state.prompt = user_input
                 self.check_message_length(st.session_state.prompt)
                 self.getofftopic(st.session_state.prompt)
@@ -247,9 +245,6 @@ class StreamlitChatbot:
                         for links in link:
                             result=result+f"<br>[🔗Page du classement]({links})"
                         st.session_state.conversation.append((st.session_state.prompt, result))
-                        
-                        self.reset_session_state()
-                        afficher = True
                         return None
 
                 else:
@@ -259,8 +254,6 @@ class StreamlitChatbot:
                     for links in link:
                         result=result+f"<br>[🔗Page du classement]({links})"
                     st.session_state.conversation.append((st.session_state.prompt, result))
-                    self.reset_session_state()
-                    afficher = True
                     return None
         else  :
             user_input = st.chat_input("Votre message")
