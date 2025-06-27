@@ -279,7 +279,7 @@ class Appels_LLM:
         """
 
         logger.info(f"Detecting public/private for prompt: {prompt}")
-        liste_etablissement=self.get_etablissement_list()
+        liste_etablissement=self.get_institution_list()
 
         #On va ensuite appeler notre LLM qui va pouvoir détecter si l'un des établissements est mentionné dans la question de l'utilisateur
         formatted_prompt =prompt_instructions["is_public_or_private_prompt"].format(liste_etablissement=liste_etablissement,prompt=prompt) 
