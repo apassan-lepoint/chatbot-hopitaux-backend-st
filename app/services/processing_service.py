@@ -53,7 +53,7 @@ class Processing:
         self.ispublic= None
         self.city = None
         self.df_with_cities = None
-        self.institution_mentionned = None
+        self.institution_ mentioned = None
         
         self.paths= PATHS
            
@@ -74,7 +74,7 @@ class Processing:
         self.appel_LLM.get_city(prompt)
         self.city=self.appel_LLM.city
         self.appel_LLM.is_public_or_private(prompt)
-        self.institution_mentionned = self.appel_LLM.institution_mentionned
+        self.institution_ mentioned = self.appel_LLM.institution_ mentioned
         self.institution_name=self.appel_LLM.institution_name
         self.ispublic=self.appel_LLM.ispublic
         return None

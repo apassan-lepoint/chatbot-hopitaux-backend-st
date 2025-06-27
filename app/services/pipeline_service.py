@@ -33,7 +33,7 @@ class Pipeline:
         self.city = None
         self.no_city= None # Flag indicating if no city was found in the query
         self.df_gen = None # DF for results 
-        self.institution_mentionned=None
+        self.institution_ mentioned=None
         self.institution_name=None
         self.answer=Processing()
         self.appel_LLM=Appels_LLM()
@@ -48,7 +48,7 @@ class Pipeline:
         self.df_with_cities = None
         self.specialty_df = None
         self.no_city= None
-        self.institution_mentionned=None
+        self.institution_ mentioned=None
         self.institution_name=None
         self.df_gen = None
         return None
@@ -70,7 +70,7 @@ class Pipeline:
             self.specialty=self.answer.specialty
         self.city=self.answer.city
         self.ispublic=self.answer.ispublic
-        self.institution_mentionned=self.answer.institution_mentionned
+        self.institution_ mentioned=self.answer.institution_ mentioned
         self.institution_name=self.answer.institution_name
         return self.specialty
 
@@ -115,7 +115,7 @@ class Pipeline:
         
         logger.info(f"Filtering and sorting DataFrame with rayon_max={rayon_max}, top_k={top_k}, prompt={prompt}")
         # If an institution was mentioned in user 's query, check if it exists in the DataFrame.
-        if self.institution_mentionned==True:
+        if self.institution_ mentioned==True:
             validity=False
             
             # Check if the institution is present in the DataFrame
@@ -227,7 +227,7 @@ class Pipeline:
                 return "Nous n'avons pas d'établissement privé pour cette pathologie, mais un classement des établissements publics existe. ", self.link
 
         # If a specific institution is mentioned, return its ranking and the link
-        if self.institution_mentionned:
+        if self.institution_ mentioned:
             res=self.get_filtered_and_sorted_df(df, rayon_max, top_k,prompt)
             logger.debug(f"Result: {res}, Links: {self.link}")
             return res, self.link
