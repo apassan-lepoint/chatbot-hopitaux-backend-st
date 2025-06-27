@@ -15,11 +15,12 @@ import unicodedata
 import csv
 from datetime import datetime
 
-from app.config import PATHS
+from app.utils.config import PATHS
 from app.services.llm_service import Appels_LLM
 from app.utils.formatting import enlever_accents
 from app.utils.distance import exget_coordinates, get_coordinates, distance_to_query
-
+from app.utils.logging import get_logger
+logger = get_logger(__name__)
 
 class Processing:
     """
@@ -218,6 +219,7 @@ class Processing:
             pd.DataFrame: DataFrame with the relevant filtered data.
         """
         
+        logger.info(f"Finding Excel sheet with privacy for prompt: {prompt}")
         self.get_infos(prompt)
         specialty=self.specialty
         
@@ -232,6 +234,7 @@ class Processing:
         matching_rows = matching_rows[matching_rows["Catégorie"].str.contains(self.ispublic, case=False, na=False)]
         self._generate_lien_classement(matching_rows)
         self.specialty_df = self.load_excel_sheets(matching_rows)
+        logger.debug(f"Loaded specialty DataFrame: {self.specialty_df}")
         return self.specialty_df
 
     def extract_loca_hospitals(self, df: pd.DataFrame = None) -> pd.DataFrame:
@@ -291,6 +294,7 @@ class Processing:
             reponse (str): The system's response.
         """
 
+        logger.info(f"Saving Q&A to CSV: question={question}")
         file_name=self.paths["history_path"]
         data = {
             "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -308,4 +312,6 @@ class Processing:
             if not file_exists: 
                 writer.writeheader()
             writer.writerow(data)
+        
+        logger.debug(f"CSV written to {file_name}")
         return None

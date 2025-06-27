@@ -19,7 +19,8 @@ if repo_root not in sys.path:
 import streamlit as st
 from app.services.pipeline_service import Pipeline
 from app.services.llm_service import Appels_LLM
-
+from app.utils.logging import get_logger
+logger = get_logger(__name__)
 
 class StreamlitChatbot:
     """
@@ -33,6 +34,8 @@ class StreamlitChatbot:
         """
         Initialize LLM service and max conversation length.
         """
+        
+        logger.info("Initializing StreamlitChatbot")
         self.appel_LLM = Appels_LLM()
         self.MAX_MESSAGES = 4 
 
@@ -40,6 +43,8 @@ class StreamlitChatbot:
         """
         Reset all session state variables.
         """
+        
+        logger.info("Resetting session state")
         # Réinitialiser la conversation
         st.session_state.conversation = [] 
         # Réinitialiser les variables de sélection
@@ -51,7 +56,11 @@ class StreamlitChatbot:
         st.session_state.v_spe = ""
 
     def reset_session_statebis(self):
-        """Réinitialise toutes les variables d'état de session."""
+        """
+        Re-initialize the session state bis variables.
+        """
+        
+        logger.info("Resetting session state-bis")
         st.session_state.conversation = []
         self.answer_instance = Pipeline()
         self.appel_LLM = Appels_LLM()
@@ -66,20 +75,42 @@ class StreamlitChatbot:
         # Réinitialiser d'autres variables potentielles si nécessaire
     
     def check_message_length(self,message):
+        """
+        Check the length of the user message and reset session state if too long.
+
+        Args:
+            message (_type_): _description_
+        """
         if len(message) > 200:
             self.reset_session_state()
             st.warning("Votre message est trop long. Merci de reformuler.")
             st.stop()
             
     def check_conversation_limit(self):
-        """Vérifie si la limite de messages est atteinte et réinitialise si nécessaire."""
+        """
+        Check if the conversation has reached the maximum number of messages.
+        
+        If so, reset the session state and notify the user.
+        """
         if len(st.session_state.conversation) >= self.MAX_MESSAGES:
             st.warning("La limite de messages a été atteinte. La conversation va redémarrer.")
             self.reset_session_statebis()
             st.rerun()
     
     def getofftopic(self,user_input):
-        """Process user input and generate response."""
+        """
+        This method checks if the user input is off-topic and resets the session state
+            if it is.
+        
+        Args:
+            user_input (str): The input message from the user.
+            
+        Returns:
+            None: If the input is off-topic, the session state is reset and a warning is
+            displayed to the user.
+        """
+        
+        logger.info(f"Checking if message offtopic (1) for input: {user_input}")
         isofftopic = self.appel_LLM.get_offtopic(user_input)
         if isofftopic == 'Hors sujet':
             self.reset_session_state()
@@ -89,8 +120,17 @@ class StreamlitChatbot:
             st.stop()
     
     def getofftopicapprofondi(self,user_input):
-        """Process user input and generate response."""
-
+        """
+        This method checks if the user input is off-topic using a more detailed approach.
+        
+        Args:
+            user_input (str): The input message from the user.
+        
+        Returns:
+            None: If the input is off-topic, the session state is reset and a warning is
+            displayed to the user.
+        """
+        logger.info(f"Checking if message offtopic (2) for input: {user_input}")
         isofftopic = self.appel_LLM.get_offtopic_approfondi(user_input)
         if isofftopic == 'hors sujet':
             self.reset_session_state()
@@ -100,6 +140,18 @@ class StreamlitChatbot:
             st.stop()
     
     def check_non_french_cities(self,user_input):
+        """
+        Check if the user input contains a non-French city.
+
+        Args:
+            user_input (_type_): _description_
+        
+        Returns:
+            None: If a non-French city is detected, the session state is reset and a
+            warning is displayed to the user.
+        """
+        
+        logger.info(f"Checking for non-French city in input: {user_input}")
         self.city = self.appel_LLM.get_city(user_input)
         #st.write(self.city)
         if self.city == 'ville étrangère':
@@ -124,6 +176,14 @@ class StreamlitChatbot:
             st.chat_message("assistant").write(bot_msg, unsafe_allow_html=True)
                 
     def run(self):
+        """
+        Run the Streamlit application.
+        
+        This method initializes the UI, handles user input, and manages the conversation
+        history.
+        """
+        
+        logger.info("Running StreamlitChatbot application")
         st.title("🏥Assistant Hôpitaux")
         st.write("Posez votre question ci-dessous.")
          
@@ -136,6 +196,7 @@ class StreamlitChatbot:
             st.info("**Est-ce que l'hôpital de la pitié salpétrière est un bon hôpital en cas de problèmes auditifs ?**")
         
         if st.sidebar.button("🔄 Démarrer une nouvelle conversation"):
+            logger.info("User requested new conversation")
             self.reset_session_statebis()
             st.rerun()
        
@@ -155,6 +216,7 @@ class StreamlitChatbot:
             # Entrée utilisateur
             user_input = st.chat_input("Votre message")
             if user_input:
+                logger.info(f"User input: {user_input}")
                 # Réinitialiser la session à chaque nouveau message
                 self.reset_session_state()
                 st.session_state.prompt = user_input
@@ -169,6 +231,7 @@ class StreamlitChatbot:
                     st.session_state.v_spe = v_speciality
 
                 if st.session_state.v_spe.startswith("plusieurs correspondances:"):
+                    logger.info("Multiple specialties detected, prompting user for selection")
                     # Extraire et afficher les options
                     options_string = st.session_state.v_spe.removeprefix("plusieurs correspondances:").strip()
                     options_list = options_string.split(',')
@@ -207,6 +270,7 @@ class StreamlitChatbot:
         else  :
             user_input = st.chat_input("Votre message")
             if user_input:
+                logger.info("Continuing conversation with LLM")
                 with st.spinner('Chargement'):
                     res=self.appel_LLM.continuer_conv(prompt=user_input,conv_history=st.session_state.conversation)
                 st.session_state.conversation.append((user_input, res))

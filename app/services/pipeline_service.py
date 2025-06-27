@@ -12,6 +12,8 @@ import csv
 from app.services.processing_service import Processing
 from app.services.llm_service import Appels_LLM
 from app.utils.formatting import tableau_en_texte
+from app.utils.logging import get_logger
+logger = get_logger(__name__)
 
 class Pipeline:
     """
@@ -110,6 +112,7 @@ class Pipeline:
             str: Formatted response string.
         """
         
+        logger.info(f"Filtering and sorting DataFrame with rayon_max={rayon_max}, top_k={top_k}, prompt={prompt}")
         # If an institution was mentioned in user 's query, check if it exists in the DataFrame.
         if self.établissement_mentionné==True:
             validity=False
@@ -149,6 +152,8 @@ class Pipeline:
         # If no specific institution is mentioned, filter hospitals by distance and select the top_k by score
         filtered_df = df[df["Distance"] <= rayon_max]
         self.sorted_df = filtered_df.nlargest(top_k, "Note / 20")
+        logger.debug(f"Filtered DataFrame shape: {self.sorted_df.shape}")
+        
         if self.sorted_df.shape[0] == top_k:
             # Format the top_k results as a text table
             res_str= tableau_en_texte(self.sorted_df, self.no_city)
@@ -187,6 +192,7 @@ class Pipeline:
             str or tuple: The formatted answer and any relevant links.
         """
 
+        logger.info(f"Generating final answer for prompt: {prompt}, top_k={top_k}, rayon_max={rayon_max}, specialty_st={specialty_st}")
         # Reset relevant attributes for a new query
         self.reset_attributes()
         self.specialty= specialty_st
@@ -222,6 +228,7 @@ class Pipeline:
         # If a specific institution is mentioned, return its ranking and the link
         if self.établissement_mentionné:
             res=self.get_filtered_and_sorted_df(df, rayon_max, top_k,prompt)
+            logger.debug(f"Result: {res}, Links: {self.link}")
             return res, self.link
         
         # If a city was found, try to find results within increasing radii
@@ -229,23 +236,27 @@ class Pipeline:
             # Try with initial radius
             res = self.get_filtered_and_sorted_df(df, rayon_max, top_k,prompt)
             if res:
+                logger.debug(f"Result: {res}, Links: {self.link}")
                 return res, self.link
             # If no result, try with 100km radius
             rayon_max2 = 100
             res = self.get_filtered_and_sorted_df(df, rayon_max2, top_k,prompt)
             if res:
                 self.answer.create_csv(question=prompt, reponse=res)
+                logger.debug(f"Result: {res}, Links: {self.link}")
                 return res, self.link
              # If still no result, try with 200 km
             rayon_max2 = 200
             res = self.get_filtered_and_sorted_df(df, rayon_max2, top_k,prompt)
             if res:
                 self.answer.create_csv(question=prompt, reponse=res)
+                logger.debug(f"Result: {res}, Links: {self.link}")
                 return res, self.link
             # If still no result, try with 500 km (maximum)
             rayon_max3 = 500
             res=self.get_filtered_and_sorted_df(df, rayon_max3, top_k,prompt)
             self.answer.create_csv(question=prompt, reponse=res)
+            logger.debug(f"Result: {res}, Links: {self.link}")
             return res, self.link
         
         else:
@@ -261,5 +272,6 @@ class Pipeline:
                 res=res+f":<br> \n{res_str}"
             else:
                 res=res+f"pour la pathologie {self.specialty}<br> \n{res_str}"
+            logger.debug(f"Result: {res}, Links: {self.link}")
             return (res, self.link)
 

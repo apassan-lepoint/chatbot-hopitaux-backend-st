@@ -9,6 +9,8 @@ from fastapi import APIRouter, Body
 from app.services.pipeline_service import Pipeline
 from app.models.query_model import UserQuery
 from app.models.response_model import AskResponse
+from app.utils.logging import get_logger
+logger = get_logger(__name__)
 
 # Initialize the API router instance to define and group related endpoints
 router = APIRouter() 
@@ -20,7 +22,7 @@ pipeline = Pipeline()
 @router.post("/ask", response_model=AskResponse)
 
 def ask_question(query: UserQuery):
-   """
+    """
     Handles POST requests to the /ask endpoint.
     Processes a user query by passing the prompt and optional specialty to the pipeline,
         and returns the chatbot's response and related links.
@@ -33,7 +35,9 @@ def ask_question(query: UserQuery):
     Returns:
         dict: JSON object with the chatbot's final answer and links.
     """
-    
+
+    logger.info(f"Received /ask request: {query}")
     # Call pipeline.final_answer and pass the prompt and specialty_st, unpack results
-    res, link = pipeline.final_answer(prompt=query.prompt, specialty_st=query.specialty_st)
-    return {"result": res, "links": link} 
+    result, link = pipeline.final_answer(prompt=query.prompt, specialty_st=query.specialty_st)
+    logger.info("Response generated for /ask endpoint")
+    return {"result": result, "links": link} 
