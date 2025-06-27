@@ -45,13 +45,11 @@ class StreamlitChatbot:
         """
         
         logger.info("Resetting session state")
-        # Réinitialiser la conversation
         st.session_state.conversation = [] 
-        # Réinitialiser les variables de sélection
         st.session_state.selected_option = None
         st.session_state.prompt = ""
         st.session_state.v_speciality= None
-        st.session_state.ville= None
+        st.session_state.city= None
         st.session_state.slider_value=None
         st.session_state.v_spe = ""
 
@@ -65,14 +63,12 @@ class StreamlitChatbot:
         self.answer_instance = Pipeline()
         self.appel_LLM = Appels_LLM()
 
-        # Réinitialiser les variables de sélection
         st.session_state.selected_option = None
         st.session_state.prompt = ""
         st.session_state.v_speciality= None
-        st.session_state.ville= None
+        st.session_state.city= None
         st.session_state.slider_value=None
         st.session_state.v_spe = ""
-        # Réinitialiser d'autres variables potentielles si nécessaire
     
     def check_message_length(self,message):
         """
@@ -213,11 +209,10 @@ class StreamlitChatbot:
         self.check_conversation_limit()
         
         if len(st.session_state.conversation)==0  :
-            # Entrée utilisateur
             user_input = st.chat_input("Votre message")
             if user_input:
                 logger.info(f"User input: {user_input}")
-                # Réinitialiser la session à chaque nouveau message
+                # Reset session state for new conversation 
                 self.reset_session_state()
                 st.session_state.prompt = user_input
                 self.check_message_length(st.session_state.prompt)
@@ -232,7 +227,7 @@ class StreamlitChatbot:
 
                 if st.session_state.v_spe.startswith("plusieurs correspondances:"):
                     logger.info("Multiple specialties detected, prompting user for selection")
-                    # Extraire et afficher les options
+                    # Extract options from the string
                     options_string = st.session_state.v_spe.removeprefix("plusieurs correspondances:").strip()
                     options_list = options_string.split(',')
                     options_list = list(dict.fromkeys(options_list))
@@ -245,13 +240,13 @@ class StreamlitChatbot:
                     if selected_option is not None:
                         with st.spinner('Chargement'):
                             answer_instance = Pipeline()
-                            res, link = answer_instance.final_answer(prompt=st.session_state.prompt, specialty_st=selected_option)
-                            if res == 'établissement pas dans ce classement':
-                                res= f"Cet hôpital n'est pas présent pour la spécialité {selected_option}"                  
+                            result, link = answer_instance.final_answer(prompt=st.session_state.prompt, specialty_st=selected_option)
+                            if result == 'établissement pas dans ce classement':
+                                result= f"Cet hôpital n'est pas présent pour la spécialité {selected_option}"                  
                             
                         for links in link:
-                            res=res+f"<br>[🔗Page du classement]({links})"
-                        st.session_state.conversation.append((st.session_state.prompt, res))
+                            result=result+f"<br>[🔗Page du classement]({links})"
+                        st.session_state.conversation.append((st.session_state.prompt, result))
                         
                         self.reset_session_state()
                         afficher = True
@@ -260,10 +255,10 @@ class StreamlitChatbot:
                 else:
                     with st.spinner('Chargement'):
                         answer_instance = Pipeline()
-                        res, link = answer_instance.final_answer(prompt=st.session_state.prompt, specialty_st=v_speciality)
+                        result, link = answer_instance.final_answer(prompt=st.session_state.prompt, specialty_st=v_speciality)
                     for links in link:
-                        res=res+f"<br>[🔗Page du classement]({links})"
-                    st.session_state.conversation.append((st.session_state.prompt, res))
+                        result=result+f"<br>[🔗Page du classement]({links})"
+                    st.session_state.conversation.append((st.session_state.prompt, result))
                     self.reset_session_state()
                     afficher = True
                     return None
@@ -272,8 +267,8 @@ class StreamlitChatbot:
             if user_input:
                 logger.info("Continuing conversation with LLM")
                 with st.spinner('Chargement'):
-                    res=self.appel_LLM.continuer_conv(prompt=user_input,conv_history=st.session_state.conversation)
-                st.session_state.conversation.append((user_input, res))
+                    result=self.appel_LLM.continuer_conv(prompt=user_input,conv_history=st.session_state.conversation)
+                st.session_state.conversation.append((user_input, result))
         
         self._display_conversation()      
             

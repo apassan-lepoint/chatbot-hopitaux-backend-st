@@ -32,12 +32,12 @@ class Appels_LLM:
         logger.info("Initializing Appels_LLM")
         load_dotenv(override = False) 
         self.model = self.init_model()
-        self.palmares_df = None
-        self.etablissement_name=None
+        self.ranking_df = None
+        self.institution_name=None
         self.specialty= None
         self.ispublic= None
         self.city = None
-        self.établissement_mentionné = None
+        self.institution_mentioned = None
         
         # Define the base directory and paths for data files
         BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -70,8 +70,8 @@ class Appels_LLM:
             str: A comma-separated string of all specialties.
         """
         logger.info("Loading specialties from Excel")
-        df_specialty = pd.read_excel(self.paths["palmares_path"] , sheet_name="Palmarès")
-        self.palmares_df=df_specialty
+        df_specialty = pd.read_excel(self.paths["ranking_file_path"] , sheet_name="Palmarès")
+        self.ranking_df=df_specialty
         colonne_1 = df_specialty.iloc[:, 0].drop_duplicates()
         liste_spe = ", ".join(map(str, colonne_1.dropna()))
         logger.debug(f"Specialty list: {liste_spe}")
@@ -242,7 +242,7 @@ class Appels_LLM:
         logger.debug(f"LLM response: {response}")
         return topk
 
-    def get_etablissement_list(self):
+    def get_institution_list(self):
         """
         Returns a formatted, deduplicated list of institutions present in the rankings.
         
@@ -253,7 +253,7 @@ class Appels_LLM:
         """
         
         logger.info("Loading institution list from Excel")
-        coordonnees_df = pd.read_excel(self.paths["coordonnees_path"])
+        coordonnees_df = pd.read_excel(self.paths["hospital_coordinates_path"])
         colonne_1 = coordonnees_df.iloc[:, 0]
         # Remove location details after commas for better matching
         liste_etablissement = [element.split(",")[0] for element in colonne_1]
@@ -283,23 +283,23 @@ class Appels_LLM:
 
         #On va ensuite appeler notre LLM qui va pouvoir détecter si l'un des établissements est mentionné dans la question de l'utilisateur
         formatted_prompt =prompt_instructions["is_public_or_private_prompt"].format(liste_etablissement=liste_etablissement,prompt=prompt) 
-        #self.etablissement_name = self.model.invoke(formatted_prompt).strip()
+        #self.institution_name = self.model.invoke(formatted_prompt).strip()
         response1 = self.model.invoke(formatted_prompt)
         if hasattr(response1, "content"):
-            self.etablissement_name = response1.content.strip()
+            self.institution_name = response1.content.strip()
         else:
-            self.etablissement_name = str(response1).strip()
+            self.institution_name = str(response1).strip()
         logger.debug(f"LLM response: {response1}")
         
         # If an institution is detected, check if it is in the list of institutions
-        if self.etablissement_name in liste_etablissement:
-            logger.info(f"Institution mentioned: {self.etablissement_name}")
-            self.établissement_mentionné = True
-            if self.établissement_mentionné:
+        if self.institution_name in liste_etablissement:
+            logger.info(f"Institution mentioned: {self.institution_name}")
+            self.institution_mentioned = True
+            if self.institution_mentioned:
                 self.city='aucune correspondance'
             # Retrieve the category (public/private) of this institution
-            coordonnees_df = pd.read_excel(self.paths["coordonnees_path"])
-            ligne_saut = coordonnees_df[coordonnees_df['Etablissement'].str.contains(self.etablissement_name,case=False, na=False)]
+            coordonnees_df = pd.read_excel(self.paths["hospital_coordinates_path"])
+            ligne_saut = coordonnees_df[coordonnees_df['Etablissement'].str.contains(self.institution_name,case=False, na=False)]
             self.ispublic = ligne_saut.iloc[0,4]
         else:
             logger.info("No institution detected, checking for public/private criterion")
@@ -312,7 +312,7 @@ class Appels_LLM:
             else:
                 ispublic = str(response2).strip()
             logger.debug(f"LLM response (second call): {response2}")
-            self.établissement_mentionné = False
+            self.institution_mentioned = False
             self.ispublic = ispublic
         return self.ispublic
 

@@ -12,6 +12,7 @@ import csv
 from app.services.processing_service import Processing
 from app.services.llm_service import Appels_LLM
 from app.utils.formatting import tableau_en_texte
+from app.utils.config import PATHS
 from app.utils.logging import get_logger
 logger = get_logger(__name__)
 
@@ -26,14 +27,14 @@ class Pipeline:
         """
         Initializes the Pipeline class, sets up file paths, and prepares variables for query processing.
         """
-        self.palmares_path=r"data\classments-hopitaux-cliniques-2024.xlsx"
+        self.ranking_file_path= PATHS["ranking_file_path"]
         self.specialty= None
         self.ispublic= None
         self.city = None
         self.no_city= None # Flag indicating if no city was found in the query
         self.df_gen = None # DF for results 
-        self.établissement_mentionné=None
-        self.etablissement_name=None
+        self.institution_mentionned=None
+        self.institution_name=None
         self.answer=Processing()
         self.appel_LLM=Appels_LLM()
 
@@ -47,8 +48,8 @@ class Pipeline:
         self.df_with_cities = None
         self.specialty_df = None
         self.no_city= None
-        self.établissement_mentionné=None
-        self.etablissement_name=None
+        self.institution_mentionned=None
+        self.institution_name=None
         self.df_gen = None
         return None
 
@@ -69,8 +70,8 @@ class Pipeline:
             self.specialty=self.answer.specialty
         self.city=self.answer.city
         self.ispublic=self.answer.ispublic
-        self.établissement_mentionné=self.answer.établissement_mentionné
-        self.etablissement_name=self.answer.etablissement_name
+        self.institution_mentionned=self.answer.institution_mentionned
+        self.institution_name=self.answer.institution_name
         return self.specialty
 
     def from_prompt_to_ranking_df_with_distances(self, prompt: str, excel_path: str )-> pd.DataFrame:
@@ -87,7 +88,7 @@ class Pipeline:
         
         self.df_gen=self.answer.find_excel_sheet_with_privacy(prompt)
         self.get_infos_pipeline(prompt)
-        if self.answer.classement_non_trouve:
+        if self.answer.ranking_not_found:
                     return self.df_gen
         if self.answer.city == 'aucune correspondance':
             self.no_city= True
@@ -114,11 +115,11 @@ class Pipeline:
         
         logger.info(f"Filtering and sorting DataFrame with rayon_max={rayon_max}, top_k={top_k}, prompt={prompt}")
         # If an institution was mentioned in user 's query, check if it exists in the DataFrame.
-        if self.établissement_mentionné==True:
+        if self.institution_mentionned==True:
             validity=False
             
             # Check if the institution is present in the DataFrame
-            if df['Etablissement'].str.contains(self.etablissement_name).any():
+            if df['Etablissement'].str.contains(self.institution_name).any():
                 validity=True
             
             # If not present, return an appropriate message depending on specialty context
@@ -130,7 +131,7 @@ class Pipeline:
             
             # If present, find its position in the sorted DataFrame
             df_sorted=df.sort_values(by='Note / 20', ascending=False).reset_index(drop=True)
-            position = df_sorted.index[df_sorted["Etablissement"].str.contains(self.etablissement_name, case=False, na=False)][0] + 1  # +1 for human-readable ranking (starts at 1)
+            position = df_sorted.index[df_sorted["Etablissement"].str.contains(self.institution_name, case=False, na=False)][0] + 1  # +1 for human-readable ranking (starts at 1)
             # Build a detailed description of all ranked institutions
             descriptions = []
             for index, row in df_sorted.iterrows():
@@ -140,7 +141,7 @@ class Pipeline:
             texte_final = "<br>\n".join(descriptions)
 
             #  Build the response string with the institution's rank and context
-            response=f"{self.etablissement_name} est classé n°{position} "
+            response=f"{self.institution_name} est classé n°{position} "
             if self.specialty=='aucune correspondance':
                 response=response+f"du palmarès général"
             else:
@@ -207,7 +208,7 @@ class Pipeline:
             self.answer.specialty= specialty_st
         else:
             self.answer.specialty= None
-        relevant_file=self.palmares_path
+        relevant_file=self.ranking_file_path
         
         # Retrieve the DataFrame with ranking and (if applicable) distances
         df = self.from_prompt_to_ranking_df_with_distances(prompt, relevant_file)
@@ -216,17 +217,17 @@ class Pipeline:
         if self.answer.geopy_problem:
             return "Dû à une surutilisation de l'API de Geopy, le service de calcul des distances est indisponible pour le moment, merci de réessayer plus tard ou de recommencer avec une question sans localisation spécifique "
 
-        self.link=self.answer.lien_classement_web
+        self.link=self.answer.web_ranking_link
 
         # Handle cases where no results are found for the requested specialty/type
-        if self.answer.classement_non_trouve :
+        if self.answer.ranking_not_found :
             if self.answer.ispublic=='Public':   
                 return "Nous n'avons pas d'établissement publique pour cette pathologie, mais un classement des établissements privés existe. ", self.link
             elif self.answer.ispublic=='Privé': 
                 return "Nous n'avons pas d'établissement privé pour cette pathologie, mais un classement des établissements publics existe. ", self.link
 
         # If a specific institution is mentioned, return its ranking and the link
-        if self.établissement_mentionné:
+        if self.institution_mentionned:
             res=self.get_filtered_and_sorted_df(df, rayon_max, top_k,prompt)
             logger.debug(f"Result: {res}, Links: {self.link}")
             return res, self.link

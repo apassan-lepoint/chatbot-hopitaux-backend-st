@@ -20,11 +20,11 @@ def format_mapping_words_csv(file_path: str) -> str:
     """
 
     df = pd.read_csv(file_path)
-    colonne = df['Valeurs'].dropna()  
-    resultat = colonne.astype(str).str.cat(sep="\n")
+    column = df['Valeurs'].dropna()  
+    resultat = column.astype(str).str.cat(sep="\n")
     return resultat
 
-def format_correspondance_list(liste_spe: str) -> str:
+def format_correspondance_list(specialty_list: str) -> str:
     """
     Format a string containing multiple specialty correspondences into 
         a clean, deduplicated list.
@@ -36,15 +36,15 @@ def format_correspondance_list(liste_spe: str) -> str:
         str: Formatted string with deduplicated specialties.
     """
 
-    options_string = liste_spe.removeprefix("plusieurs correspondances:").strip()
+    options_string = specialty_list.removeprefix("plusieurs correspondances:").strip()
     options_list = options_string.split(',')
     options_list = [element.replace('.', '') for element in options_list]
     options_list = [element.strip() for element in options_list]
-    resultat = [element for element in options_list if element in liste_spe]
-    specialty="plusieurs correspondances:"+",".join(resultat)
+    result = [element for element in options_list if element in specialty_list]
+    specialty="plusieurs correspondances:"+",".join(result)
     return specialty
     
-def enlever_accents(chaine: str)-> str:
+def enlever_accents(original_string: str)-> str:
     """
     Remove accents from a string and replace apostrophes with hyphens.
 
@@ -55,10 +55,10 @@ def enlever_accents(chaine: str)-> str:
         str: Normalized string without accents.
     """
     
-    chaine_normalisee = unicodedata.normalize('NFD', chaine)
-    chaine_sans_accents = ''.join(c for c in chaine_normalisee if unicodedata.category(c) != 'Mn')
-    chaine_sans_accents = chaine_sans_accents.replace("'", '-')
-    return chaine_sans_accents
+    normalized_string = unicodedata.normalize('NFD', original_string)
+    string_no_accents = ''.join(c for c in normalized_string if unicodedata.category(c) != 'Mn')
+    string_no_accents = string_no_accents.replace("'", '-')
+    return string_no_accents
     
 def tableau_en_texte(df: pd.DataFrame, no_city: bool)-> str:
     """
@@ -82,9 +82,9 @@ def tableau_en_texte(df: pd.DataFrame, no_city: bool)-> str:
             descriptions.append(description)
         
         # Joindre toutes les descriptions avec des sauts de ligne
-        texte_final = "<br>\n".join(descriptions)
+        joined_text = "<br>\n".join(descriptions)
         
-        return texte_final
+        return joined_text
     # Format results with city and distance information
     else:  
         for index, row in df.iterrows():
@@ -96,6 +96,6 @@ def tableau_en_texte(df: pd.DataFrame, no_city: bool)-> str:
             descriptions.append(description)
         
         # Join all descriptions with line breaks
-        texte_final = "<br>\n".join(descriptions)
+        joined_text = "<br>\n".join(descriptions)
         
-        return texte_final
+        return joined_text

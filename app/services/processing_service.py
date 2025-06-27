@@ -36,12 +36,12 @@ class Processing:
         for query processing.
         """
         
-        self.palmares_df = None
+        self.ranking_df = None
         self.appel_LLM = Appels_LLM()
         self.specialty_df = None
-        self.etablissement_name = None
-        self.classement_non_trouve = False
-        self.lien_classement_web = None
+        self.institution_name = None
+        self.ranking_not_found = False
+        self.web_ranking_link = None
         self.geopy_problem = False
         
         self.weblinks={
@@ -53,7 +53,7 @@ class Processing:
         self.ispublic= None
         self.city = None
         self.df_with_cities = None
-        self.établissement_mentionné = None
+        self.institution_mentionned = None
         
         self.paths= PATHS
            
@@ -68,14 +68,14 @@ class Processing:
         """
         if self.specialty is None:
             self.appel_LLM.get_speciality(prompt)
-            self.palmares_df=pd.read_excel(self.paths["palmares_path"] , sheet_name="Palmarès")
+            self.ranking_df=pd.read_excel(self.paths["ranking_file_path"] , sheet_name="Palmarès")
             self.specialty=self.appel_LLM.specialty
-        self.palmares_df=pd.read_excel(self.paths["palmares_path"] , sheet_name="Palmarès")
+        self.ranking_df=pd.read_excel(self.paths["ranking_file_path"] , sheet_name="Palmarès")
         self.appel_LLM.get_city(prompt)
         self.city=self.appel_LLM.city
         self.appel_LLM.is_public_or_private(prompt)
-        self.établissement_mentionné = self.appel_LLM.établissement_mentionné
-        self.etablissement_name=self.appel_LLM.etablissement_name
+        self.institution_mentionned = self.appel_LLM.institution_mentionned
+        self.institution_name=self.appel_LLM.institution_name
         self.ispublic=self.appel_LLM.ispublic
         return None
 
@@ -90,38 +90,38 @@ class Processing:
             list or None: List of generated URLs or None if not applicable.
         """
 
-        self.lien_classement_web=[]
+        self.web_ranking_link=[]
 
         if self.specialty== 'aucune correspondance':
             # Suggest general ranking links if no specialty is found
             if self.ispublic == 'Public':
-                self.lien_classement_web=[self.weblinks["public"]]
+                self.web_ranking_link=[self.weblinks["public"]]
             elif self.ispublic == 'Privé':
-                self.lien_classement_web=[self.weblinks["privé"]]
+                self.web_ranking_link=[self.weblinks["privé"]]
             else:
-                self.lien_classement_web=[self.weblinks["public"],self.weblinks["privé"]]
+                self.web_ranking_link=[self.weblinks["public"],self.weblinks["privé"]]
             return None
         etat = self.ispublic
-        if self.classement_non_trouve==True:
+        if self.ranking_not_found==True:
             # Suggest the opposite type if no ranking is found for the requested type
             if self.ispublic == 'Public':
                 etat='prive'
             if self.ispublic == 'Privé':
                 etat='public'
-            lien_classement_web = self.specialty.replace(' ', '-')
-            lien_classement_web='https://www.lepoint.fr/hopitaux/classements/'+ lien_classement_web + '-'+etat+'.php'
-            lien_classement_web=lien_classement_web.lower()
-            lien_classement_web=enlever_accents(lien_classement_web)
-            self.lien_classement_web.append(lien_classement_web)
-            return self.lien_classement_web
+            web_ranking_link = self.specialty.replace(' ', '-')
+            web_ranking_link='https://www.lepoint.fr/hopitaux/classements/'+ web_ranking_link + '-'+etat+'.php'
+            web_ranking_link=web_ranking_link.lower()
+            web_ranking_link=enlever_accents(web_ranking_link)
+            self.web_ranking_link.append(web_ranking_link)
+            return self.web_ranking_link
 
         for _, row in matching_rows.iterrows():
-            lien_classement_web = row["Spécialité"].replace(' ', '-')
-            lien_classement_web='https://www.lepoint.fr/hopitaux/classements/'+ lien_classement_web + '-'+row["Catégorie"] +'.php'
-            lien_classement_web=lien_classement_web.lower()
-            lien_classement_web=enlever_accents(lien_classement_web)
-            self.lien_classement_web.append(lien_classement_web)
-        return self.lien_classement_web
+            web_ranking_link = row["Spécialité"].replace(' ', '-')
+            web_ranking_link='https://www.lepoint.fr/hopitaux/classements/'+ web_ranking_link + '-'+row["Catégorie"] +'.php'
+            web_ranking_link=web_ranking_link.lower()
+            web_ranking_link=enlever_accents(web_ranking_link)
+            self.web_ranking_link.append(web_ranking_link)
+        return self.web_ranking_link
 
     def _load_and_transform_for_no_specialty(self, category: str) -> pd.DataFrame:
         """
@@ -138,21 +138,21 @@ class Processing:
         dfs=[]
         if category== 'aucune correspondance':
             # Load both public and private rankings if no specific category is requested
-            df_private=pd.read_csv(self.paths["palmares_general_private_path"] )
+            df_private=pd.read_csv(self.paths["ranking_overall_private_path"] )
             df_private['Catégorie']='Privé'
             dfs.append(df_private)
             
-            df_public=pd.read_csv(self.paths["palmares_general_public_path"] )
+            df_public=pd.read_csv(self.paths["ranking_overall_public_path"] )
             df_public['Catégorie']='Public'
             dfs.append(df_public)
 
             df= pd.concat(dfs, join="inner", ignore_index=True)
         
         elif category == 'Public':
-            df = pd.read_csv(self.paths["palmares_general_public_path"])
+            df = pd.read_csv(self.paths["ranking_overall_public_path"])
             df['Catégorie'] = 'Public'
         elif category == 'Privé':
-            df = pd.read_csv(self.paths["palmares_general_private_path"])
+            df = pd.read_csv(self.paths["ranking_overall_private_path"])
             df['Catégorie'] = 'Privé'
         else:
             raise ValueError(f"Unknown category: {category}")
@@ -173,12 +173,12 @@ class Processing:
             pd.DataFrame or list: Concatenated DataFrame of results, or a message if not found.
         """
         
-        excel_path = self.paths["palmares_path"] 
+        excel_path = self.paths["ranking_file_path"] 
         dfs = []
         for _, row in matching_rows.iterrows():
             sheet_name = row.iloc[2]
             category = row["Catégorie"]
-            df_sheet = pd.read_excel(self.paths["palmares_path"] , sheet_name=sheet_name)
+            df_sheet = pd.read_excel(self.paths["ranking_file_path"] , sheet_name=sheet_name)
             df_sheet["Catégorie"] = category
             dfs.append(df_sheet)
 
@@ -188,7 +188,7 @@ class Processing:
             if self.specialty!= 'aucune correspondance' and self.ispublic!='aucune correspondance':
                 res=[]
                 res.append("Nous n'avons pas d'établissement de ce type pour cette pathologie")
-                self.classement_non_trouve=True
+                self.ranking_not_found=True
                 return res
 
     def find_excel_sheet_with_speciality(self, prompt: str) -> pd.DataFrame:
@@ -202,8 +202,8 @@ class Processing:
             pd.DataFrame: DataFrame with the relevant specialty data.
         """
         
-        matching_rows = self.palmares_df[self.palmares_df["Spécialité"].str.contains(self.specialty, case=False, na=False)]
-        self.lien_classement_web=[]
+        matching_rows = self.ranking_df[self.ranking_df["Spécialité"].str.contains(self.specialty, case=False, na=False)]
+        self.web_ranking_link=[]
         self._generate_lien_classement(matching_rows)
         self.specialty_df = self.load_excel_sheets(matching_rows)
         return self.specialty_df
@@ -230,7 +230,7 @@ class Processing:
         if self.ispublic == 'aucune correspondance':
             return self.find_excel_sheet_with_speciality(prompt)
 
-        matching_rows = self.palmares_df[self.palmares_df["Spécialité"].str.contains(specialty, case=False, na=False)]
+        matching_rows = self.ranking_df[self.ranking_df["Spécialité"].str.contains(specialty, case=False, na=False)]
         matching_rows = matching_rows[matching_rows["Catégorie"].str.contains(self.ispublic, case=False, na=False)]
         self._generate_lien_classement(matching_rows)
         self.specialty_df = self.load_excel_sheets(matching_rows)
@@ -248,7 +248,7 @@ class Processing:
             pd.DataFrame: DataFrame with city and coordinate information merged.
         """
         
-        coordonnees_df = pd.read_excel(self.paths["coordonnees_path"]).dropna()
+        coordonnees_df = pd.read_excel(self.paths["hospital_coordinates_path"]).dropna()
         notes_df = self.specialty_df
         coordonnees_df = coordonnees_df[["Etablissement", "Ville", "Latitude", "Longitude"]]
         notes_df = notes_df[["Etablissement", "Catégorie","Note / 20"]]
