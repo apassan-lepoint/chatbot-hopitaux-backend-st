@@ -165,7 +165,7 @@ class Appels_LLM:
         Returns:
             str: The LLM's off-topic assessment.
         """
-        logger.info(f"Checking if prompt is off-topic: {prompt}"
+        logger.info(f"Checking if prompt is off-topic: {prompt}")
         formatted_prompt=prompt_instructions["get_offtopic_prompt"].format(prompt=prompt)
         #self.isofftopic = self.model.invoke(formatted_prompt).strip()
         response = self.model.invoke(formatted_prompt)
