@@ -1,0 +1,15 @@
+2025-06-28 20:48:57,467 [INFO] __main__: Initializing StreamlitChatbot
+2025-06-28 20:48:57,467 [INFO] app.services.llm_service: Initializing Appels_LLM
+2025-06-28 20:48:57,468 [INFO] app.services.llm_service: Initializing ChatOpenAI model
+2025-06-28 20:48:57,510 [INFO] app.services.llm_service: ChatOpenAI model initialized
+2025-06-28 20:48:57,513 [INFO] __main__: Running StreamlitChatbot application
+2025-06-28 20:49:07,161 [INFO] __main__: Initializing StreamlitChatbot
+2025-06-28 20:49:07,161 [INFO] app.services.llm_service: Initializing Appels_LLM
+2025-06-28 20:49:07,164 [INFO] app.services.llm_service: Initializing ChatOpenAI model
+2025-06-28 20:49:07,214 [INFO] app.services.llm_service: ChatOpenAI model initialized
+2025-06-28 20:49:07,216 [INFO] __main__: Running StreamlitChatbot application
+2025-06-28 20:49:07,217 [INFO] __main__: User input: Quel est le meilleur hôpital de France ?
+2025-06-28 20:49:07,217 [INFO] __main__: Checking if message offtopic (1) for input: Quel est le meilleur hôpital de France ?
+2025-06-28 20:49:07,217 [INFO] app.services.llm_service: Checking if prompt is off-topic: Quel est le meilleur hôpital de France ?
+2025-06-28 20:49:07,284 [INFO] openai._base_client: Retrying request to /chat/completions in 0.482660 seconds
+2025-06-28 20:49:07,798 [INFO] openai._base_client: Retrying request to /chat/completions in 0.929760 seconds

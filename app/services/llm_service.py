@@ -70,7 +70,11 @@ class Appels_LLM:
             str: A comma-separated string of all specialties.
         """
         logger.info("Loading specialties from Excel")
-        df_specialty = pd.read_excel(self.paths["ranking_file_path"] , sheet_name="Palmarès")
+        try:
+            df_specialty = pd.read_excel(self.paths["ranking_file_path"] , sheet_name="Palmarès")
+        except Exception as e:
+            logger.error(f"Failed to load specialties Excel: {e}")
+            raise
         self.ranking_df=df_specialty
         colonne_1 = df_specialty.iloc[:, 0].drop_duplicates()
         liste_spe = ", ".join(map(str, colonne_1.dropna()))
@@ -91,11 +95,14 @@ class Appels_LLM:
         """
         logger.info(f"Detecting specialty for prompt: {prompt}")
         liste_spe=self.get_specialty_list()
-        #On fait appel au LLM pour déterminer la spécialité concernée
         get_speciality_prompt_formatted=prompt_instructions["get_speciality_prompt"].format(liste_spe=liste_spe,prompt=prompt)
-        #self.specialty = self.model.invoke(get_speciality_prompt_formatted).strip()
         logger.debug(f"LLM prompt: {get_speciality_prompt_formatted}")
-        response1 = self.model.invoke(get_speciality_prompt_formatted)
+        
+        try:
+            response1 = self.model.invoke(get_speciality_prompt_formatted)
+        except Exception as e:
+            logger.error(f"LLM invocation failed in get_speciality: {e}")
+            raise
         logger.debug(f"LLM response: {response1}")
         if hasattr(response1, "content"):
             self.specialty = response1.content.strip()
@@ -109,6 +116,7 @@ class Appels_LLM:
             self.specialty = 'plusieurs correspondances: ' + self.specialty
             
         if self.specialty.startswith("plusieurs correspondances:"):
+            logger.info("Multiple specialties detected")
             def get_specialty_keywords(message, specialties):
                 for category, keywords in specialties.items():
                     if any(keyword.lower() in message.lower() for keyword in keywords):
@@ -119,11 +127,13 @@ class Appels_LLM:
         else:
             if self.specialty == 'aucune correspondance':
                 logger.info("No specialty match, retrying with keyword mapping")
-                # Retry with keyword mapping if no match is found
                 mapping_words=self.key_words
                 second_get_speciality_prompt_formatted=prompt_instructions["second_get_speciality_prompt"].format(prompt=prompt,mapping_words=mapping_words)
-                #self.specialty = self.model.invoke(second_get_speciality_prompt_formatted).strip()
-                response2 = self.model.invoke(second_get_speciality_prompt_formatted)
+                try: 
+                    response2 = self.model.invoke(second_get_speciality_prompt_formatted)
+                except Exception as e:
+                    logger.error(f"LLM invocation failed in get_speciality (retry): {e}")
+                    raise
                 logger.debug(f"LLM response (retry): {response2}")
                 if hasattr(response2, "content"):
                     self.specialty = response2.content.strip()
@@ -146,7 +156,6 @@ class Appels_LLM:
         
         logger.info(f"Checking if prompt is deeply off-topic: {prompt}")
         formatted_prompt=prompt_instructions["get_offtopic_approfondi_prompt"].format(prompt=prompt)
-        #res = self.model.invoke(formatted_prompt).strip()
         response = self.model.invoke(formatted_prompt)
         if hasattr(response, "content"):
             res = response.content.strip()
@@ -167,7 +176,6 @@ class Appels_LLM:
         """
         logger.info(f"Checking if prompt is off-topic: {prompt}")
         formatted_prompt=prompt_instructions["get_offtopic_prompt"].format(prompt=prompt)
-        #self.isofftopic = self.model.invoke(formatted_prompt).strip()
         response = self.model.invoke(formatted_prompt)
         if hasattr(response, "content"):
             self.isofftopic = response.content.strip()
@@ -192,8 +200,11 @@ class Appels_LLM:
         logger.info(f"Detecting city in prompt: {prompt}")
         # Check with the llm if the city or department mentioned in the prompt is ambiguous (homonyms, incomplete names, etc.)
         formatted_prompt = prompt_instructions["get_city_prompt"].format(prompt=prompt)
-        #self.city = self.model.invoke(formatted_prompt).strip()
-        response1 = self.model.invoke(formatted_prompt)
+        try:
+            response1 = self.model.invoke(formatted_prompt)
+        except Exception as e:
+            logger.error(f"LLM invocation failed in get_city: {e}")
+            raise
         logger.debug(f"LLM response: {response1}")
         if hasattr(response1, "content"):
             self.city = response1.content.strip()
@@ -204,8 +215,12 @@ class Appels_LLM:
         if self.city=='correct':
             logger.info("City detected as correct, refining with second LLM call")
             formatted_prompt = prompt_instructions["get_city_prompt_2"].format(prompt=prompt)
-            #self.city = self.model.invoke(formatted_prompt).strip()
-            response2 = self.model.invoke(formatted_prompt)
+            try:
+                response2 = self.model.invoke(formatted_prompt)
+            except Exception as e:
+                logger.error(f"LLM invocation failed in get_city (second call): {e}")
+                raise
+            # If the second call returns a city name, use it; otherwise, keep the first
             if hasattr(response2, "content"):
                 self.city = response2.content.strip()
             else:
@@ -228,8 +243,13 @@ class Appels_LLM:
         
         logger.info(f"Detecting top_k in prompt: {prompt}")
         formatted_prompt = prompt_instructions["get_topk_prompt"].format(prompt=prompt)
-        #topk = self.model.invoke(formatted_prompt).strip()
-        response = self.model.invoke(formatted_prompt)
+        try: 
+            response = self.model.invoke(formatted_prompt)
+        except Exception as e:
+            logger.error(f"LLM invocation failed in get_topk: {e}")
+            raise
+        # If the LLM response has a content attribute, use it; otherwise, convert the response to string
+        # and strip whitespace
         if hasattr(response, "content"):
             topk = response.content.strip()
         else:
@@ -253,7 +273,14 @@ class Appels_LLM:
         """
         
         logger.info("Loading institution list from Excel")
-        coordonnees_df = pd.read_excel(self.paths["hospital_coordinates_path"])
+        try:
+            coordonnees_df = pd.read_excel(self.paths["hospital_coordinates_path"])
+        except Exception as e:
+            logger.error(f"Failed to load hospital coordinates Excel: {e}")
+            raise
+        # Extract the first column which contains institution names
+        # and remove duplicates by converting to a set
+        # Then convert back to a list for further processing
         colonne_1 = coordonnees_df.iloc[:, 0]
         # Remove location details after commas for better matching
         liste_etablissement = [element.split(",")[0] for element in colonne_1]
@@ -283,8 +310,14 @@ class Appels_LLM:
 
         #On va ensuite appeler notre LLM qui va pouvoir détecter si l'un des établissements est mentionné dans la question de l'utilisateur
         formatted_prompt =prompt_instructions["is_public_or_private_prompt"].format(liste_etablissement=liste_etablissement,prompt=prompt) 
-        #self.institution_name = self.model.invoke(formatted_prompt).strip()
-        response1 = self.model.invoke(formatted_prompt)
+        try:
+            response1 = self.model.invoke(formatted_prompt)
+        except Exception as e:
+            logger.error(f"LLM invocation failed in is_public_or_private: {e}")
+            raise
+        
+        # If the LLM response has a content attribute, use it; otherwise, convert the response to string
+        # and strip whitespace
         if hasattr(response1, "content"):
             self.institution_name = response1.content.strip()
         else:
@@ -298,15 +331,26 @@ class Appels_LLM:
             if self.institution_mentioned:
                 self.city='aucune correspondance'
             # Retrieve the category (public/private) of this institution
-            coordonnees_df = pd.read_excel(self.paths["hospital_coordinates_path"])
+            try:
+                coordonnees_df = pd.read_excel(self.paths["hospital_coordinates_path"])
+            except Exception as e:
+                logger.error(f"Failed to load hospital coordinates Excel: {e}")
+                raise
+            # Filter the DataFrame to find the row corresponding to the institution name
+            # and extract the 'Public/Privé' column value
             ligne_saut = coordonnees_df[coordonnees_df['Etablissement'].str.contains(self.institution_name,case=False, na=False)]
             self.ispublic = ligne_saut.iloc[0,4]
         else:
             logger.info("No institution detected, checking for public/private criterion")
             # If no institution is detected, check if a public/private criterion is mentioned
             formatted_prompt = prompt_instructions["is_public_or_private_prompt2"].format(prompt=prompt) 
-            #ispublic = self.model.invoke(formatted_prompt).strip()
-            response2 = self.model.invoke(formatted_prompt)
+            try:
+                response2 = self.model.invoke(formatted_prompt)
+            except Exception as e:
+                logger.error(f"LLM invocation failed in is_public_or_private (second call): {e}")
+                raise
+            # If the LLM response has a content attribute, use it; otherwise, convert the response to string
+            # and strip whitespace
             if hasattr(response2, "content"):
                 ispublic = response2.content.strip()
             else:
@@ -331,8 +375,11 @@ class Appels_LLM:
         logger.info(f"Continuing conversation with prompt: {prompt}")
         logger.debug(f"Conversation history: {conv_history}")
         formatted_prompt = prompt_instructions["continuer_conv_prompt"].format(prompt=prompt,conv_history=conv_history) 
-        #self.newanswer  = self.model.invoke(formatted_prompt).strip()
-        response = self.model.invoke(formatted_prompt)
+        try:
+            response = self.model.invoke(formatted_prompt)
+        except Exception as e:
+            logger.error(f"LLM invocation failed in continuer_conv: {e}")
+            raise
         if hasattr(response, "content"):
             self.newanswer = response.content.strip()
         else:

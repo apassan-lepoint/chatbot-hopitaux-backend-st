@@ -42,6 +42,8 @@ class Pipeline:
         """
         Resets pipeline attributes for a new user query.
         """
+        logger.debug("Resetting pipeline attributes for new query")
+        
         self.specialty = None
         self.ispublic = None
         self.city = None
@@ -66,12 +68,16 @@ class Pipeline:
             str: The detected specialty.
         """
         
+        logger.info(f"Getting infos from pipeline for prompt: {prompt}")
+        
         if self.specialty is None:
             self.specialty=self.answer.specialty
         self.city=self.answer.city
         self.ispublic=self.answer.ispublic
         self.institution_mentioned=self.answer.institution_mentioned
         self.institution_name=self.answer.institution_name
+        
+        logger.debug(f"Pipeline infos - specialty: {self.specialty}, city: {self.city}, ispublic: {self.ispublic}, institution: {self.institution_name}")
         return self.specialty
 
     def from_prompt_to_ranking_df_with_distances(self, prompt: str, excel_path: str )-> pd.DataFrame:
@@ -86,17 +92,23 @@ class Pipeline:
             pd.DataFrame: DataFrame with ranking and distance information, or general results if no city is found.
         """
         
+        logger.info(f"Building ranking DataFrame with distances for prompt: {prompt}")
+        
         self.df_gen=self.answer.find_excel_sheet_with_privacy(prompt)
         self.get_infos_pipeline(prompt)
         if self.answer.ranking_not_found:
-                    return self.df_gen
+            logger.warning("Ranking not found for requested specialty/type")
+            return self.df_gen
         if self.answer.city == 'aucune correspondance':
+            logger.info("No city found in the query, returning general ranking DataFrame")
             self.no_city= True
             return self.df_gen
         else :
             self.no_city= False
+            logger.info("Extracting hospital locations and calculating distances")
             self.answer.extract_loca_hospitals()
             df_with_distances=self.answer.get_df_with_distances()
+            logger.debug(f"DataFrame with distances shape: {df_with_distances.shape if df_with_distances is not None else 'None'}")
             return df_with_distances
 
     def get_filtered_and_sorted_df(self, df: pd.DataFrame, rayon_max: int, top_k: int, prompt:str) -> str:
@@ -116,6 +128,7 @@ class Pipeline:
         logger.info(f"Filtering and sorting DataFrame with rayon_max={rayon_max}, top_k={top_k}, prompt={prompt}")
         # If an institution was mentioned in user 's query, check if it exists in the DataFrame.
         if self.institution_mentioned==True:
+            logger.info(f"Institution mentioned in query: {self.institution_name}")
             validity=False
             
             # Check if the institution is present in the DataFrame
@@ -124,6 +137,7 @@ class Pipeline:
             
             # If not present, return an appropriate message depending on specialty context
             if validity == False:
+                logger.warning(f"Institution {self.institution_name} not found in DataFrame")
                 if self.specialty=='aucune correspondance':
                     return f"Cet établissement ne fait pas partie des 50 meilleurs établissements du palmarès global"
                 else: 
@@ -148,6 +162,7 @@ class Pipeline:
                 response=response+f"du palmarès {self.specialty}."
             if self.ispublic!='aucune correspondance':
                         response=response+f" {self.ispublic}."
+            logger.debug(f"Formatted response: {reponse}")
             return response
 
         # If no specific institution is mentioned, filter hospitals by distance and select the top_k by score
@@ -156,6 +171,7 @@ class Pipeline:
         logger.debug(f"Filtered DataFrame shape: {self.sorted_df.shape}")
         
         if self.sorted_df.shape[0] == top_k:
+            logger.info(f"Found {top_k} results within {rayon_max}km")
             # Format the top_k results as a text table
             res_str= tableau_en_texte(self.sorted_df, self.no_city)
             if self.specialty=='aucune correspondance':
@@ -164,6 +180,7 @@ class Pipeline:
                 reponse=f"Voici les {top_k} meilleurs établissements pour la pathologie: {self.specialty} dans un rayon de {rayon_max}km autour de {self.city}:\n{res_str}"
             # Save the query and response to history
             self.answer.create_csv(question=prompt, reponse=reponse)
+            logger.debug(f"Formatted response: {reponse}")
             return reponse
         # If the search radius is at its maximum, return all found institutions (even if less than top_k)
         elif rayon_max==500:
@@ -173,8 +190,10 @@ class Pipeline:
             else:
                 reponse=f"Voici les {self.sorted_df.shape[0]} meilleurs établissements pour la pathologie {self.specialty} dans un rayon de {rayon_max}km autour de {self.city}:<br>\n{res_str}"
             self.answer.create_csv(question=prompt, reponse=reponse)
+            logger.debug(f"Formatted response: {reponse}")
             return reponse
         # If no results found, return None so the caller can try with a larger radius
+        logger.warning("No results found within current radius")
         return None
 
 
@@ -197,6 +216,7 @@ class Pipeline:
         # Reset relevant attributes for a new query
         self.reset_attributes()
         self.specialty= specialty_st
+        logger.debug("Reset attributes and set specialty for new query")
 
         # Check if the user specified a different top_k in their prompt
         top_kbis =self.appel_LLM.get_topk(prompt)
@@ -215,12 +235,14 @@ class Pipeline:
         
         # Handle geolocation API errors
         if self.answer.geopy_problem:
+            logger.error("Geopy API error encountered, cannot calculate distances")
             return "Dû à une surutilisation de l'API de Geopy, le service de calcul des distances est indisponible pour le moment, merci de réessayer plus tard ou de recommencer avec une question sans localisation spécifique "
 
         self.link=self.answer.web_ranking_link
 
         # Handle cases where no results are found for the requested specialty/type
         if self.answer.ranking_not_found :
+            logger.warning("Ranking not found for requested specialty/type, suggesting alternative")
             if self.answer.ispublic=='Public':   
                 return "Nous n'avons pas d'établissement publique pour cette pathologie, mais un classement des établissements privés existe. ", self.link
             elif self.answer.ispublic=='Privé': 
@@ -228,12 +250,14 @@ class Pipeline:
 
         # If a specific institution is mentioned, return its ranking and the link
         if self.institution_mentioned:
+            logger.info("Returning result for mentioned institution")
             res=self.get_filtered_and_sorted_df(df, rayon_max, top_k,prompt)
             logger.debug(f"Result: {res}, Links: {self.link}")
             return res, self.link
         
         # If a city was found, try to find results within increasing radii
         if self.no_city== False:
+            logger.info("City found, searching for results within increasing radii")
             # Try with initial radius
             res = self.get_filtered_and_sorted_df(df, rayon_max, top_k,prompt)
             if res:
@@ -261,6 +285,7 @@ class Pipeline:
             return res, self.link
         
         else:
+            logger.info("No city found, returning general ranking")
             # If no city was found, return the top_k institutions from the general ranking 
             self.get_infos_pipeline(prompt)
             res_tab=self.df_gen.nlargest(top_k, "Note / 20")

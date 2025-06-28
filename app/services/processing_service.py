@@ -66,6 +66,7 @@ class Processing:
         Args:
             prompt (str): The user's question.
         """
+        logger.info(f"Extracting infos from prompt: {prompt}")
         if self.specialty is None:
             self.appel_LLM.get_speciality(prompt)
             self.ranking_df=pd.read_excel(self.paths["ranking_file_path"] , sheet_name="Palmarès")
@@ -77,6 +78,7 @@ class Processing:
         self.institution_mentioned = self.appel_LLM.institution_mentioned
         self.institution_name=self.appel_LLM.institution_name
         self.ispublic=self.appel_LLM.ispublic
+        logger.debug(f"Extracted specialty: {self.specialty}, city: {self.city}, institution: {self.institution_name}, type: {self.ispublic}")
         return None
 
     def _generate_lien_classement(self, matching_rows: str = None) -> str:
@@ -90,6 +92,8 @@ class Processing:
             list or None: List of generated URLs or None if not applicable.
         """
 
+        logger.info("Generating ranking links")
+        
         self.web_ranking_link=[]
 
         if self.specialty== 'aucune correspondance':
@@ -121,6 +125,8 @@ class Processing:
             web_ranking_link=web_ranking_link.lower()
             web_ranking_link=enlever_accents(web_ranking_link)
             self.web_ranking_link.append(web_ranking_link)
+        
+        logger.info(f"Generated ranking links: {self.web_ranking_link}")
         return self.web_ranking_link
 
     def _load_and_transform_for_no_specialty(self, category: str) -> pd.DataFrame:
@@ -134,6 +140,8 @@ class Processing:
         Returns:
             pd.DataFrame: The combined DataFrame of relevant institutions.
         """
+        
+        logger.info(f"Loading and transforming data for category: {category}")
         
         dfs=[]
         if category== 'aucune correspondance':
@@ -159,7 +167,8 @@ class Processing:
         
         # Rename columns for consistency
         df = df.rename(columns={'Score final': 'Note / 20', 'Nom Print': 'Etablissement'})
-    
+
+        logger.debug(f"Loaded DataFrame shape (no specialty): {df.shape}")
         return df
     
     def load_excel_sheets(self, matching_rows: pd.DataFrame) -> pd.DataFrame:
@@ -173,9 +182,12 @@ class Processing:
             pd.DataFrame or list: Concatenated DataFrame of results, or a message if not found.
         """
         
-        excel_path = self.paths["ranking_file_path"] 
+        logger.info("Loading Excel sheets for matched specialties/categories")
+        
+        #excel_path = self.paths["ranking_file_path"] 
         dfs = []
         for _, row in matching_rows.iterrows():
+            logger.debug(f"Loading sheet: {row.iloc[2]} for category: {row['Catégorie']}")
             sheet_name = row.iloc[2]
             category = row["Catégorie"]
             df_sheet = pd.read_excel(self.paths["ranking_file_path"] , sheet_name=sheet_name)
@@ -183,8 +195,11 @@ class Processing:
             dfs.append(df_sheet)
 
         if dfs:
+            logger.info(f"Loaded {len(dfs)} sheets, concatenating results")
+            logger.debug(f"Concatenated DataFrame shape: {pd.concat(dfs, join='inner', ignore_index=True).shape}")
             return pd.concat(dfs, join="inner", ignore_index=True)
         else:
+            logger.warning("No matching sheets found for specialties/categories")
             if self.specialty!= 'aucune correspondance' and self.ispublic!='aucune correspondance':
                 res=[]
                 res.append("Nous n'avons pas d'établissement de ce type pour cette pathologie")
@@ -201,11 +216,12 @@ class Processing:
         Returns:
             pd.DataFrame: DataFrame with the relevant specialty data.
         """
-        
+        logger.info(f"Finding Excel sheet with specialty for prompt: {prompt}")
         matching_rows = self.ranking_df[self.ranking_df["Spécialité"].str.contains(self.specialty, case=False, na=False)]
         self.web_ranking_link=[]
         self._generate_lien_classement(matching_rows)
         self.specialty_df = self.load_excel_sheets(matching_rows)
+        logger.info("Loaded specialty DataFrame")
         return self.specialty_df
 
     def find_excel_sheet_with_privacy(self,prompt: str) -> pd.DataFrame:
@@ -220,6 +236,7 @@ class Processing:
         """
         
         logger.info(f"Finding Excel sheet with privacy for prompt: {prompt}")
+        
         self.get_infos(prompt)
         specialty=self.specialty
         
@@ -234,6 +251,7 @@ class Processing:
         matching_rows = matching_rows[matching_rows["Catégorie"].str.contains(self.ispublic, case=False, na=False)]
         self._generate_lien_classement(matching_rows)
         self.specialty_df = self.load_excel_sheets(matching_rows)
+        
         logger.debug(f"Loaded specialty DataFrame: {self.specialty_df}")
         return self.specialty_df
 
@@ -247,6 +265,7 @@ class Processing:
         Returns:
             pd.DataFrame: DataFrame with city and coordinate information merged.
         """
+        logger.info("Merging ranking data with hospital location data")
         
         coordonnees_df = pd.read_excel(self.paths["hospital_coordinates_path"]).dropna()
         notes_df = self.specialty_df
@@ -254,6 +273,8 @@ class Processing:
         notes_df = notes_df[["Etablissement", "Catégorie","Note / 20"]]
         self.df_with_cities = pd.merge(coordonnees_df, notes_df, on="Etablissement", how="inner")
         self.df_with_cities.rename(columns={"Ville": "City"}, inplace=True)
+        
+        logger.debug(f"Merged DataFrame shape (with cities): {self.df_with_cities.shape}")
         return self.df_with_cities
     
     def get_df_with_distances(self) -> pd.DataFrame:
@@ -264,6 +285,8 @@ class Processing:
             pd.DataFrame or None: DataFrame with distance information, or None if geolocation fails.
         """
 
+        logger.info("Calculating distances to query city")
+        
         query_coords = exget_coordinates(self.city, self.geopy_problem)
         if self.geopy_problem:
             return None
@@ -283,6 +306,8 @@ class Processing:
             )
         )
         self.df_with_distances = self.df_with_cities
+        
+        logger.debug(f"DataFrame with distances shape: {self.df_with_distances.shape}")
         return self.df_with_distances
 
     def create_csv(self, question:str, reponse: str):
