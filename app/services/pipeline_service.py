@@ -126,6 +126,10 @@ class Pipeline:
         """
         
         logger.info(f"Filtering and sorting DataFrame with rayon_max={rayon_max}, top_k={top_k}, prompt={prompt}")
+        
+        # Default value to avoid UnboundLocalError
+        reponse = "Aucun résultat trouvé."  
+        
         # If an institution was mentioned in user 's query, check if it exists in the DataFrame.
         if self.institution_mentioned==True:
             logger.info(f"Institution mentioned in query: {self.institution_name}")
