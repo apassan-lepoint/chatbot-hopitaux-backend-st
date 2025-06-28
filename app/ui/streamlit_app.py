@@ -149,13 +149,15 @@ class StreamlitChatbot:
         
         logger.info(f"Checking for non-French city in input: {user_input}")
         self.city = self.appel_LLM.get_city(user_input)
-        #st.write(self.city)
+        
+        # If city is foreign, reset and warn
         if self.city == 'ville étrangère':
             self.reset_session_state()
             st.warning(
                 f"Je ne peux pas répondre aux questions concernant les hôpitaux situés hors du territoire français, merci de consulter la page du palmarès. [🔗 Page du classement](https://www.lepoint.fr/hopitaux/classements)"
             )
             st.stop()
+        # If city is ambiguous, reset and warn
         if self.city == 'confusion':
             self.reset_session_state()
             st.warning(
@@ -182,7 +184,8 @@ class StreamlitChatbot:
         logger.info("Running StreamlitChatbot application")
         st.title("🏥Assistant Hôpitaux")
         st.write("Posez votre question ci-dessous.")
-         
+        
+        # Display example questions in columns for user inspiration
         col1, col2, col3 = st.columns(3)
         with col1:
             st.info("**Quel est le meilleur hôpital de France ?**")
@@ -191,12 +194,13 @@ class StreamlitChatbot:
         with col3:
             st.info("**Est-ce que l'hôpital de la pitié salpétrière est un bon hôpital en cas de problèmes auditifs ?**")
         
+        # Button to start a new conversation
         if st.sidebar.button("🔄 Démarrer une nouvelle conversation"):
             logger.info("User requested new conversation")
             self.reset_session_statebis()
             st.rerun()
        
-        # Initialisation de l'état de session
+        # Initialize session state variables if not already present
         if "conversation" not in st.session_state:
             st.session_state.conversation = []
         if "selected_option" not in st.session_state:
@@ -206,8 +210,10 @@ class StreamlitChatbot:
         if "v_spe" not in st.session_state:
             st.session_state.v_spe = ""
         
+        # Check if conversation limit is reached
         self.check_conversation_limit()
         
+        # If this is the first message in the conversation
         if len(st.session_state.conversation)==0  :
             user_input = st.chat_input("Votre message")
             if user_input:
@@ -219,10 +225,12 @@ class StreamlitChatbot:
                 self.check_non_french_cities(st.session_state.prompt)
                 
             if st.session_state.prompt:
+                # Detect medical specialty if not already set
                 if st.session_state.v_spe == "":
                     v_speciality = self.appel_LLM.get_speciality(st.session_state.prompt)
                     st.session_state.v_spe = v_speciality
 
+                # If multiple specialties are detected, prompt user to select one
                 if st.session_state.v_spe.startswith("plusieurs correspondances:"):
                     logger.info("Multiple specialties detected, prompting user for selection")
                     # Extract options from the string
@@ -241,13 +249,14 @@ class StreamlitChatbot:
                             result, link = answer_instance.final_answer(prompt=st.session_state.prompt, specialty_st=selected_option)
                             if result == 'établissement pas dans ce classement':
                                 result= f"Cet hôpital n'est pas présent pour la spécialité {selected_option}"                  
-                            
+                        # Add links to result    
                         for links in link:
                             result=result+f"<br>[🔗Page du classement]({links})"
                         st.session_state.conversation.append((st.session_state.prompt, result))
                         return None
 
                 else:
+                    # Only one specialty detected, proceed to answer
                     with st.spinner('Chargement'):
                         answer_instance = Pipeline()
                         result, link = answer_instance.final_answer(prompt=st.session_state.prompt, specialty_st=v_speciality)
@@ -256,13 +265,45 @@ class StreamlitChatbot:
                     st.session_state.conversation.append((st.session_state.prompt, result))
                     return None
         else  :
+            # For subsequent messages in the conversation
             user_input = st.chat_input("Votre message")
             if user_input:
-                logger.info("Continuing conversation with LLM")
-                with st.spinner('Chargement'):
-                    result=self.appel_LLM.continuer_conv(prompt=user_input,conv_history=st.session_state.conversation)
-                st.session_state.conversation.append((user_input, result))
-        
+                logger.info(f"User input received: {user_input}")
+
+                # Prepare conversation history for LLM context
+                conv_history = "\n".join(
+                    [f"Utilisateur: {q}\nAssistant: {r}" for q, r in st.session_state.conversation]
+                ) if hasattr(st.session_state, "conversation") else ""
+
+                # Use LLM to detect if this is a modification or a new query
+                try:
+                    mod_type = self.appel_LLM.detect_modification(user_input, conv_history)
+                    logger.info(f"Detected query type: {mod_type}")
+                except Exception as e:
+                    logger.error(f"Error during modification detection: {e}")
+                    mod_type = "nouvelle question"
+
+                if mod_type == "modification":
+                    st.info("Modification détectée de la question précédente.")
+                    logger.info("Continuing conversation with LLM (modification case)")
+                    # Continue the conversation with LLM using previous context
+                    with st.spinner('Chargement'):
+                        result = self.appel_LLM.continuer_conv(
+                            prompt=user_input,
+                            conv_history=st.session_state.conversation
+                        )
+                    st.session_state.conversation.append((user_input, result))
+                else:
+                    st.info("Nouvelle question détectée.")
+                    logger.info("Starting new query pipeline with LLM")
+                    # Treat as a new query and use the main pipeline
+                    with st.spinner('Chargement'):
+                        answer_instance = Pipeline()
+                        result, link = answer_instance.final_answer(prompt=user_input)
+                    for links in link:
+                        result = result + f"<br>[🔗Page du classement]({links})"
+                    st.session_state.conversation.append((user_input, result))
+        # Display the full conversation history    
         self._display_conversation()      
             
 def main():

@@ -386,3 +386,31 @@ class Appels_LLM:
             self.newanswer = str(response).strip()
         logger.debug(f"LLM response: {response}")
         return self.newanswer
+
+    def detect_modification(self, prompt: str, conv_history: list) -> str:
+        """
+        Uses the LLM to determine if the user input is a new question or a modification.
+        
+        Args:
+            prompt (str): The user's new question.
+            conv_history (list): The conversation history.
+            
+        Returns:
+            str: "modification" if the input is a modification, "nouvelle question" if it is a new question.
+        """
+        
+        formatted_prompt = prompt_instructions["detect_modification_prompt"].format(
+            conv_history=conv_history, prompt=prompt
+        )
+        try:
+            response = self.model.invoke(formatted_prompt)
+        except Exception as e:
+            logger.error(f"LLM invocation failed in detect_modification: {e}")
+            return "nouvelle question"
+        if hasattr(response, "content"):
+            result = response.content.strip().lower()
+        else:
+            result = str(response).strip().lower()
+        if "modification" in result:
+            return "modification"
+        return "nouvelle question"

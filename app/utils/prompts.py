@@ -180,4 +180,12 @@ prompt_instructions = {
         Réponds au nouveau message de l'utilisateur:{prompt}
         """
 
+        ,
+        "detect_modification_prompt": """
+        Vous êtes un assistant pour un chatbot médical. 
+        Voici l'historique de la conversation : {conv_history}
+        Voici le nouveau message de l'utilisateur : {prompt}
+        Dis-moi si ce message est une nouvelle question ("nouvelle question") ou une modification/clarification de la question précédente ("modification").
+        Réponds uniquement par "nouvelle question" ou "modification".
+        """
 }

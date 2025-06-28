@@ -70,6 +70,7 @@ class Pipeline:
         
         logger.info(f"Getting infos from pipeline for prompt: {prompt}")
         
+        # Extract information from the Processing service
         if self.specialty is None:
             self.specialty=self.answer.specialty
         self.city=self.answer.city
@@ -94,6 +95,7 @@ class Pipeline:
         
         logger.info(f"Building ranking DataFrame with distances for prompt: {prompt}")
         
+        # Find the relevant Excel sheet and extract info
         self.df_gen=self.answer.find_excel_sheet_with_privacy(prompt)
         self.get_infos_pipeline(prompt)
         if self.answer.ranking_not_found:
@@ -130,7 +132,7 @@ class Pipeline:
         # Default value to avoid UnboundLocalError
         reponse = "Aucun résultat trouvé."  
         
-        # If an institution was mentioned in user 's query, check if it exists in the DataFrame.
+        # If an institution was mentioned in user's query, check if it exists in the DataFrame.
         if self.institution_mentioned==True:
             logger.info(f"Institution mentioned in query: {self.institution_name}")
             validity=False
@@ -150,13 +152,14 @@ class Pipeline:
             # If present, find its position in the sorted DataFrame
             df_sorted=df.sort_values(by='Note / 20', ascending=False).reset_index(drop=True)
             position = df_sorted.index[df_sorted["Etablissement"].str.contains(self.institution_name, case=False, na=False)][0] + 1  # +1 for human-readable ranking (starts at 1)
+            
             # Build a detailed description of all ranked institutions
             descriptions = []
             for index, row in df_sorted.iterrows():
                 description=row[['Etablissement','Catégorie','Note / 20']]
 
                 descriptions.append(str(description))
-            texte_final = "<br>\n".join(descriptions)
+            response = "<br>\n".join(descriptions)
 
             #  Build the response string with the institution's rank and context
             response=f"{self.institution_name} est classé n°{position} "
@@ -196,6 +199,7 @@ class Pipeline:
             self.answer.create_csv(question=prompt, reponse=reponse)
             logger.debug(f"Formatted response: {reponse}")
             return reponse
+        
         # If no results found, return None so the caller can try with a larger radius
         logger.warning("No results found within current radius")
         return None
@@ -217,6 +221,7 @@ class Pipeline:
         """
 
         logger.info(f"Generating final answer for prompt: {prompt}, top_k={top_k}, rayon_max={rayon_max}, specialty_st={specialty_st}")
+        
         # Reset relevant attributes for a new query
         self.reset_attributes()
         self.specialty= specialty_st
