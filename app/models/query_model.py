@@ -17,4 +17,15 @@ class UserQuery(BaseModel):
     """
     prompt: str # Required field for the user's input
     specialty_st: str | None = None # Optional field for medical specialty
-    
+
+class ChatRequest(BaseModel):
+    """
+    Data model for chat requests to the chatbot.
+
+    Attributes:
+        prompt (str): The user's input or question for the chatbot.
+        conversation (List[List[str]]): The conversation history as a list of message pairs,
+            where each pair is a list containing the user message and the assistant response.
+    """
+    prompt: str
+    conversation: List[List[str]]  # List of [user, assistant] pairs

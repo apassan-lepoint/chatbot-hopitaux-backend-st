@@ -442,4 +442,4 @@ class Appels_LLM:
             result = str(response).strip().lower()
         if "modification" in result:
             return "modification"
-        return "nouvelle question"
+        return "ambiguous"  # Return "ambiguous" if the response is not clear

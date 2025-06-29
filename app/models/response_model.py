@@ -18,3 +18,16 @@ class AskResponse(BaseModel):
     """
     result: str
     links: List[str]
+    
+class ChatResponse(BaseModel):
+    """
+    Data model for the chat response.
+
+    Attributes:
+        response (str): The chatbot's response text.
+        conversation (List[List[str]]): The conversation history as a list of message pairs.
+        ambiguous (bool): Flag indicating if the response is ambiguous (default is False).
+    """
+    response: str
+    conversation: List[List[str]]
+    ambiguous: bool = False

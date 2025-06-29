@@ -181,11 +181,16 @@ prompt_instructions = {
         """
 
         ,
+        
         "detect_modification_prompt": """
         Vous êtes un assistant pour un chatbot médical. 
         Voici l'historique de la conversation : {conv_history}
         Voici le nouveau message de l'utilisateur : {prompt}
-        Dis-moi si ce message est une nouvelle question ("nouvelle question") ou une modification/clarification de la question précédente ("modification").
-        Réponds uniquement par "nouvelle question" ou "modification".
+        Est-ce que ce message est une modification ou une précision de la question précédente, ou bien s'agit-il d'une nouvelle question indépendante ?
+        Réponds uniquement par l'un des trois mots suivants (en minuscules, sans ponctuation) :
+        - modification
+        - nouvelle question
+        - ambiguous
+        Si vous n'êtes pas certain, réponds 'ambiguous'.
         """
 }

@@ -264,8 +264,8 @@ class StreamlitChatbot:
                         result=result+f"<br>[🔗Page du classement]({links})"
                     st.session_state.conversation.append((st.session_state.prompt, result))
                     return None
+        # For subsequent messages in the conversation
         else  :
-            # For subsequent messages in the conversation
             user_input = st.chat_input("Votre message")
             if user_input:
                 logger.info(f"User input received: {user_input}")
@@ -283,6 +283,18 @@ class StreamlitChatbot:
                     logger.error(f"Error during modification detection: {e}")
                     mod_type = "nouvelle question"
 
+                # Handle ambiguous case by asking the user
+                if mod_type == "ambiguous":
+                    user_choice = st.radio(
+                        "Je ne suis pas sûr si votre message est une nouvelle question ou une modification de la précédente. Veuillez préciser :",
+                        ("Continuer la conversation précédente", "Poser une nouvelle question")
+                    )
+                    if user_choice == "Continuer la conversation précédente":
+                        mod_type = "modification"
+                    else:
+                        mod_type = "nouvelle question"
+                
+                # Handle modification to previous query
                 if mod_type == "modification":
                     st.info("Modification détectée de la question précédente.")
                     logger.info("Continuing conversation with LLM (modification case)")
@@ -293,6 +305,7 @@ class StreamlitChatbot:
                             conv_history=st.session_state.conversation
                         )
                     st.session_state.conversation.append((user_input, result))
+                # Handle new query
                 else:
                     st.info("Nouvelle question détectée.")
                     logger.info("Starting new query pipeline with LLM")

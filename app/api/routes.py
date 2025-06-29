@@ -7,9 +7,11 @@ This file registers the main routes for user queries, health checks, and other
 
 from fastapi import APIRouter, Body 
 from app.services.pipeline_service import Pipeline
-from app.models.query_model import UserQuery
-from app.models.response_model import AskResponse
+from app.services.llm_service import Appels_LLM
+from app.models.query_model import UserQuery, ChatRequest
+from app.models.response_model import AskResponse, ChatResponse
 from app.utils.logging import get_logger
+
 logger = get_logger(__name__)
 
 # Initialize the API router instance to define and group related endpoints
@@ -41,3 +43,47 @@ def ask_question(query: UserQuery):
     result, link = pipeline.final_answer(prompt=query.prompt, specialty_st=query.specialty_st)
     logger.info("Response generated for /ask endpoint")
     return {"result": result, "links": link} 
+
+@router.post("/chat", response_model=ChatResponse)
+def chat(request: ChatRequest):
+    """
+    Multi-turn chat endpoint. Accepts user prompt and conversation history.
+    Determines if the prompt is a modification or a new question.
+    
+    Args:
+        request (ChatRequest): The chat request containing the user's prompt and conversation history.  
+    
+    Returns:
+        ChatResponse: The chatbot's response, updated conversation history, and ambiguity flag.
+    """
+    appel_LLM = Appels_LLM()
+    # Prepare conversation history string for LLM
+    conv_history = "\n".join(
+        [f"Utilisateur: {q}\nAssistant: {r}" for q, r in request.conversation]
+    ) if request.conversation else ""
+
+    mod_type = appel_LLM.detect_modification(request.prompt, conv_history)
+    # Handle ambiguous case: return special response for frontend to handle
+    if mod_type == "ambiguous":
+        return ChatResponse(
+            response="Je ne suis pas sûr si votre message est une nouvelle question ou une modification de la précédente. Veuillez préciser.",
+            conversation=request.conversation,
+            ambiguous=True
+        )
+
+    if mod_type == "modification":
+        result = appel_LLM.continuer_conv(
+            prompt=request.prompt,
+            conv_history=request.conversation
+        )
+        updated_conversation = request.conversation + [[request.prompt, result]]
+        return ChatResponse(response=result, conversation=updated_conversation, ambiguous=False)
+    else:
+        answer_instance = Pipeline()
+        result, link = answer_instance.final_answer(prompt=request.prompt)
+        # Add links to result
+        if link:
+            for l in link:
+                result += f"<br>[🔗Page du classement]({l})"
+        updated_conversation = request.conversation + [[request.prompt, result]]
+        return ChatResponse(response=result, conversation=updated_conversation, ambiguous=False)
