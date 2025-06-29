@@ -5,10 +5,7 @@ This file defines the Pipeline class, which coordinates the extraction, filterin
     ranking, and formatting of hospital data in response to user queries.
 """
 
-import os
-import re
 import pandas as pd
-import csv
 from app.services.processing_service import Processing
 from app.services.llm_service import Appels_LLM
 from app.utils.formatting import tableau_en_texte
@@ -35,8 +32,8 @@ class Pipeline:
         self.df_gen = None # DF for results 
         self.institution_mentioned=None
         self.institution_name=None
-        self.answer=Processing()
-        self.appel_LLM=Appels_LLM()
+        self.answer=Processing() # Instance of Processing for data extraction and transformation
+        self.appel_LLM=Appels_LLM() # Instance for LLM-based extraction
 
     def reset_attributes(self):
         """

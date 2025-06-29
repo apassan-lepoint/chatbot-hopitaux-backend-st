@@ -155,7 +155,7 @@ prompt_instructions = {
         "is_public_or_private_prompt":
             """
             Un des noms exact de ma liste d'établissements est il mentionné précisément dans cette phrase: '{prompt}'? Voici ma liste d'établissements:
-            {liste_etablissement}
+            {institution_list}
             Réponds UNIQUEMENT avec le nom d'établissement exact de la liste si la phrase contient un des noms exacts d'établissement.
             Si aucun de ces établissement n'est mentionné dans ma phrase, renvoie moi EXACTEMENT ces deux mots: 'aucune correspondance'.
             Si la Ville de l'établissement est mentionnée mais pas le nom complet, par exemple 'Villeneuve-d’Ascq' est mentionné mais pas 'Clinique de Villeneuve-d’Ascq' alors tu renverras 'aucune correspondance'. 

@@ -43,6 +43,7 @@ class Appels_LLM:
         BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
         self.paths= PATHS
         
+        # Load mapping keywords for specialty detection
         self.key_words=format_mapping_words_csv(self.paths["mapping_word_path"])
 
     def init_model(self) -> ChatOpenAI:
@@ -70,14 +71,17 @@ class Appels_LLM:
             str: A comma-separated string of all specialties.
         """
         logger.info("Loading specialties from Excel")
+        
         try:
             df_specialty = pd.read_excel(self.paths["ranking_file_path"] , sheet_name="Palmarès")
         except Exception as e:
             logger.error(f"Failed to load specialties Excel: {e}")
             raise
+        
         self.ranking_df=df_specialty
         colonne_1 = df_specialty.iloc[:, 0].drop_duplicates()
         liste_spe = ", ".join(map(str, colonne_1.dropna()))
+        
         logger.debug(f"Specialty list: {liste_spe}")
         return liste_spe
         
@@ -94,8 +98,10 @@ class Appels_LLM:
             str: The detected specialty or a message indicating no match.
         """
         logger.info(f"Detecting specialty for prompt: {prompt}")
+        
         liste_spe=self.get_specialty_list()
         get_speciality_prompt_formatted=prompt_instructions["get_speciality_prompt"].format(liste_spe=liste_spe,prompt=prompt)
+        
         logger.debug(f"LLM prompt: {get_speciality_prompt_formatted}")
         
         try:
@@ -103,7 +109,9 @@ class Appels_LLM:
         except Exception as e:
             logger.error(f"LLM invocation failed in get_speciality: {e}")
             raise
+        
         logger.debug(f"LLM response: {response1}")
+        
         if hasattr(response1, "content"):
             self.specialty = response1.content.strip()
         else:
@@ -155,12 +163,14 @@ class Appels_LLM:
         """
         
         logger.info(f"Checking if prompt is deeply off-topic: {prompt}")
+        
         formatted_prompt=prompt_instructions["get_offtopic_approfondi_prompt"].format(prompt=prompt)
         response = self.model.invoke(formatted_prompt)
         if hasattr(response, "content"):
             res = response.content.strip()
         else:
             res = str(response).strip()
+        
         logger.debug(f"LLM response: {response}")
         return res
     
@@ -174,13 +184,16 @@ class Appels_LLM:
         Returns:
             str: The LLM's off-topic assessment.
         """
+        
         logger.info(f"Checking if prompt is off-topic: {prompt}")
+        
         formatted_prompt=prompt_instructions["get_offtopic_prompt"].format(prompt=prompt)
         response = self.model.invoke(formatted_prompt)
         if hasattr(response, "content"):
             self.isofftopic = response.content.strip()
         else:
             self.isofftopic = str(response).strip()
+        
         logger.debug(f"LLM response: {response}")
         return self.isofftopic
 
@@ -198,14 +211,18 @@ class Appels_LLM:
         """
         
         logger.info(f"Detecting city in prompt: {prompt}")
+        
         # Check with the llm if the city or department mentioned in the prompt is ambiguous (homonyms, incomplete names, etc.)
         formatted_prompt = prompt_instructions["get_city_prompt"].format(prompt=prompt)
+        
         try:
             response1 = self.model.invoke(formatted_prompt)
         except Exception as e:
             logger.error(f"LLM invocation failed in get_city: {e}")
             raise
+        
         logger.debug(f"LLM response: {response1}")
+        
         if hasattr(response1, "content"):
             self.city = response1.content.strip()
         else:
@@ -214,7 +231,9 @@ class Appels_LLM:
         # If there is no ambiguity, retrieve the city name in a second LLM call
         if self.city=='correct':
             logger.info("City detected as correct, refining with second LLM call")
+            
             formatted_prompt = prompt_instructions["get_city_prompt_2"].format(prompt=prompt)
+            
             try:
                 response2 = self.model.invoke(formatted_prompt)
             except Exception as e:
@@ -225,6 +244,7 @@ class Appels_LLM:
                 self.city = response2.content.strip()
             else:
                 self.city = str(response2).strip()
+            
             logger.debug(f"LLM response (second call): {response2}")
         return self.city
 
@@ -242,23 +262,28 @@ class Appels_LLM:
         """
         
         logger.info(f"Detecting top_k in prompt: {prompt}")
+        
         formatted_prompt = prompt_instructions["get_topk_prompt"].format(prompt=prompt)
+        
         try: 
             response = self.model.invoke(formatted_prompt)
         except Exception as e:
             logger.error(f"LLM invocation failed in get_topk: {e}")
             raise
+        
         # If the LLM response has a content attribute, use it; otherwise, convert the response to string
         # and strip whitespace
         if hasattr(response, "content"):
             topk = response.content.strip()
         else:
             topk = str(response).strip()
+        
         if topk!='non mentionné':
             if int(topk)>50:
                 topk='non mentionné'
             else:
                 topk=int(topk)
+        
         logger.debug(f"LLM response: {response}")
         return topk
 
@@ -273,24 +298,25 @@ class Appels_LLM:
         """
         
         logger.info("Loading institution list from Excel")
+        
         try:
             coordonnees_df = pd.read_excel(self.paths["hospital_coordinates_path"])
         except Exception as e:
             logger.error(f"Failed to load hospital coordinates Excel: {e}")
             raise
         # Extract the first column which contains institution names
-        # and remove duplicates by converting to a set
-        # Then convert back to a list for further processing
-        colonne_1 = coordonnees_df.iloc[:, 0]
+        column_1 = coordonnees_df.iloc[:, 0]
         # Remove location details after commas for better matching
-        liste_etablissement = [element.split(",")[0] for element in colonne_1]
-        liste_etablissement = list(set(liste_etablissement))
+        institution_list = [element.split(",")[0] for element in column_1]
+        # Remove duplicates
+        institution_list = list(set(institution_list))
         # Remove generic names that could cause false matches
-        liste_etablissement = [element for element in liste_etablissement if element != "CHU"]
-        liste_etablissement = [element for element in liste_etablissement if element != "CH"]
-        liste_etablissement = ", ".join(map(str, liste_etablissement))
-        logger.debug(f"Institution list: {liste_etablissement}")
-        return liste_etablissement
+        institution_list = [element for element in institution_list if element != "CHU"]
+        institution_list = [element for element in institution_list if element != "CH"]
+        institution_list = ", ".join(map(str, institution_list))
+        
+        logger.debug(f"Institution list: {institution_list}")
+        return institution_list
 
     def is_public_or_private(self, prompt: str) -> str:
         """
@@ -306,10 +332,11 @@ class Appels_LLM:
         """
 
         logger.info(f"Detecting public/private for prompt: {prompt}")
-        liste_etablissement=self.get_institution_list()
+        
+        institution_list=self.get_institution_list()
 
-        #On va ensuite appeler notre LLM qui va pouvoir détecter si l'un des établissements est mentionné dans la question de l'utilisateur
-        formatted_prompt =prompt_instructions["is_public_or_private_prompt"].format(liste_etablissement=liste_etablissement,prompt=prompt) 
+        # Call LLM to detect if an institution is mentioned in the user's question
+        formatted_prompt =prompt_instructions["is_public_or_private_prompt"].format(institution_list=institution_list,prompt=prompt) 
         try:
             response1 = self.model.invoke(formatted_prompt)
         except Exception as e:
@@ -325,7 +352,7 @@ class Appels_LLM:
         logger.debug(f"LLM response: {response1}")
         
         # If an institution is detected, check if it is in the list of institutions
-        if self.institution_name in liste_etablissement:
+        if self.institution_name in institution_list:
             logger.info(f"Institution mentioned: {self.institution_name}")
             self.institution_mentioned = True
             if self.institution_mentioned:
@@ -355,6 +382,7 @@ class Appels_LLM:
                 ispublic = response2.content.strip()
             else:
                 ispublic = str(response2).strip()
+            
             logger.debug(f"LLM response (second call): {response2}")
             self.institution_mentioned = False
             self.ispublic = ispublic
@@ -374,6 +402,7 @@ class Appels_LLM:
 
         logger.info(f"Continuing conversation with prompt: {prompt}")
         logger.debug(f"Conversation history: {conv_history}")
+        
         formatted_prompt = prompt_instructions["continuer_conv_prompt"].format(prompt=prompt,conv_history=conv_history) 
         try:
             response = self.model.invoke(formatted_prompt)

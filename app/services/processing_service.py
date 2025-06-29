@@ -6,12 +6,7 @@ This file defines the Processing class, which loads, merges, and filters ranking
 """
 
 import os
-import re
 import pandas as pd
-from geopy.geocoders import Nominatim
-from geopy.distance import geodesic
-import time
-import unicodedata
 import csv
 from datetime import datetime
 
@@ -44,6 +39,7 @@ class Processing:
         self.web_ranking_link = None
         self.geopy_problem = False
         
+        # Predefined links for public/private rankings
         self.weblinks={
                 "public":"https://www.lepoint.fr/hopitaux/classements/tableau-d-honneur-public.php",
                 "privé":"https://www.lepoint.fr/hopitaux/classements/tableau-d-honneur-prive.php"
@@ -66,18 +62,23 @@ class Processing:
         Args:
             prompt (str): The user's question.
         """
+        
         logger.info(f"Extracting infos from prompt: {prompt}")
+        
+        # If specialty not already set, extract it and load ranking DataFrame
         if self.specialty is None:
             self.appel_LLM.get_speciality(prompt)
             self.ranking_df=pd.read_excel(self.paths["ranking_file_path"] , sheet_name="Palmarès")
             self.specialty=self.appel_LLM.specialty
-        self.ranking_df=pd.read_excel(self.paths["ranking_file_path"] , sheet_name="Palmarès")
-        self.appel_LLM.get_city(prompt)
+        
+        self.ranking_df=pd.read_excel(self.paths["ranking_file_path"] , sheet_name="Palmarès") # Always reload ranking DataFrame for latest data
+        self.appel_LLM.get_city(prompt) # Extract city and institution type using LLM
         self.city=self.appel_LLM.city
         self.appel_LLM.is_public_or_private(prompt)
         self.institution_mentioned = self.appel_LLM.institution_mentioned
         self.institution_name=self.appel_LLM.institution_name
         self.ispublic=self.appel_LLM.ispublic
+        
         logger.debug(f"Extracted specialty: {self.specialty}, city: {self.city}, institution: {self.institution_name}, type: {self.ispublic}")
         return None
 
@@ -96,8 +97,8 @@ class Processing:
         
         self.web_ranking_link=[]
 
+        # If no specialty, suggest general ranking links
         if self.specialty== 'aucune correspondance':
-            # Suggest general ranking links if no specialty is found
             if self.ispublic == 'Public':
                 self.web_ranking_link=[self.weblinks["public"]]
             elif self.ispublic == 'Privé':
@@ -106,8 +107,9 @@ class Processing:
                 self.web_ranking_link=[self.weblinks["public"],self.weblinks["privé"]]
             return None
         etat = self.ispublic
+        
+        # If ranking not found, suggest the opposite type
         if self.ranking_not_found==True:
-            # Suggest the opposite type if no ranking is found for the requested type
             if self.ispublic == 'Public':
                 etat='prive'
             if self.ispublic == 'Privé':
@@ -119,6 +121,7 @@ class Processing:
             self.web_ranking_link.append(web_ranking_link)
             return self.web_ranking_link
 
+        # Generate links for each matching specialty/category row
         for _, row in matching_rows.iterrows():
             web_ranking_link = row["Spécialité"].replace(' ', '-')
             web_ranking_link='https://www.lepoint.fr/hopitaux/classements/'+ web_ranking_link + '-'+row["Catégorie"] +'.php'
@@ -144,8 +147,9 @@ class Processing:
         logger.info(f"Loading and transforming data for category: {category}")
         
         dfs=[]
+        
+        # Load both public and private rankings if no specific category is requested
         if category== 'aucune correspondance':
-            # Load both public and private rankings if no specific category is requested
             df_private=pd.read_csv(self.paths["ranking_overall_private_path"] )
             df_private['Catégorie']='Privé'
             dfs.append(df_private)
@@ -184,8 +188,9 @@ class Processing:
         
         logger.info("Loading Excel sheets for matched specialties/categories")
         
-        #excel_path = self.paths["ranking_file_path"] 
         dfs = []
+        
+        # Load each sheet for the matched specialty/category
         for _, row in matching_rows.iterrows():
             logger.debug(f"Loading sheet: {row.iloc[2]} for category: {row['Catégorie']}")
             sheet_name = row.iloc[2]
@@ -217,10 +222,12 @@ class Processing:
             pd.DataFrame: DataFrame with the relevant specialty data.
         """
         logger.info(f"Finding Excel sheet with specialty for prompt: {prompt}")
+        
         matching_rows = self.ranking_df[self.ranking_df["Spécialité"].str.contains(self.specialty, case=False, na=False)]
         self.web_ranking_link=[]
         self._generate_lien_classement(matching_rows)
         self.specialty_df = self.load_excel_sheets(matching_rows)
+        
         logger.info("Loaded specialty DataFrame")
         return self.specialty_df
 
@@ -240,13 +247,17 @@ class Processing:
         self.get_infos(prompt)
         specialty=self.specialty
         
+        # If no specialty, load general table
         if specialty== 'aucune correspondance':
             self._generate_lien_classement()
             self.specialty_df=self._load_and_transform_for_no_specialty(category=self.ispublic)
             return self.specialty_df
+        
+        # If no public/private criterion, load by specialty only
         if self.ispublic == 'aucune correspondance':
             return self.find_excel_sheet_with_speciality(prompt)
 
+         # Filter rows by specialty and category
         matching_rows = self.ranking_df[self.ranking_df["Spécialité"].str.contains(specialty, case=False, na=False)]
         matching_rows = matching_rows[matching_rows["Catégorie"].str.contains(self.ispublic, case=False, na=False)]
         self._generate_lien_classement(matching_rows)
@@ -267,6 +278,7 @@ class Processing:
         """
         logger.info("Merging ranking data with hospital location data")
         
+        # Load coordinates and merge with specialty DataFrame
         coordonnees_df = pd.read_excel(self.paths["hospital_coordinates_path"]).dropna()
         notes_df = self.specialty_df
         coordonnees_df = coordonnees_df[["Etablissement", "Ville", "Latitude", "Longitude"]]
@@ -287,16 +299,20 @@ class Processing:
 
         logger.info("Calculating distances to query city")
         
-        query_coords = exget_coordinates(self.city, self.geopy_problem)
+        # Get coordinates for the query city
+        query_coords, self.geopy_problem = exget_coordinates(self.city)
         if self.geopy_problem:
             return None
-           
+        
+        # Drop rows with missing city info
         self.df_with_cities = self.df_with_cities.dropna(subset=['City'])
 
+        # Helper function for distance calculation (not used in lambda, but kept for clarity)
         def _distance(city):
             city_coords = get_coordinates(self.df_with_cities, city)
             return distance_to_query(query_coords, city_coords, city, self.df_with_cities, self.geopy_problem)
-                
+        
+        # Calculate distance for each hospital/city        
         self.df_with_cities['Distance'] = self.df_with_cities['City'].apply(
             lambda city: distance_to_query(
                 query_coords,
@@ -332,6 +348,7 @@ class Processing:
 
         file_exists = os.path.exists(file_name)
 
+        # Write to CSV, add header if file does not exist
         with open(file_name, mode="a", newline="", encoding="utf-8") as file:
             writer = csv.DictWriter(file, fieldnames=data.keys())
             if not file_exists: 
