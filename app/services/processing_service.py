@@ -247,6 +247,10 @@ class Processing:
         self.get_infos(prompt)
         specialty=self.specialty
         
+        # Defensive insertion: ensure specialty is never empty or None
+        if not specialty or (isinstance(specialty, str) and specialty.strip() == ""):
+            specialty = "aucune correspondance"
+        
         # If no specialty, load general table
         if specialty== 'aucune correspondance':
             self._generate_lien_classement()

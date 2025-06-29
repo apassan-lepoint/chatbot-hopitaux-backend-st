@@ -229,6 +229,10 @@ class Pipeline:
         if top_kbis!='non mentionné':
             top_k=top_kbis
 
+        # Defensive insertion: ensure specialty_st is never empty or None
+        if not specialty_st or (isinstance(specialty_st, str) and specialty_st.strip() == ""):
+            specialty_st = "aucune correspondance"
+        
         # Set the specialty in the processing service
         if self.specialty is not None:
             self.answer.specialty= specialty_st

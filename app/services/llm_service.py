@@ -131,6 +131,10 @@ class Appels_LLM:
                         return "plusieurs correspondances:"+f"{','.join(keywords)}"
             liste_spe= get_specialty_keywords(self.specialty, specialties)
             self.specialty=format_correspondance_list(liste_spe)
+            
+            # Defensive insertion: ensure specialty is never empty or None
+            if not self.specialty or self.specialty.strip() == "":
+                self.specialty = "aucune correspondance"
             return self.specialty
         else:
             if self.specialty == 'aucune correspondance':
@@ -148,7 +152,14 @@ class Appels_LLM:
                 else:
                     self.specialty = str(response2).strip()
                     
+                # Defensive insertion: ensure specialty is never empty or None
+                if not self.specialty or self.specialty.strip() == "":
+                    self.specialty = "aucune correspondance"
                 return self.specialty
+        
+        # Defensive insertion: ensure specialty is never empty or None
+        if not self.specialty or self.specialty.strip() == "":
+            self.specialty = "aucune correspondance"
         return self.specialty
 
     def get_offtopic_approfondi(self, prompt: str) -> str:
