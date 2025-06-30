@@ -67,7 +67,7 @@ def check_message_pertinence_core(user_input, llm_service, pertinence_check2=Fal
 
 def check_non_french_cities_core(user_input, llm_service):
     logger.info(f"Checking for non-French city in input: {user_input}")
-    city = llm_service.get_city(user_input)
+    city = llm_service.detect_city(user_input)
     if city == 'ville étrangère':
         raise SanityCheckException(
             "Je ne peux pas répondre aux questions concernant les hôpitaux situés hors du territoire français, merci de consulter la page du palmarès. [🔗 Page du classement](https://www.lepoint.fr/hopitaux/classements)"
