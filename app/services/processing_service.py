@@ -47,7 +47,7 @@ class Processing:
         }
         
         self.specialty= None
-        self.instition_type= None
+        self.institution_type= None
         self.city = None
         self.df_with_cities = None
         self.institution_mentioned = None
@@ -67,7 +67,7 @@ class Processing:
         
         self.specialty = self.llm_service.detect_specialty(prompt)
         self.city = self.llm_service.detect_city(prompt)
-        self.instition_type = self.llm_service.detect_institution_type(prompt)
+        self.institution_type = self.llm_service.detect_institution_type(prompt)
         self.institution_mentioned = self.llm_service.institution_mentioned 
         self.institution_name = self.llm_service.institution_name  
         self.ranking_df = pd.read_excel(self.paths["ranking_file_path"], sheet_name="Palmarès")
