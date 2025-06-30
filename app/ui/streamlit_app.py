@@ -20,11 +20,11 @@ from app.services.pipeline_service import Pipeline
 from app.services.llm_service import Appels_LLM
 from app.utils.formatting import format_links
 from app.utils.logging import get_logger
-from app.utils.streamlit_helpers import (
-    check_message_length,
-    check_conversation_limit,
-    check_message_pertinence,
-    check_non_french_cities,
+from app.utils.sanity_checks.streamlit_sanity_checks import (
+    check_message_length_streamlit,
+    check_conversation_limit_streamlit,
+    check_message_pertinence_streamlit,
+    check_non_french_cities_streamlit,
 )
 
 logger = get_logger(__name__)
@@ -124,10 +124,10 @@ class StreamlitChatbot:
         if user_input:
             logger.info(f"User input: {user_input}")
             st.session_state.prompt = user_input
-            check_message_length(st.session_state.prompt, self.reset_session_state)
-            check_message_pertinence(st.session_state.prompt, self.appel_LLM, self.reset_session_state, pertinent=False)  # CHANGED
-            check_message_pertinence(st.session_state.prompt, self.appel_LLM, self.reset_session_state, pertinent=True)   # CHANGED
-            check_non_french_cities(st.session_state.prompt, self.appel_LLM, self.reset_session_state)
+            check_message_length_streamlit(st.session_state.prompt, self.reset_session_state)
+            check_message_pertinence_streamlit(st.session_state.prompt, self.appel_LLM, self.reset_session_state, pertinence_check2=False)  
+            check_message_pertinence_streamlit(st.session_state.prompt, self.appel_LLM, self.reset_session_state, pertinence_check2=True)   
+            check_non_french_cities_streamlit(st.session_state.prompt, self.appel_LLM, self.reset_session_state)
             
         if st.session_state.prompt:
             # Detect medical specialty if not already set
@@ -229,7 +229,7 @@ class StreamlitChatbot:
                 st.session_state[key] = value
         
         # Check if conversation limit is reached
-        check_conversation_limit(st.session_state.conversation, self.MAX_MESSAGES, self.reset_session_state)
+        check_conversation_limit_streamlit(st.session_state.conversation, self.MAX_MESSAGES, self.reset_session_state)
         
         # Handle the first message or subsequent messages
         if len(st.session_state.conversation) == 0:

@@ -1,8 +1,8 @@
 """
 Service for interacting with the language model (LLM).
 
-This file defines the Appels_LLM class, which handles all LLM-based extraction of
-    specialties, cities, institution types, and other information from user queries.
+This file defines the LLMService class, which handles all LLM-based extraction of
+specialties, cities, institution types, and other information from user queries.
 """
 
 import os
@@ -11,13 +11,20 @@ import pandas as pd
 from dotenv import load_dotenv
 
 from app.utils.config import PATHS
-from app.utils.prompts import prompt_instructions
-from app.utils.specialties import specialties_dict
+from app.utils.query_detection.specialties import (
+    specialty_list,
+    specialty_categories_dict,
+    extract_specialty_keywords,
+)
 from app.utils.formatting import format_mapping_words_csv, format_correspondance_list
 from app.utils.logging import get_logger
+
+from app.services.query_extraction_service import QueryExtractionService
+from app.services.conversation_service import ConversationService
+
 logger = get_logger(__name__)
 
-class Appels_LLM:
+class LLMService:
     """
     Handles all interactions with the language model (LLM) for extracting relevant information
         from user queries/prompts. 
@@ -28,32 +35,22 @@ class Appels_LLM:
         Initializes the Appels_LLM class by loading environment variables, setting up the LLM model with different 
             parameters for the query, and preparing file paths and keyword mappings.
         """
-        
-        logger.info("Initializing Appels_LLM")
+        logger.info("Initializing LLMService")
         load_dotenv(override = False) 
         self.model = self.init_model()
-        self.ranking_df = None
-        self.institution_name=None
-        self.specialty= None
-        self.ispublic= None
-        self.city = None
-        self.institution_mentioned = None
         
-        # Define the base directory and paths for data files
-        BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-        self.paths= PATHS
+        self.paths = PATHS
+        self.key_words = format_mapping_words_csv(self.paths["mapping_word_path"])
         
-        # Load mapping keywords for specialty detection
-        self.key_words=format_mapping_words_csv(self.paths["mapping_word_path"])
-
+        self.query_extractor = QueryExtractionService(self.model, self.key_words)
+        self.conversation_service = ConversationService(self.model)
+     
     def init_model(self) -> ChatOpenAI:
         """
         Initializes and returns the ChatOpenAI model using the API key from environment variables.
-
         Returns:
             ChatOpenAI: An instance of the ChatOpenAI model.
         """
-        
         logger.info("Initializing ChatOpenAI model")
         api_key = os.getenv("OPENAI_API_KEY")
         self.model = ChatOpenAI(
@@ -62,417 +59,126 @@ class Appels_LLM:
         )
         logger.info("ChatOpenAI model initialized")
         return self.model
-    
-    def get_specialty_list(self):
-        """
-        Retrieves the list of medical specialties from the rankings Excel file.
-
-        Returns:
-            str: A comma-separated string of all specialties.
-        """
-        logger.info("Loading specialties from Excel")
         
-        try:
-            df_specialty = pd.read_excel(self.paths["ranking_file_path"] , sheet_name="Palmarès")
-        except Exception as e:
-            logger.error(f"Failed to load specialties Excel: {e}")
-            raise
-        
-        self.ranking_df=df_specialty
-        colonne_1 = df_specialty.iloc[:, 0].drop_duplicates()
-        liste_spe = ", ".join(map(str, colonne_1.dropna()))
-        
-        logger.debug(f"Specialty list: {liste_spe}")
-        return liste_spe
-        
-    def get_speciality(self, prompt: str) -> str: #work to simplify this function; did it give a specialty; and if so give a list ==> fully as JSON
+    def detect_specialty(self, prompt: str) -> str: #work to simplify this function; did it give a specialty; and if so give a list ==> fully as JSON
         """
         Determines the medical specialty relevant to the user's question using the LLM.
-        
-        If no clear match is found, it attempts a second detection using keyword mapping.
-
         Args:
             prompt (str): The user's question.
-
         Returns:
             str: The detected specialty or a message indicating no match.
         """
         logger.info(f"Detecting specialty for prompt: {prompt}")
-        
-        liste_spe=self.get_specialty_list()
-        get_speciality_prompt_formatted=prompt_instructions["get_speciality_prompt"].format(liste_spe=liste_spe,prompt=prompt)
-        
-        logger.debug(f"LLM prompt: {get_speciality_prompt_formatted}")
-        
-        try:
-            response1 = self.model.invoke(get_speciality_prompt_formatted)
-        except Exception as e:
-            logger.error(f"LLM invocation failed in get_speciality: {e}")
-            raise
-        
-        logger.debug(f"LLM response: {response1}")
-        
-        if hasattr(response1, "content"): # make a possible speciality because you still need to check if multiple or none and define at end of function
-            self.specialty = response1.content.strip()
-        else:
-            self.specialty = str(response1).strip()
-
-        specialties = specialties_dict
-        
-        # If multiple matches are detected, format accordingly
-        if ',' in self.specialty and not self.specialty.startswith('plusieurs correspondances:'):
-            self.specialty = 'plusieurs correspondances: ' + self.specialty
-            
-        if self.specialty.startswith("plusieurs correspondances:"):
-            logger.info("Multiple specialties detected")
-            def get_specialty_keywords(message, specialties): # extract this to utility 
-                for category, keywords in specialties.items():
-                    if any(keyword.lower() in message.lower() for keyword in keywords):
-                        return "plusieurs correspondances:"+f"{','.join(keywords)}"
-            liste_spe= get_specialty_keywords(self.specialty, specialties)
-            self.specialty=format_correspondance_list(liste_spe)
-            
-            # Defensive insertion: ensure specialty is never empty or None
-            if not self.specialty or self.specialty.strip() == "":
-                self.specialty = "aucune correspondance"
-            return self.specialty
-        else:
-            if self.specialty == 'aucune correspondance':
-                logger.info("No specialty match, retrying with keyword mapping")
-                mapping_words=self.key_words
-                second_get_speciality_prompt_formatted=prompt_instructions["second_get_speciality_prompt"].format(prompt=prompt,mapping_words=mapping_words)
-                try: 
-                    response2 = self.model.invoke(second_get_speciality_prompt_formatted)
-                except Exception as e:
-                    logger.error(f"LLM invocation failed in get_speciality (retry): {e}")
-                    raise
-                logger.debug(f"LLM response (retry): {response2}")
-                if hasattr(response2, "content"):
-                    self.specialty = response2.content.strip()
-                else:
-                    self.specialty = str(response2).strip()
-                    
-                # Defensive insertion: ensure specialty is never empty or None
-                if not self.specialty or self.specialty.strip() == "":
-                    self.specialty = "aucune correspondance"
-                return self.specialty
-        
-        # Defensive insertion: ensure specialty is never empty or None
-        if not self.specialty or self.specialty.strip() == "":
-            self.specialty = "aucune correspondance"
-        return self.specialty
+        specialty = self.query_extractor.detect_speciality_full_query_ext_service(prompt)
+        logger.debug(f"Detected specialty: {specialty}")
+        return specialty
 
     def check_medical_pertinence(self, prompt: str) -> str:
         """
         Determines if the user's question is off-topic for the assistant.
-
         Args:
             prompt (str): The user's question.
-
         Returns:
             str: The LLM's off-topic assessment.
         """
+        logger.info(f"Checking if prompt is medically pertinent: {prompt}")
+        return self.query_extractor.check_medical_pertinence_query_ext_service(prompt)
         
-        logger.info(f"Checking if prompt is off-topic: {prompt}")
-        
-        formatted_prompt=prompt_instructions["check_medical_pertinence_prompt"].format(prompt=prompt)
-        response = self.model.invoke(formatted_prompt)
-        if hasattr(response, "content"):
-            self.isofftopic = response.content.strip()
-        else:
-            self.isofftopic = str(response).strip()
-        
-        logger.debug(f"LLM response: {response}")
-        return self.isofftopic
     
     def check_chatbot_pertinence(self, prompt: str) -> str:
         """
         Determines if the user's question is relevant to the hospital ranking assistant.
-
         Args:
             prompt (str): The user's question.
-
         Returns:
             str: The LLM's assessment of relevance.
         """
-        
-        logger.info(f"Checking if prompt is deeply off-topic: {prompt}")
-        
-        formatted_prompt=prompt_instructions["check_chatbot_pertinence_prompt"].format(prompt=prompt)
-        response = self.model.invoke(formatted_prompt)
-        if hasattr(response, "content"):
-            res = response.content.strip()
-        else:
-            res = str(response).strip()
-        
-        logger.debug(f"LLM response: {response}")
-        return res
+        logger.info(f"Checking if prompt is chatbot pertinent: {prompt}")
+        return self.query_extractor.check_chatbot_pertinence_query_ext_service(prompt)
 
-    def get_city(self, prompt: str) -> str:
+    def detect_city(self, prompt: str) -> str:
         """
         Identifies the city or department mentioned in the user's question.
-        
         Handles ambiguous cases with a two-step LLM process.
-
         Args:
             prompt (str): The user's question.
-
         Returns:
             str: The detected city or department.
         """
-        
         logger.info(f"Detecting city in prompt: {prompt}")
-        
-        # Check with the llm if the city or department mentioned in the prompt is ambiguous (homonyms, incomplete names, etc.)
-        formatted_prompt = prompt_instructions["get_city_prompt"].format(prompt=prompt)
-        
-        try:
-            response1 = self.model.invoke(formatted_prompt)
-        except Exception as e:
-            logger.error(f"LLM invocation failed in get_city: {e}")
-            raise
-        
-        logger.debug(f"LLM response: {response1}")
-        
-        if hasattr(response1, "content"):
-            self.city = response1.content.strip()
-        else:
-            self.city = str(response1).strip()
+        return self.query_extractor.detect_city_query_ext_service(prompt)
 
-        # If there is no ambiguity, retrieve the city name in a second LLM call
-        if self.city=='correct':
-            logger.info("City detected as correct, refining with second LLM call")
-            
-            formatted_prompt = prompt_instructions["get_city_prompt_2"].format(prompt=prompt)
-            
-            try:
-                response2 = self.model.invoke(formatted_prompt)
-            except Exception as e:
-                logger.error(f"LLM invocation failed in get_city (second call): {e}")
-                raise
-            # If the second call returns a city name, use it; otherwise, keep the first
-            if hasattr(response2, "content"):
-                self.city = response2.content.strip()
-            else:
-                self.city = str(response2).strip()
-            
-            logger.debug(f"LLM response (second call): {response2}")
-        return self.city
-
-    def get_topk(self, prompt: str):
+    def detect_topk(self, prompt: str):
         """
         Identifies if the number of institutions to display is mentioned in the user's question.
-        
         Limits the number to a maximum of 50.
-
         Args:
             prompt (str): The user's question.
-
         Returns:
             int or str: The number of institutions to display, or 'non mentionné' if not specified or above 50.
         """
-        
         logger.info(f"Detecting top_k in prompt: {prompt}")
-        
-        formatted_prompt = prompt_instructions["get_topk_prompt"].format(prompt=prompt)
-        
-        try: 
-            response = self.model.invoke(formatted_prompt)
-        except Exception as e:
-            logger.error(f"LLM invocation failed in get_topk: {e}")
-            raise
-        
-        # If the LLM response has a content attribute, use it; otherwise, convert the response to string
-        # and strip whitespace
-        if hasattr(response, "content"):
-            topk = response.content.strip()
-        else:
-            topk = str(response).strip()
-        
-        if topk!='non mentionné':
-            if int(topk)>50:
-                topk='non mentionné'
-            else:
-                topk=int(topk)
-        
-        logger.debug(f"LLM response: {response}")
+        topk = self.query_extractor.detect_topk_query_ext_service(prompt)
+        if topk != 'non mentionné':
+            try:
+                if int(topk) > 50:
+                    topk = 'non mentionné'
+                else:
+                    topk = int(topk)
+            except Exception:
+                topk = 'non mentionné'
         return topk
-
-    def get_institution_list(self):
+        
+    def detect_institution_type(self, prompt: str) -> str:
         """
-        Returns a formatted, deduplicated list of institutions present in the rankings.
-        
-        Cleans names to avoid duplicates or matching errors.
-
-        Returns:
-            str: A comma-separated string of institution names.
-        """
-        
-        logger.info("Loading institution list from Excel")
-        
-        try:
-            coordonnees_df = pd.read_excel(self.paths["hospital_coordinates_path"])
-        except Exception as e:
-            logger.error(f"Failed to load hospital coordinates Excel: {e}")
-            raise
-        # Extract the first column which contains institution names
-        column_1 = coordonnees_df.iloc[:, 0]
-        # Remove location details after commas for better matching
-        institution_list = [element.split(",")[0] for element in column_1]
-        # Remove duplicates
-        institution_list = list(set(institution_list))
-        # Remove generic names that could cause false matches
-        institution_list = [element for element in institution_list if element != "CHU"]
-        institution_list = [element for element in institution_list if element != "CH"]
-        institution_list = ", ".join(map(str, institution_list))
-        
-        logger.debug(f"Institution list: {institution_list}")
-        return institution_list
-
-    def is_public_or_private(self, prompt: str) -> str:
-        """
-        Determines if the user's question mentions a public or private hospital, or none.
-        
-        Also detects if a specific institution is mentioned.
-
+        Determines if the user's question mentions a public or private institution, or a specific institution.
         Args:
             prompt (str): The user's question.
-
         Returns:
             str: The detected institution type or name.
         """
+        logger.info(f"Checking if prompt mentions public or private institution: {prompt}")
+        return self.query_extractor.detect_institution_type_query_ext_service(prompt)  
 
-        logger.info(f"Detecting public/private for prompt: {prompt}")
-        
-        institution_list=self.get_institution_list()
+    @property
+    def institution_name(self):
+        return self.query_extractor.institution_name
 
-        # Call LLM to detect if an institution is mentioned in the user's question
-        formatted_prompt =prompt_instructions["is_public_or_private_prompt"].format(institution_list=institution_list,prompt=prompt) 
-        try:
-            response1 = self.model.invoke(formatted_prompt)
-        except Exception as e:
-            logger.error(f"LLM invocation failed in is_public_or_private: {e}")
-            raise
-        
-        # If the LLM response has a content attribute, use it; otherwise, convert the response to string
-        # and strip whitespace
-        if hasattr(response1, "content"):
-            self.institution_name = response1.content.strip()
-        else:
-            self.institution_name = str(response1).strip()
-        logger.debug(f"LLM response: {response1}")
-        
-        # If an institution is detected, check if it is in the list of institutions
-        if self.institution_name in institution_list:
-            logger.info(f"Institution mentioned: {self.institution_name}")
-            self.institution_mentioned = True
-            if self.institution_mentioned:
-                self.city='aucune correspondance'
-            # Retrieve the category (public/private) of this institution
-            try:
-                coordonnees_df = pd.read_excel(self.paths["hospital_coordinates_path"])
-            except Exception as e:
-                logger.error(f"Failed to load hospital coordinates Excel: {e}")
-                raise
-            # Filter the DataFrame to find the row corresponding to the institution name
-            # and extract the 'Public/Privé' column value
-            ligne_saut = coordonnees_df[coordonnees_df['Etablissement'].str.contains(self.institution_name,case=False, na=False)]
-            self.ispublic = ligne_saut.iloc[0,4]
-        else:
-            logger.info("No institution detected, checking for public/private criterion")
-            # If no institution is detected, check if a public/private criterion is mentioned
-            formatted_prompt = prompt_instructions["is_public_or_private_prompt2"].format(prompt=prompt) 
-            try:
-                response2 = self.model.invoke(formatted_prompt)
-            except Exception as e:
-                logger.error(f"LLM invocation failed in is_public_or_private (second call): {e}")
-                raise
-            # If the LLM response has a content attribute, use it; otherwise, convert the response to string
-            # and strip whitespace
-            if hasattr(response2, "content"):
-                ispublic = response2.content.strip()
-            else:
-                ispublic = str(response2).strip()
-            
-            logger.debug(f"LLM response (second call): {response2}")
-            self.institution_mentioned = False
-            self.ispublic = ispublic
-        return self.ispublic
-
-    def continuer_conv(self, prompt: str , conv_history: list) -> str:
+    @property
+    def institution_mentioned(self):
+        return self.query_extractor.institution_mentioned
+    
+    def continue_conversation(self, prompt: str , conv_history: list) -> str:
         """
         Generates a response to the user's new question, taking into account the conversation history.
-
         Args:
             prompt (str): The user's new question.
             conv_history (list): The conversation history.
-
         Returns:
             str: The LLM's generated response.
         """
-
         logger.info(f"Continuing conversation with prompt: {prompt}")
         logger.debug(f"Conversation history: {conv_history}")
-        
-        formatted_prompt = prompt_instructions["continuer_conv_prompt"].format(prompt=prompt,conv_history=conv_history) 
-        try:
-            response = self.model.invoke(formatted_prompt)
-        except Exception as e:
-            logger.error(f"LLM invocation failed in continuer_conv: {e}")
-            raise
-        if hasattr(response, "content"):
-            self.newanswer = response.content.strip()
-        else:
-            self.newanswer = str(response).strip()
-        logger.debug(f"LLM response: {response}")
-        return self.newanswer
+        return self.conversation_service.continue_conv_service(prompt, conv_history)
 
     def detect_modification(self, prompt: str, conv_history: list) -> str:
         """
-        Uses the LLM to determine if the user input is a new question or a modification.
-        
+        Detects if the user's new question is a modification of the last question or a new question.
         Args:
             prompt (str): The user's new question.
             conv_history (list): The conversation history.
-            
         Returns:
-            str: "modification" if the input is a modification, "nouvelle question" if it is a new question.
+            str: The LLM's response indicating whether it's a modification or a new question.
         """
-        
-        formatted_prompt = prompt_instructions["detect_modification_prompt"].format(
-            conv_history=conv_history, prompt=prompt
-        )
-        try:
-            response = self.model.invoke(formatted_prompt)
-        except Exception as e:
-            logger.error(f"LLM invocation failed in detect_modification: {e}")
-            return "nouvelle question"
-        if hasattr(response, "content"):
-            result = response.content.strip().lower()
-        else:
-            result = str(response).strip().lower()
-        if "modification" in result:
-            return "modification"
-        return "ambiguous"  # Return "ambiguous" if the response is not clear
+        return self.conversation_service.detect_modification_conv_service(prompt, conv_history)
     
     def rewrite_query(self, last_query: str, modification: str) -> str:
         """
-        Uses the LLM to merge the last query and the user's modification into a new, complete query.
-        
+        Rewrites the last query based on the detected modification.
         Args:
             last_query (str): The last query made by the user.
-            modification (str): The user's modification to the last query.  
-        
+            modification (str): The detected modification to the last query.
         Returns:
-            str: The rewritten query that combines the last query and the modification.
+            str: The rewritten query based on the modification.
         """
-        from app.utils.prompts import prompt_instructions
-        prompt = prompt_instructions["rewrite_query_prompt"].format(last_query=last_query, modification=modification)
-        try:
-            response = self.model.invoke(prompt)
-        except Exception as e:
-            logger.error(f"LLM invocation failed in rewrite_query: {e}")
-            raise
-        if hasattr(response, "content"):
-            return response.content.strip()
-        return str(response).strip()
+        return self.conversation_service.rewrite_query_conv_service(last_query, modification)

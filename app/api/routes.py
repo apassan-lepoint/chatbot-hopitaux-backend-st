@@ -11,6 +11,12 @@ from app.services.llm_service import Appels_LLM
 from app.models.query_model import UserQuery, ChatRequest
 from app.models.response_model import AskResponse, ChatResponse
 from app.utils.formatting import format_links
+from app.utils.sanity_checks.fast_api_sanity_checks import (
+    check_message_length_fastapi,
+    check_conversation_limit_fastapi,
+    check_message_pertinence_fastapi,
+    check_non_french_cities_fastapi,
+)
 from app.utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -41,6 +47,14 @@ def ask_question(query: UserQuery):
     """
 
     logger.info(f"Received /ask request: {query}")
+    
+    # Sanity checks for the user query
+    check_message_length_fastapi(query.prompt)
+    check_message_pertinence_fastapi(query.prompt, appel_LLM, pertinence_check2=False)
+    check_message_pertinence_fastapi(query.prompt, appel_LLM, pertinence_check2=True)
+    check_non_french_cities_fastapi(query.prompt, appel_LLM)
+    
+    # Get result
     result, link = pipeline.final_answer(prompt=query.prompt, specialty_st=query.specialty_st)
     logger.info("Response generated for /ask endpoint")
     return {"result": result, "links": link} 
@@ -57,6 +71,13 @@ def chat(request: ChatRequest):
     Returns:
         ChatResponse: The chatbot's response, updated conversation history, and ambiguity flag.
     """
+    
+    # Sanity checks for the user query
+    check_message_length_fastapi(request.prompt)
+    check_message_pertinence_fastapi(request.prompt, appel_LLM, pertinence_check2=False)
+    check_message_pertinence_fastapi(request.prompt, appel_LLM, pertinence_check2=True)
+    check_non_french_cities_fastapi(request.prompt, appel_LLM)
+    check_conversation_limit_fastapi(request.conversation, max_messages=10)    
     
     # Prepare conversation history string for LLM
     conv_history = "\n".join(

@@ -33,7 +33,7 @@ def format_correspondance_list(specialty_list: str) -> str:
         a clean, deduplicated list.
 
     Args:
-        liste_spe (str): String containing specialties, possibly with a prefix.
+        specialty_list (str): String containing specialties, possibly with a prefix.
 
     Returns:
         str: Formatted string with deduplicated specialties.

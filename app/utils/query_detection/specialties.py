@@ -9,9 +9,20 @@ Attributes:
         Keys (str): main medical specialties .
         Values (List[str]): lists of sub-specialties, procedures, and associated terms.
 """
+import pandas as pd
+from app.utils.config import PATHS
+
+# Attempt to read the specialties from the Excel file
+# If the file or sheet does not exist, specialties_dict will be an empty list
+try:
+    df_specialty = pd.read_excel(PATHS["ranking_file_path"], sheet_name="Palmarès")
+    specialty_list = df_specialty.iloc[:, 0].drop_duplicates().dropna().tolist()
+except Exception as e:
+    specialty_list = []
+
 
 # Dictionary mapping main specialties to their sub-specialties or procedures
-specialties_dict = {
+specialty_categories_dict = {
         "Maternités": ["Accouchements normaux", "Accouchements à risques"],
         "Cardiologie": ["Angioplastie coronaire", "Cardiologie interventionnelle", "Chirurgie cardiaque adulte", "Chirurgie cardiaque de l’enfant et de l’adolescent", "Infarctus du myocarde", "Insuffisance cardiaque", "Rythmologie"],
         "Veines et artères": ["Ablation des varices", "Chirurgie des artères", "Chirurgie des carotides", "Hypertension artérielle", "Médecine vasculaire"],
@@ -26,3 +37,8 @@ specialties_dict = {
         "Cancerologie": ["Cancer de la thyroïde", "Cancer des os de l’enfant et de l’adolescent", "Cancer du poumon", "Cancers de la peau", "Chirurgie des cancers osseux de l'adulte", "Chirurgie des sarcomes des tissus mous", "Leucémie de l'adulte", "Leucémie de l'enfant et de l’adolescent", "Lymphome-myélome de l’adulte", "Tumeurs du cerveau de l'adulte"],
         "Diabète": ["Diabète de l'adulte", "Diabète de l'enfant et de l’adolescent"]
     }
+
+def extract_specialty_keywords(message, specialty_categories_dict): # extract this to utility 
+    for category, keywords in specialty_categories_dict.items():
+        if any(keyword.lower() in message.lower() for keyword in keywords):
+            return "plusieurs correspondances:"+f"{','.join(keywords)}"

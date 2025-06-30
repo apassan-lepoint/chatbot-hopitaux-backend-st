@@ -7,7 +7,6 @@ This file defines the Pipeline class, which coordinates the extraction, filterin
 
 import pandas as pd
 from app.services.processing_service import Processing
-from app.services.llm_service import Appels_LLM
 from app.utils.formatting import tableau_en_texte
 from app.utils.config import PATHS
 from app.utils.logging import get_logger
@@ -26,70 +25,50 @@ class Pipeline:
         """
         self.ranking_file_path= PATHS["ranking_file_path"]
         self.specialty= None
-        self.ispublic= None
+        self.institution_type= None
         self.city = None
         self.no_city= None # Flag indicating if no city was found in the query
         self.df_gen = None # DF for results 
         self.institution_mentioned=None
         self.institution_name=None
         self.answer=Processing() # Instance of Processing for data extraction and transformation
-        self.appel_LLM=Appels_LLM() # Instance for LLM-based extraction
 
     def reset_attributes(self):
         """
         Resets pipeline attributes for a new user query.
         """
         logger.debug("Resetting pipeline attributes for new query")
-        
-        self.specialty = None
-        self.ispublic = None
-        self.city = None
-        self.df_with_cities = None
-        self.specialty_df = None
-        self.no_city= None
-        self.institution_mentioned=None
-        self.institution_name=None
-        self.df_gen = None
-        return None
+        for attr in [
+            "specialty", "institution_type", "city", "df_with_cities", "specialty_df",
+            "no_city", "institution_mentioned", "institution_name", "df_gen"
+        ]:
+            setattr(self, attr, None)
 
     def get_infos_pipeline(self, prompt: str)->str:
         """
         Retrieves key aspects of the user query: city, institution type, and specialty.
-        
         Updates instance variables accordingly.
-
         Args:
             prompt (str): The user's question.
-
         Returns:
             str: The detected specialty.
         """
-        
         logger.info(f"Getting infos from pipeline for prompt: {prompt}")
-        
-        # Extract information from the Processing service
-        if self.specialty is None:
-            self.specialty=self.answer.specialty
-        self.city=self.answer.city
-        self.ispublic=self.answer.ispublic
-        self.institution_mentioned=self.answer.institution_mentioned
-        self.institution_name=self.answer.institution_name
-        
-        logger.debug(f"Pipeline infos - specialty: {self.specialty}, city: {self.city}, ispublic: {self.ispublic}, institution: {self.institution_name}")
+        self.answer.get_infos(prompt)
+        for attr in ["specialty", "city", "institution_type", "institution_mentioned", "institution_name"]:
+            setattr(self, attr, getattr(self.answer, attr))
+        logger.debug(f"Pipeline infos - specialty: {self.specialty}, city: {self.city}, institution_type: {self.institution_type}, institution: {self.institution_name}")
         return self.specialty
 
     def from_prompt_to_ranking_df_with_distances(self, prompt: str, excel_path: str )-> pd.DataFrame:
         """
         Retrieves the ranking DataFrame based on the user query, including distance calculations if a city is specified.
-
         Args:
             prompt (str): The user's question.
             excel_path (str): Path to the ranking Excel file.
-
         Returns:
             pd.DataFrame: DataFrame with ranking and distance information, or general results if no city is found.
         """
-        
         logger.info(f"Building ranking DataFrame with distances for prompt: {prompt}")
         
         # Find the relevant Excel sheet and extract info
@@ -102,28 +81,24 @@ class Pipeline:
             logger.info("No city found in the query, returning general ranking DataFrame")
             self.no_city= True
             return self.df_gen
-        else :
-            self.no_city= False
-            logger.info("Extracting hospital locations and calculating distances")
-            self.answer.extract_loca_hospitals()
-            df_with_distances=self.answer.get_df_with_distances()
-            logger.debug(f"DataFrame with distances shape: {df_with_distances.shape if df_with_distances is not None else 'None'}")
-            return df_with_distances
-
+    
+        self.no_city= False
+        logger.info("Extracting hospital locations and calculating distances")
+        self.answer.extract_local_hospitals()
+        logger.debug(f"DataFrame with distances shape: {df_with_distances.shape if df_with_distances is not None else 'None'}")
+        return self.answer.get_df_with_distances()
+        
     def get_filtered_and_sorted_df(self, df: pd.DataFrame, rayon_max: int, top_k: int, prompt:str) -> str:
         """
         Filters and sorts the ranking DataFrame by distance and score, and formats the response.
-
         Args:
             df (pd.DataFrame): DataFrame with hospitals and their distances.
             rayon_max (int): Maximum search radius in kilometers.
             top_k (int): Number of top hospitals to return.
             prompt (str): The user's question.
-
         Returns:
             str: Formatted response string.
         """
-        
         logger.info(f"Filtering and sorting DataFrame with rayon_max={rayon_max}, top_k={top_k}, prompt={prompt}")
         
         # Default value to avoid UnboundLocalError
@@ -164,8 +139,8 @@ class Pipeline:
                 response=response+f"du palmarès général"
             else:
                 response=response+f"du palmarès {self.specialty}."
-            if self.ispublic!='aucune correspondance':
-                        response=response+f" {self.ispublic}."
+            if self.institution_type!='aucune correspondance':
+                        response=response+f" {self.institution_type}."
             logger.debug(f"Formatted response: {reponse}")
             return response
 
@@ -201,7 +176,6 @@ class Pipeline:
         logger.warning("No results found within current radius")
         return None
 
-
     def final_answer(self, 
         prompt: str, top_k: int = 3, rayon_max: int = 50, specialty_st: str=None) -> str:
         """
@@ -225,7 +199,7 @@ class Pipeline:
         logger.debug("Reset attributes and set specialty for new query")
 
         # Check if the user specified a different top_k in their prompt
-        top_kbis =self.appel_LLM.get_topk(prompt)
+        top_kbis = self.answer.llm_service.get_topk(prompt)
         if top_kbis!='non mentionné':
             top_k=top_kbis
 
@@ -253,9 +227,9 @@ class Pipeline:
         # Handle cases where no results are found for the requested specialty/type
         if self.answer.ranking_not_found :
             logger.warning("Ranking not found for requested specialty/type, suggesting alternative")
-            if self.answer.ispublic=='Public':   
+            if self.answer.institution_type=='Public':   
                 return "Nous n'avons pas d'établissement publique pour cette pathologie, mais un classement des établissements privés existe. ", self.link
-            elif self.answer.ispublic=='Privé': 
+            elif self.answer.institution_type=='Privé': 
                 return "Nous n'avons pas d'établissement privé pour cette pathologie, mais un classement des établissements publics existe. ", self.link
 
         # If a specific institution is mentioned, return its ranking and the link

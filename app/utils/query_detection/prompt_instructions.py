@@ -4,7 +4,7 @@ This module contains prompt templates for interacting with the LLM.
 Each prompt is designed for a specific task: identifying medical specialties,
     detecting off-topic questions, extracting city names, or continuing conversations.
 
-The prompts use placeholders (e.g., {prompt}, {liste_spe}) to be filled dynamically
+The prompts use placeholders (e.g., {prompt}, {specialty_list}) to be filled dynamically
 at runtime.
 
 Attributes:
@@ -14,10 +14,10 @@ Attributes:
 """
 
 prompt_instructions = {
-    "get_speciality_prompt":
+    "detect_speciality_prompt":
         """
         Voici un message pour lequel tu vas devoir choisir la spécialité qui correspond le plus. Voici mon message  :{prompt}.
-        Voici une liste de spécialité pour laquelle tu vas devoir choisir la spécialité qui correspond le plus à mon message  : liste des spécialités: '{liste_spe}'? 
+        Voici une liste de spécialité pour laquelle tu vas devoir choisir la spécialité qui correspond le plus à mon message  : liste des spécialités: '{specialty_list}'? 
 
         Consignes:
         Si une seule spécialité de la liste correspond à ma demande, réponds UNIQUEMENT avec la spécialité exacte de la liste. 
@@ -33,7 +33,7 @@ prompt_instructions = {
         """
         ,
 
-    "second_get_speciality_prompt":
+    "second_detect_speciality_prompt":
         """
         Voici un message pour lequel tu vas devoir trouver la ou les pathologie(s) qui correspondent le plus: '{prompt}'
         Voici la liste des pathologies et des mots clés associés pour t'aider:{mapping_words}
@@ -100,7 +100,7 @@ prompt_instructions = {
         """
         ,
 
-    "get_city_prompt":
+    "detect_city_prompt":
         
         """ 
         Je vais te donner une phrase pour laquelle tu vas devoir déterminer si elle comporte un nom de ville qui peut porter à confusion. Voici la phrase '{prompt}'?
@@ -122,7 +122,7 @@ prompt_instructions = {
         """
         ,
 
-        "get_city_prompt_2":
+    "second_detect_city_prompt":
             """ 
             Quelle ville ou département est mentionné par la phrase suivante : '{prompt}'?
             Si une ville est mentionnée, réponds UNIQUEMENT avec le nom de ville.
@@ -137,7 +137,7 @@ prompt_instructions = {
             """
         ,
 
-        "get_topk_prompt":
+        "detect_topk_prompt":
             """ 
             Un numéro de classement est il mentionné dans la phrase suivante : '{prompt}'?
             Si un numéro de classement est mentionnée, réponds UNIQUEMENT avec le nombre associé.
@@ -152,7 +152,7 @@ prompt_instructions = {
             """
         ,
 
-        "is_public_or_private_prompt":
+        "detect_institution_type_prompt":
             """
             Un des noms exact de ma liste d'établissements est il mentionné précisément dans cette phrase: '{prompt}'? Voici ma liste d'établissements:
             {institution_list}
@@ -166,7 +166,7 @@ prompt_instructions = {
             """
         ,
 
-        "is_public_or_private_prompt2" :
+        "second_detect_institution_type_prompt":
             """ 
             Le type d'établissement de soin publique ou privé/clinique est il mentionné dans cette phrase : '{prompt}'?
             Si aucun type d'établissement n'est mentionné dans ma phrase, renvoie moi EXACTEMENT ces deux mots: 'aucune correspondance'.
@@ -174,7 +174,7 @@ prompt_instructions = {
             """
         ,
 
-        "continuer_conv_prompt":
+        "continue_conversation_prompt":
         """
         Vous êtes un assistant intelligent. Voici l'historique de la conversation précédente entre l'utilisateur et vous :{conv_history}
         Réponds au nouveau message de l'utilisateur:{prompt}

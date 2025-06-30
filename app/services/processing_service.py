@@ -10,8 +10,9 @@ import pandas as pd
 import csv
 from datetime import datetime
 
+from app.utils.query_detection.institutions import coordinates_df
 from app.utils.config import PATHS
-from app.services.llm_service import Appels_LLM
+from app.services.llm_service import LLMService
 from app.utils.formatting import enlever_accents
 from app.utils.distance import exget_coordinates, get_coordinates, distance_to_query
 from app.utils.logging import get_logger
@@ -32,7 +33,7 @@ class Processing:
         """
         
         self.ranking_df = None
-        self.appel_LLM = Appels_LLM()
+        self.llm_service = LLMService()
         self.specialty_df = None
         self.institution_name = None
         self.ranking_not_found = False
@@ -46,7 +47,7 @@ class Processing:
         }
         
         self.specialty= None
-        self.ispublic= None
+        self.instition_type= None
         self.city = None
         self.df_with_cities = None
         self.institution_mentioned = None
@@ -62,28 +63,20 @@ class Processing:
         Args:
             prompt (str): The user's question.
         """
-        
         logger.info(f"Extracting infos from prompt: {prompt}")
         
-        # If specialty not already set, extract it and load ranking DataFrame
-        if self.specialty is None:
-            self.appel_LLM.get_speciality(prompt)
-            self.ranking_df=pd.read_excel(self.paths["ranking_file_path"] , sheet_name="Palmarès")
-            self.specialty=self.appel_LLM.specialty
+        self.specialty = self.llm_service.detect_specialty(prompt)
+        self.city = self.llm_service.detect_city(prompt)
+        self.instition_type = self.llm_service.detect_institution_type(prompt)
+        self.institution_mentioned = self.llm_service.institution_mentioned 
+        self.institution_name = self.llm_service.institution_name  
+        self.ranking_df = pd.read_excel(self.paths["ranking_file_path"], sheet_name="Palmarès")
+        logger.debug(f"Extracted specialty: {self.specialty}, city: {self.city}, type: {self.institution_type}")
         
-        # Check the below lines - especially if mentioned above
-        self.ranking_df=pd.read_excel(self.paths["ranking_file_path"] , sheet_name="Palmarès") # Always reload ranking DataFrame for latest data
-        self.appel_LLM.get_city(prompt) # Extract city and institution type using LLM
-        self.city=self.appel_LLM.city
-        self.appel_LLM.is_public_or_private(prompt)
-        self.institution_mentioned = self.appel_LLM.institution_mentioned
-        self.institution_name=self.appel_LLM.institution_name
-        self.ispublic=self.appel_LLM.ispublic
-        
-        logger.debug(f"Extracted specialty: {self.specialty}, city: {self.city}, institution: {self.institution_name}, type: {self.ispublic}")
+    
         return None
 
-    def _generate_lien_classement(self, matching_rows: str = None) -> str:
+    def generate_response_links(self, matching_rows: str = None) -> str:
         """
         Generates web links to the relevant ranking pages based on specialty and institution type.
 
@@ -100,20 +93,20 @@ class Processing:
 
         # If no specialty, suggest general ranking links
         if self.specialty== 'aucune correspondance':
-            if self.ispublic == 'Public':
+            if self.institution_type == 'Public':
                 self.web_ranking_link=[self.weblinks["public"]]
-            elif self.ispublic == 'Privé':
+            elif self.institution_type == 'Privé':
                 self.web_ranking_link=[self.weblinks["privé"]]
             else:
                 self.web_ranking_link=[self.weblinks["public"],self.weblinks["privé"]]
             return None
-        etat = self.ispublic
+        etat = self.institution_type
         
         # If ranking not found, suggest the opposite type
         if self.ranking_not_found==True:
-            if self.ispublic == 'Public':
+            if self.institution_type == 'Public':
                 etat='prive'
-            if self.ispublic == 'Privé':
+            if self.institution_type == 'Privé':
                 etat='public'
             web_ranking_link = self.specialty.replace(' ', '-')
             web_ranking_link='https://www.lepoint.fr/hopitaux/classements/'+ web_ranking_link + '-'+etat+'.php'
@@ -133,7 +126,7 @@ class Processing:
         logger.info(f"Generated ranking links: {self.web_ranking_link}")
         return self.web_ranking_link
 
-    def _load_and_transform_for_no_specialty(self, category: str) -> pd.DataFrame:
+    def load_and_transform_for_no_specialty(self, category: str) -> pd.DataFrame:
         """
         Loads and merges the general tables (tableau d'honneur) (public and/or private) for queries
             that do not mention a specific specialty.
@@ -206,7 +199,7 @@ class Processing:
             return pd.concat(dfs, join="inner", ignore_index=True)
         else:
             logger.warning("No matching sheets found for specialties/categories")
-            if self.specialty!= 'aucune correspondance' and self.ispublic!='aucune correspondance':
+            if self.specialty!= 'aucune correspondance' and self.institution_type!='aucune correspondance':
                 res=[]
                 res.append("Nous n'avons pas d'établissement de ce type pour cette pathologie")
                 self.ranking_not_found=True
@@ -226,7 +219,7 @@ class Processing:
         
         matching_rows = self.ranking_df[self.ranking_df["Spécialité"].str.contains(self.specialty, case=False, na=False)]
         self.web_ranking_link=[]
-        self._generate_lien_classement(matching_rows)
+        self.generate_response_links(matching_rows)
         self.specialty_df = self.load_excel_sheets(matching_rows)
         
         logger.info("Loaded specialty DataFrame")
@@ -254,24 +247,24 @@ class Processing:
         
         # If no specialty, load general table
         if specialty== 'aucune correspondance':
-            self._generate_lien_classement()
-            self.specialty_df=self._load_and_transform_for_no_specialty(category=self.ispublic)
+            self.generate_response_links()
+            self.specialty_df=self.load_and_transform_for_no_specialty(category=self.institution_type)
             return self.specialty_df
         
         # If no public/private criterion, load by specialty only
-        if self.ispublic == 'aucune correspondance':
+        if self.institution_type == 'aucune correspondance':
             return self.find_excel_sheet_with_speciality(prompt)
 
          # Filter rows by specialty and category
         matching_rows = self.ranking_df[self.ranking_df["Spécialité"].str.contains(specialty, case=False, na=False)]
-        matching_rows = matching_rows[matching_rows["Catégorie"].str.contains(self.ispublic, case=False, na=False)]
-        self._generate_lien_classement(matching_rows)
+        matching_rows = matching_rows[matching_rows["Catégorie"].str.contains(self.institution_type, case=False, na=False)]
+        self.generate_response_links(matching_rows)
         self.specialty_df = self.load_excel_sheets(matching_rows)
         
         logger.debug(f"Loaded specialty DataFrame: {self.specialty_df}")
         return self.specialty_df
 
-    def extract_loca_hospitals(self, df: pd.DataFrame = None) -> pd.DataFrame:
+    def extract_local_hospitals(self, df: pd.DataFrame = None) -> pd.DataFrame:
         """
         Merges ranking data with hospital location data to associate each institution with its city and coordinates.
 
@@ -282,15 +275,10 @@ class Processing:
             pd.DataFrame: DataFrame with city and coordinate information merged.
         """
         logger.info("Merging ranking data with hospital location data")
-        
-        # Load coordinates and merge with specialty DataFrame
-        coordonnees_df = pd.read_excel(self.paths["hospital_coordinates_path"]).dropna()
-        notes_df = self.specialty_df
-        coordonnees_df = coordonnees_df[["Etablissement", "Ville", "Latitude", "Longitude"]]
-        notes_df = notes_df[["Etablissement", "Catégorie","Note / 20"]]
-        self.df_with_cities = pd.merge(coordonnees_df, notes_df, on="Etablissement", how="inner")
+        coordinates_df = coordinates_df[["Etablissement", "Ville", "Latitude", "Longitude"]]
+        scores_df = self.specialty_df[["Etablissement", "Catégorie","Note / 20"]]
+        self.df_with_cities = pd.merge(coordinates_df, scores_df, on="Etablissement", how="inner")
         self.df_with_cities.rename(columns={"Ville": "City"}, inplace=True)
-        
         logger.debug(f"Merged DataFrame shape (with cities): {self.df_with_cities.shape}")
         return self.df_with_cities
     
@@ -346,7 +334,7 @@ class Processing:
             "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "question": question,
             "ville": self.city,
-            "type": self.ispublic,
+            "type": self.institution_type,
             "spécialité": self.specialty,
             "résultat": reponse,
         }
