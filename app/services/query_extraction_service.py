@@ -199,11 +199,11 @@ class QueryExtractionService:
     
     @property
     def institution_name(self):
-        return self.institution_name
+        return self._institution_name
 
     @property
     def institution_mentioned(self):
-        return self.institution_mentioned
+        return self._institution_mentioned
     
     def detect_institution_type_query_ext_service(self, prompt: str, institution_list: str = institution_list):
         """
@@ -223,8 +223,8 @@ class QueryExtractionService:
         # Check if the institution is in the list (split for robust matching)
         institution_names = [name.strip() for name in institution_list.split(",")]
         if institution_name in institution_names:
-            self.institution_mentioned = True
-            self.institution_name = institution_name
+            self._institution_mentioned = True
+            self._institution_name = institution_name
             logger.info(f"Institution mentioned: {institution_name}")
             institution_line= coordinates_df[coordinates_df['Etablissement'].str.contains(institution_name, case=False, na=False)]
             if not institution_line.empty:
