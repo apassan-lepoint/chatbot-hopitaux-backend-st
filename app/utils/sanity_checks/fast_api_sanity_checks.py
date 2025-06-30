@@ -23,14 +23,14 @@ def check_conversation_limit_fastapi(conversation, max_messages):
     except SanityCheckException as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-def check_message_pertinence_fastapi(user_input, appel_LLM, pertinence_check2=False):
+def check_message_pertinence_fastapi(user_input, llm_service, pertinence_check2=False):
     try:
-        check_message_pertinence_core(user_input, appel_LLM, pertinence_check2)
+        check_message_pertinence_core(user_input, llm_service, pertinence_check2)
     except SanityCheckException as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-def check_non_french_cities_fastapi(user_input, appel_LLM):
+def check_non_french_cities_fastapi(user_input, llm_service):
     try:
-        check_non_french_cities_core(user_input, appel_LLM)
+        check_non_french_cities_core(user_input, llm_service)
     except SanityCheckException as e:
         raise HTTPException(status_code=400, detail=str(e))

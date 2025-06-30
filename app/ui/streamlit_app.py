@@ -17,7 +17,7 @@ if repo_root not in sys.path:
 
 import streamlit as st
 from app.services.pipeline_service import Pipeline
-from app.services.llm_service import Appels_LLM
+from app.services.llm_service import LLMService
 from app.utils.formatting import format_links
 from app.utils.logging import get_logger
 from app.utils.sanity_checks.streamlit_sanity_checks import (
@@ -43,7 +43,7 @@ class StreamlitChatbot:
         """
         
         logger.info("Initializing StreamlitChatbot")
-        self.appel_LLM = Appels_LLM()
+        self.llm_service = LLMService()
         self.MAX_MESSAGES = 10  # Maximum number of messages in the conversation
 
     def reset_session_state(self):
@@ -125,14 +125,14 @@ class StreamlitChatbot:
             logger.info(f"User input: {user_input}")
             st.session_state.prompt = user_input
             check_message_length_streamlit(st.session_state.prompt, self.reset_session_state)
-            check_message_pertinence_streamlit(st.session_state.prompt, self.appel_LLM, self.reset_session_state, pertinence_check2=False)  
-            check_message_pertinence_streamlit(st.session_state.prompt, self.appel_LLM, self.reset_session_state, pertinence_check2=True)   
-            check_non_french_cities_streamlit(st.session_state.prompt, self.appel_LLM, self.reset_session_state)
+            check_message_pertinence_streamlit(st.session_state.prompt, self.llm_service, self.reset_session_state, pertinence_check2=False)  
+            check_message_pertinence_streamlit(st.session_state.prompt, self.llm_service, self.reset_session_state, pertinence_check2=True)   
+            check_non_french_cities_streamlit(st.session_state.prompt, self.llm_service, self.reset_session_state)
             
         if st.session_state.prompt:
             # Detect medical specialty if not already set
             if st.session_state.speciality == "":
-                st.session_state.speciality = self.appel_LLM.get_speciality(st.session_state.prompt)
+                st.session_state.speciality = self.llm_service.get_speciality(st.session_state.prompt)
 
             speciality = st.session_state.speciality
             if speciality.startswith("plusieurs correspondances:"):
@@ -167,7 +167,7 @@ class StreamlitChatbot:
 
             # Use LLM to detect if this is a modification or a new query
             try:
-                mod_type = self.appel_LLM.detect_modification(user_input, conv_history)
+                mod_type = self.llm_service.detect_modification(user_input, conv_history)
                 logger.info(f"Detected query type: {mod_type}")
             except Exception as e:
                 logger.error(f"Error during modification detection: {e}")
@@ -183,7 +183,7 @@ class StreamlitChatbot:
             if mod_type == "modification":
                 st.info("Modification détectée de la question précédente.")
                 last_user_query = next((msg for msg, _ in reversed(st.session_state.conversation) if msg), None)
-                full_query = self.appel_LLM.rewrite_query(last_user_query, user_input)
+                full_query = self.llm_service.rewrite_query(last_user_query, user_input)
                 self.append_answer(user_input, full_query)
                 
             # Handle new query

@@ -32,7 +32,7 @@ class LLMService:
     
     def __init__(self):
         """
-        Initializes the Appels_LLM class by loading environment variables, setting up the LLM model with different 
+        Initializes the LLMService class by loading environment variables, setting up the LLM model with different 
             parameters for the query, and preparing file paths and keyword mappings.
         """
         logger.info("Initializing LLMService")

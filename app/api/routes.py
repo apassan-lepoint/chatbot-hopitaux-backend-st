@@ -7,7 +7,7 @@ This file registers the main routes for user queries, health checks, and other
 
 from fastapi import APIRouter 
 from app.services.pipeline_service import Pipeline
-from app.services.llm_service import Appels_LLM
+from app.services.llm_service import LLMService
 from app.models.query_model import UserQuery, ChatRequest
 from app.models.response_model import AskResponse, ChatResponse
 from app.utils.formatting import format_links
@@ -28,7 +28,7 @@ pipeline = Pipeline()
 
 # Initialize services once
 pipeline = Pipeline()
-appel_LLM = Appels_LLM()
+llm_service = LLMService()
 
 @router.post("/ask", response_model=AskResponse) # Define the /ask endpoint for user queries
 def ask_question(query: UserQuery):
@@ -50,9 +50,9 @@ def ask_question(query: UserQuery):
     
     # Sanity checks for the user query
     check_message_length_fastapi(query.prompt)
-    check_message_pertinence_fastapi(query.prompt, appel_LLM, pertinence_check2=False)
-    check_message_pertinence_fastapi(query.prompt, appel_LLM, pertinence_check2=True)
-    check_non_french_cities_fastapi(query.prompt, appel_LLM)
+    check_message_pertinence_fastapi(query.prompt, llm_service, pertinence_check2=False)
+    check_message_pertinence_fastapi(query.prompt, llm_service, pertinence_check2=True)
+    check_non_french_cities_fastapi(query.prompt, llm_service)
     
     # Get result
     result, link = pipeline.final_answer(prompt=query.prompt, specialty_st=query.specialty_st)
@@ -74,9 +74,9 @@ def chat(request: ChatRequest):
     
     # Sanity checks for the user query
     check_message_length_fastapi(request.prompt)
-    check_message_pertinence_fastapi(request.prompt, appel_LLM, pertinence_check2=False)
-    check_message_pertinence_fastapi(request.prompt, appel_LLM, pertinence_check2=True)
-    check_non_french_cities_fastapi(request.prompt, appel_LLM)
+    check_message_pertinence_fastapi(request.prompt, llm_service, pertinence_check2=False)
+    check_message_pertinence_fastapi(request.prompt, llm_service, pertinence_check2=True)
+    check_non_french_cities_fastapi(request.prompt, llm_service)
     check_conversation_limit_fastapi(request.conversation, max_messages=10)    
     
     # Prepare conversation history string for LLM
@@ -84,7 +84,7 @@ def chat(request: ChatRequest):
         [f"Utilisateur: {q}\nAssistant: {r}" for q, r in request.conversation]
     ) if request.conversation else ""
 
-    mod_type = appel_LLM.detect_modification(request.prompt, conv_history)
+    mod_type = llm_service.detect_modification(request.prompt, conv_history)
     
     # Handle ambiguous case: return special response for frontend to handle
     if mod_type == "ambiguous":
@@ -96,7 +96,7 @@ def chat(request: ChatRequest):
 
     # Handle modification or new question
     if mod_type == "modification":
-        result = appel_LLM.continuer_conv(
+        result = llm_service.continuer_conv(
             prompt=request.prompt,
             conv_history=request.conversation
         )

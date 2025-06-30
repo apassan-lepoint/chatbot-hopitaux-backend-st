@@ -57,7 +57,7 @@ Then you could ask your question.
 The folder contains a file for the Streamlit frontend that sets up the entire visual aspect, including sanity checks, conversation history management to send multiple messages in a row, and the logic for selecting the pathology when multiple options might be applicable.
 
 The code for the backend is structured into 4 classes:
-A class Appels_LLM used for all LLM calls: sanity checks, information extraction, and conversational aspects.
+A class LLMService used for all LLM calls: sanity checks, information extraction, and conversational aspects.
 A class Processing_class that manages the processing of information retrieved from the question and the exploitation of rankings.
 A class Pipeline_class that orchestrates the entire flow and functions of the other classes to take a user question and provide the final answer.
 

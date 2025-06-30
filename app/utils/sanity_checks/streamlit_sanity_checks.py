@@ -30,17 +30,17 @@ def check_conversation_limit_streamlit(conversation, max_messages, reset_callbac
         reset_callback()
         st.rerun()
 
-def check_message_pertinence_streamlit(user_input, appel_LLM, reset_callback, pertinence_check2=False):
+def check_message_pertinence_streamlit(user_input, llm_service, reset_callback, pertinence_check2=False):
     try:
-        check_message_pertinence_core(user_input, appel_LLM, pertinence_check2)
+        check_message_pertinence_core(user_input, llm_service, pertinence_check2)
     except SanityCheckException as e:
         reset_callback()
         st.warning(str(e))
         st.stop()
 
-def check_non_french_cities_streamlit(user_input, appel_LLM, reset_callback):
+def check_non_french_cities_streamlit(user_input, llm_service, reset_callback):
     try:
-        check_non_french_cities_core(user_input, appel_LLM)
+        check_non_french_cities_core(user_input, llm_service)
     except SanityCheckException as e:
         reset_callback()
         st.warning(str(e))
