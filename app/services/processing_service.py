@@ -39,6 +39,7 @@ class Processing:
         self.ranking_not_found = False
         self.web_ranking_link = None
         self.geopy_problem = False
+        self.coordinates_df = coordinates_df
         
         # Predefined links for public/private rankings
         self.weblinks={
@@ -275,7 +276,7 @@ class Processing:
             pd.DataFrame: DataFrame with city and coordinate information merged.
         """
         logger.info("Merging ranking data with hospital location data")
-        coordinates_df = coordinates_df[["Etablissement", "Ville", "Latitude", "Longitude"]]
+        coordinates_df = self.coordinates_df[["Etablissement", "Ville", "Latitude", "Longitude"]]
         scores_df = self.specialty_df[["Etablissement", "Catégorie","Note / 20"]]
         self.df_with_cities = pd.merge(coordinates_df, scores_df, on="Etablissement", how="inner")
         self.df_with_cities.rename(columns={"Ville": "City"}, inplace=True)
