@@ -85,7 +85,6 @@ class Pipeline:
         self.no_city= False
         logger.info("Extracting hospital locations and calculating distances")
         self.answer.extract_local_hospitals()
-        logger.debug(f"DataFrame with distances shape: {df_with_distances.shape if df_with_distances is not None else 'None'}")
         return self.answer.get_df_with_distances()
         
     def get_filtered_and_sorted_df(self, df: pd.DataFrame, rayon_max: int, top_k: int, prompt:str) -> str:
@@ -199,7 +198,7 @@ class Pipeline:
         logger.debug("Reset attributes and set specialty for new query")
 
         # Check if the user specified a different top_k in their prompt
-        top_kbis = self.answer.llm_service.get_topk(prompt)
+        top_kbis = self.answer.llm_service.detect_topk(prompt)
         if top_kbis!='non mentionné':
             top_k=top_kbis
 
