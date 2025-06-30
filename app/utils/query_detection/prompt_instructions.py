@@ -183,15 +183,76 @@ prompt_instructions = {
         ,
         
         "detect_modification_prompt": """
-        Vous êtes un assistant pour un chatbot médical. 
+        Vous êtes un assistant pour un chatbot médical qui convertit des questions en requêtes SQL.
+
         Voici l'historique de la conversation : {conv_history}
         Voici le nouveau message de l'utilisateur : {prompt}
-        Est-ce que ce message est une modification ou une précision de la question précédente, ou bien s'agit-il d'une nouvelle question indépendante ?
-        Réponds uniquement par l'un des trois mots suivants (en minuscules, sans ponctuation) :
+
+        Votre tâche est de déterminer si ce nouveau message :
+        - modifie ou précise la question précédente,
+        - ou constitue une nouvelle question indépendante.
+
+        Répondez uniquement avec l’un des trois mots suivants (en minuscules, sans ponctuation) :
         - modification
         - nouvelle question
         - ambiguous
-        Si vous n'êtes pas certain, réponds 'ambiguous'.
+
+        Si le message semble à la fois potentiellement lié et potentiellement indépendant, répondez 'ambiguous'.
+
+        Voici quelques exemples pour vous guider :
+
+        ### Cas : modification
+        Le nouveau message complète, reformule ou précise la question précédente.
+
+        1.  
+            Historique : "Quels sont les hôpitaux à Bordeaux ?"  
+            Nouveau message : "Seulement les hôpitaux publics, s'il te plaît."  
+            → Réponse attendue : **modification**
+
+        2.  
+            Historique : "Montre-moi les cliniques privées à Lyon."  
+            Nouveau message : "Ajoute une condition sur la spécialité : dermatologie."  
+            → Réponse attendue : **modification**
+
+        3.  
+            Historique : "Quels établissements ont un taux de satisfaction supérieur à 90 % ?"  
+            Nouveau message : "Maintenent juste à Paris"  
+            → Réponse attendue : **modification**
+        4. 
+            Historique : "Top 5 des hôpitaux publics spécialisés en oncologie."  
+            Nouveau message : "Et pour la gynécologie à Nantes ?"  
+            → Réponse attendue : **modification** (même nombre des institutions; mais spécialité et ville différentes)
+            
+        5. 
+            Historique : "Montre-moi les hôpitaux publics."  
+            Nouveau message : "Et ceux qui ont un bon service d’oncologie ?"  
+            → Réponse attendue : **modification** (même type d'institution; mais spécialité différente)
+
+        ### Cas : nouvelle question
+        Le nouveau message pose une question complètement indépendante.
+
+        1.  
+             Historique : "Quels sont les hôpitaux publics en Provence-Alpes-Côte d'Azur ?"  
+            Nouveau message : "Top 10 des établissements privés à Lille en dermatologie."  
+            → Réponse attendue : **nouvelle question**
+
+        2.  
+            Historique : "Donne-moi les meilleurs hôpitaux pour la cardiologie à Bordeaux."  
+            Nouveau message : "Quels sont les établissements privés en Normandie ?"  
+            → Réponse attendue : **nouvelle question**
+        
+        3. 
+            Historique : "Quels sont les centres spécialisés en neurologie ?"  
+            Nouveau message : "Et pour la psychiatrie ?"  
+            → Réponse attendue : **nouvelle question ** (il n'y avait qu'une seule spécification pour une requête dans le message d'origine, qui a été modifiée dans le message suivant)
+
+        ### Cas : ambiguous
+        Le lien avec la question précédente est possible mais pas évident sans plus de contexte.
+
+        1.  
+            Historique : "Quels sont les établissements de santé à Toulouse ?"  
+            Nouveau message : "Et ceux qui sont bien notés ?"  
+            → Réponse attendue : **ambiguous**
         """
         
         ,
