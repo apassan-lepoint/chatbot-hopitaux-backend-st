@@ -13,7 +13,7 @@ from app.utils.query_detection.prompt_formatting import (
     format_detect_institution_type_prompt,
     format_second_detect_institution_type_prompt
 )
-from app.utils.query_detection.specialties import specialties_list
+from app.utils.query_detection.specialties import specialty_list
 from app.utils.logging import get_logger
 from app.utils.query_detection.institutions import institution_list, coordinates_df
 
@@ -40,7 +40,7 @@ class QueryExtractionService:
         self._institution_mentioned = False
 
     
-    def detect_speciality(self, prompt: str, specialties_list: list = specialties_list): 
+    def detect_speciality(self, prompt: str, specialty_list: list = specialty_list): 
         """
         Detects the medical specialty from the given prompt using the provided specialties dictionary.
         Args:
@@ -51,7 +51,7 @@ class QueryExtractionService:
         Raises:
             Exception: If the LLM invocation fails.
         """
-        formatted_prompt = format_detect_specialty_prompt(specialties_list, prompt)
+        formatted_prompt = format_detect_specialty_prompt(specialty_list, prompt)
         try:
             response = self.model.invoke(formatted_prompt)
         except Exception as e:
@@ -80,12 +80,12 @@ class QueryExtractionService:
     def detect_speciality_full_query_ext_service(self, prompt: str) -> str:
         """
         Full specialty detection logic:
-        1. Try LLM with specialties_list.
+        1. Try LLM with specialty_list.
         2. If ambiguous, clarify using specialty_categories_dict and extract_specialty_keywords.
         3. If no match, retry with keyword mapping.
         Always returns a string (never empty).
         """
-        # Step 1: LLM with specialties_list
+        # Step 1: LLM with specialty_list
         specialty = self.detect_speciality(prompt)
 
         # Step 2: If ambiguous (multiple matches), clarify using specialty_categories_dict
