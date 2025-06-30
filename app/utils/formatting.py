@@ -110,3 +110,19 @@ def tableau_en_texte(df: pd.DataFrame, no_city: bool)-> str:
         joined_text = "<br>\n".join(descriptions)
         
         return joined_text
+    
+def format_links(result: str, links: list) -> str:
+    """
+    Appends formatted ranking links to the result string.
+
+    Args:
+        result (str): The main result string.
+        links (list): List of links to append.
+
+    Returns:
+        str: The formatted result string with links.
+    """
+    if links:
+        for l in links:
+            result += f"<br>[🔗Page du classement]({l})"
+    return result

@@ -85,7 +85,7 @@ class Appels_LLM:
         logger.debug(f"Specialty list: {liste_spe}")
         return liste_spe
         
-    def get_speciality(self, prompt: str) -> str:
+    def get_speciality(self, prompt: str) -> str: #work to simplify this function; did it give a specialty; and if so give a list ==> fully as JSON
         """
         Determines the medical specialty relevant to the user's question using the LLM.
         
@@ -112,7 +112,7 @@ class Appels_LLM:
         
         logger.debug(f"LLM response: {response1}")
         
-        if hasattr(response1, "content"):
+        if hasattr(response1, "content"): # make a possible speciality because you still need to check if multiple or none and define at end of function
             self.specialty = response1.content.strip()
         else:
             self.specialty = str(response1).strip()
@@ -125,7 +125,7 @@ class Appels_LLM:
             
         if self.specialty.startswith("plusieurs correspondances:"):
             logger.info("Multiple specialties detected")
-            def get_specialty_keywords(message, specialties):
+            def get_specialty_keywords(message, specialties): # extract this to utility 
                 for category, keywords in specialties.items():
                     if any(keyword.lower() in message.lower() for keyword in keywords):
                         return "plusieurs correspondances:"+f"{','.join(keywords)}"
@@ -162,30 +162,7 @@ class Appels_LLM:
             self.specialty = "aucune correspondance"
         return self.specialty
 
-    def get_offtopic_approfondi(self, prompt: str) -> str:
-        """
-        Determines if the user's question is relevant to the hospital ranking assistant.
-
-        Args:
-            prompt (str): The user's question.
-
-        Returns:
-            str: The LLM's assessment of relevance.
-        """
-        
-        logger.info(f"Checking if prompt is deeply off-topic: {prompt}")
-        
-        formatted_prompt=prompt_instructions["get_offtopic_approfondi_prompt"].format(prompt=prompt)
-        response = self.model.invoke(formatted_prompt)
-        if hasattr(response, "content"):
-            res = response.content.strip()
-        else:
-            res = str(response).strip()
-        
-        logger.debug(f"LLM response: {response}")
-        return res
-    
-    def get_offtopic(self, prompt: str) -> str:
+    def check_medical_pertinence(self, prompt: str) -> str:
         """
         Determines if the user's question is off-topic for the assistant.
 
@@ -198,7 +175,7 @@ class Appels_LLM:
         
         logger.info(f"Checking if prompt is off-topic: {prompt}")
         
-        formatted_prompt=prompt_instructions["get_offtopic_prompt"].format(prompt=prompt)
+        formatted_prompt=prompt_instructions["check_medical_pertinence_prompt"].format(prompt=prompt)
         response = self.model.invoke(formatted_prompt)
         if hasattr(response, "content"):
             self.isofftopic = response.content.strip()
@@ -207,6 +184,29 @@ class Appels_LLM:
         
         logger.debug(f"LLM response: {response}")
         return self.isofftopic
+    
+    def check_chatbot_pertinence(self, prompt: str) -> str:
+        """
+        Determines if the user's question is relevant to the hospital ranking assistant.
+
+        Args:
+            prompt (str): The user's question.
+
+        Returns:
+            str: The LLM's assessment of relevance.
+        """
+        
+        logger.info(f"Checking if prompt is deeply off-topic: {prompt}")
+        
+        formatted_prompt=prompt_instructions["check_chatbot_pertinence_prompt"].format(prompt=prompt)
+        response = self.model.invoke(formatted_prompt)
+        if hasattr(response, "content"):
+            res = response.content.strip()
+        else:
+            res = str(response).strip()
+        
+        logger.debug(f"LLM response: {response}")
+        return res
 
     def get_city(self, prompt: str) -> str:
         """

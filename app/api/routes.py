@@ -5,11 +5,12 @@ This file registers the main routes for user queries, health checks, and other
     API functionalities, and organizes them using FastAPI's router system.
 """
 
-from fastapi import APIRouter, Body 
+from fastapi import APIRouter 
 from app.services.pipeline_service import Pipeline
 from app.services.llm_service import Appels_LLM
 from app.models.query_model import UserQuery, ChatRequest
 from app.models.response_model import AskResponse, ChatResponse
+from app.utils.formatting import format_links
 from app.utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -19,10 +20,11 @@ router = APIRouter()
 # Initialize the pipeline service to use its methods to process incoming requests
 pipeline = Pipeline() 
 
-# Defines a POST endpoint at /ask using the router. 
-# This endpoint handles incoming POST requests.
-@router.post("/ask", response_model=AskResponse)
+# Initialize services once
+pipeline = Pipeline()
+appel_LLM = Appels_LLM()
 
+@router.post("/ask", response_model=AskResponse) # Define the /ask endpoint for user queries
 def ask_question(query: UserQuery):
     """
     Handles POST requests to the /ask endpoint.
@@ -33,18 +35,17 @@ def ask_question(query: UserQuery):
         query (UserQuery): The user's query containing the prompt and optional specialty.
             Extracted from the request body 
             Expects a JSON object with "prompt" keys.
-             CHECK IF SPECIALTY TOO!!!
+
     Returns:
         dict: JSON object with the chatbot's final answer and links.
     """
 
     logger.info(f"Received /ask request: {query}")
-    # Call pipeline.final_answer and pass the prompt and specialty_st, unpack results
     result, link = pipeline.final_answer(prompt=query.prompt, specialty_st=query.specialty_st)
     logger.info("Response generated for /ask endpoint")
     return {"result": result, "links": link} 
 
-@router.post("/chat", response_model=ChatResponse)
+@router.post("/chat", response_model=ChatResponse) # Define the /chat endpoint for multi-turn conversations
 def chat(request: ChatRequest):
     """
     Multi-turn chat endpoint. Accepts user prompt and conversation history.
@@ -56,13 +57,14 @@ def chat(request: ChatRequest):
     Returns:
         ChatResponse: The chatbot's response, updated conversation history, and ambiguity flag.
     """
-    appel_LLM = Appels_LLM()
+    
     # Prepare conversation history string for LLM
     conv_history = "\n".join(
         [f"Utilisateur: {q}\nAssistant: {r}" for q, r in request.conversation]
     ) if request.conversation else ""
 
     mod_type = appel_LLM.detect_modification(request.prompt, conv_history)
+    
     # Handle ambiguous case: return special response for frontend to handle
     if mod_type == "ambiguous":
         return ChatResponse(
@@ -71,6 +73,7 @@ def chat(request: ChatRequest):
             ambiguous=True
         )
 
+    # Handle modification or new question
     if mod_type == "modification":
         result = appel_LLM.continuer_conv(
             prompt=request.prompt,
@@ -78,12 +81,8 @@ def chat(request: ChatRequest):
         )
         updated_conversation = request.conversation + [[request.prompt, result]]
         return ChatResponse(response=result, conversation=updated_conversation, ambiguous=False)
-    else:
-        answer_instance = Pipeline()
-        result, link = answer_instance.final_answer(prompt=request.prompt)
-        # Add links to result
-        if link:
-            for l in link:
-                result += f"<br>[🔗Page du classement]({l})"
-        updated_conversation = request.conversation + [[request.prompt, result]]
-        return ChatResponse(response=result, conversation=updated_conversation, ambiguous=False)
+    
+    result, link = pipeline.final_answer(prompt=request.prompt)
+    result = format_links(result, link) # Add links to result
+    updated_conversation = request.conversation + [[request.prompt, result]]
+    return ChatResponse(response=result, conversation=updated_conversation, ambiguous=False)

@@ -71,6 +71,7 @@ class Processing:
             self.ranking_df=pd.read_excel(self.paths["ranking_file_path"] , sheet_name="Palmarès")
             self.specialty=self.appel_LLM.specialty
         
+        # Check the below lines - especially if mentioned above
         self.ranking_df=pd.read_excel(self.paths["ranking_file_path"] , sheet_name="Palmarès") # Always reload ranking DataFrame for latest data
         self.appel_LLM.get_city(prompt) # Extract city and institution type using LLM
         self.city=self.appel_LLM.city

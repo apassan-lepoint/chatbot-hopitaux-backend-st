@@ -51,7 +51,7 @@ prompt_instructions = {
         ,
 
 
-    "get_offtopic_prompt":
+    "check_medical_pertinence_prompt":
         """
         Évaluez si le message suivant a un rapport avec la santé humaine ou les services de soins. 
         Si le message a un rapport avec le médical, retourne EXACTEMENT ce mot: 'Pertinent'.
@@ -67,7 +67,7 @@ prompt_instructions = {
         ,
 
 
-    "get_offtopic_approfondi_prompt":
+    "check_chatbot_pertinence_prompt":
         """
         Tu es un chatbot assistant chargé de vérifier si une question d'un utilisateur est pertinente pour un classement annuel des hôpitaux.  
         Voici la question de l'utilisateur:'{prompt}'
