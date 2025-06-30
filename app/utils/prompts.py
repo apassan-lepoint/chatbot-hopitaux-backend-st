@@ -193,4 +193,16 @@ prompt_instructions = {
         - ambiguous
         Si vous n'êtes pas certain, réponds 'ambiguous'.
         """
+        
+        ,
+        
+        "rewrite_query_prompt": """
+        Voici la question initiale de l'utilisateur :
+        {last_query}
+
+        Voici la modification ou précision apportée par l'utilisateur :
+        {modification}
+
+        Reformule une nouvelle question complète et précise qui prend en compte la modification.
+        """
 }

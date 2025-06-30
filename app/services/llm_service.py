@@ -454,3 +454,25 @@ class Appels_LLM:
         if "modification" in result:
             return "modification"
         return "ambiguous"  # Return "ambiguous" if the response is not clear
+    
+    def rewrite_query(self, last_query: str, modification: str) -> str:
+        """
+        Uses the LLM to merge the last query and the user's modification into a new, complete query.
+        
+        Args:
+            last_query (str): The last query made by the user.
+            modification (str): The user's modification to the last query.  
+        
+        Returns:
+            str: The rewritten query that combines the last query and the modification.
+        """
+        from app.utils.prompts import prompt_instructions
+        prompt = prompt_instructions["rewrite_query_prompt"].format(last_query=last_query, modification=modification)
+        try:
+            response = self.model.invoke(prompt)
+        except Exception as e:
+            logger.error(f"LLM invocation failed in rewrite_query: {e}")
+            raise
+        if hasattr(response, "content"):
+            return response.content.strip()
+        return str(response).strip()

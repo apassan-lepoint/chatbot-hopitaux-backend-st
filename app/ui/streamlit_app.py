@@ -246,12 +246,15 @@ class StreamlitChatbot:
                     if selected_option is not None:
                         with st.spinner('Chargement'):
                             answer_instance = Pipeline()
-                            result, link = answer_instance.final_answer(prompt=st.session_state.prompt, specialty_st=selected_option)
-                            if result == 'établissement pas dans ce classement':
-                                result= f"Cet hôpital n'est pas présent pour la spécialité {selected_option}"                  
-                        # Add links to result    
-                        for links in link:
-                            result=result+f"<br>[🔗Page du classement]({links})"
+                            response = answer_instance.final_answer(prompt=st.session_state.prompt, specialty_st=selected_option)
+                            if isinstance(response, tuple):
+                                result, link = response
+                                if result == 'établissement pas dans ce classement':
+                                    result = f"Cet hôpital n'est pas présent pour la spécialité {selected_option}"
+                                for links in link:
+                                    result = result + f"<br>[🔗Page du classement]({links})"
+                            else:
+                                result = response
                         st.session_state.conversation.append((st.session_state.prompt, result))
                         return None
 
@@ -259,11 +262,16 @@ class StreamlitChatbot:
                     # Only one specialty detected, proceed to answer
                     with st.spinner('Chargement'):
                         answer_instance = Pipeline()
-                        result, link = answer_instance.final_answer(prompt=st.session_state.prompt, specialty_st=v_speciality)
-                    for links in link:
-                        result=result+f"<br>[🔗Page du classement]({links})"
+                        response = answer_instance.final_answer(prompt=st.session_state.prompt, specialty_st=v_speciality)
+                        if isinstance(response, tuple):
+                            result, link = response
+                            for links in link:
+                                result = result + f"<br>[🔗Page du classement]({links})"
+                        else:
+                            result = response
                     st.session_state.conversation.append((st.session_state.prompt, result))
                     return None
+                
         # For subsequent messages in the conversation
         else  :
             user_input = st.chat_input("Votre message")
@@ -297,14 +305,26 @@ class StreamlitChatbot:
                 # Handle modification to previous query
                 if mod_type == "modification":
                     st.info("Modification détectée de la question précédente.")
-                    logger.info("Continuing conversation with LLM (modification case)")
-                    # Continue the conversation with LLM using previous context
+                    logger.info("Rewriting query for modification and rerunning pipeline")
+                    # Get the last user query from the conversation history
+                    last_user_query = None
+                    for msg, _ in reversed(st.session_state.conversation):
+                        if msg:
+                            last_user_query = msg
+                            break
+                    # Use LLM to rewrite the query
+                    full_query = self.appel_LLM.rewrite_query(last_user_query, user_input)
                     with st.spinner('Chargement'):
-                        result = self.appel_LLM.continuer_conv(
-                            prompt=user_input,
-                            conv_history=st.session_state.conversation
-                        )
+                        answer_instance = Pipeline()
+                        response = answer_instance.final_answer(prompt=full_query)
+                        if isinstance(response, tuple):
+                            result, link = response
+                            for links in link:
+                                result = result + f"<br>[🔗Page du classement]({links})"
+                        else:
+                            result = response
                     st.session_state.conversation.append((user_input, result))
+                    
                 # Handle new query
                 else:
                     st.info("Nouvelle question détectée.")
@@ -312,9 +332,13 @@ class StreamlitChatbot:
                     # Treat as a new query and use the main pipeline
                     with st.spinner('Chargement'):
                         answer_instance = Pipeline()
-                        result, link = answer_instance.final_answer(prompt=user_input)
-                    for links in link:
-                        result = result + f"<br>[🔗Page du classement]({links})"
+                        response = answer_instance.final_answer(prompt=user_input)
+                        if isinstance(response, tuple):
+                            result, link = response
+                            for links in link:
+                                result = result + f"<br>[🔗Page du classement]({links})"
+                        else:
+                            result = response
                     st.session_state.conversation.append((user_input, result))
         # Display the full conversation history    
         self._display_conversation()      
