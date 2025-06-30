@@ -132,7 +132,7 @@ class StreamlitChatbot:
         if st.session_state.prompt:
             # Detect medical specialty if not already set
             if st.session_state.speciality == "":
-                st.session_state.speciality = self.llm_service.get_speciality(st.session_state.prompt)
+                st.session_state.speciality = self.llm_service.detect_specialty(st.session_state.prompt)
 
             speciality = st.session_state.speciality
             if speciality.startswith("plusieurs correspondances:"):
