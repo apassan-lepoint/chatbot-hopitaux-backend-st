@@ -3,6 +3,8 @@ Defines all API endpoints for the hospital ranking chatbot.
 
 This file registers the main routes for user queries, health checks, and other
     API functionalities, and organizes them using FastAPI's router system.
+    
+## DOUBLE CHECK FUNCTION NAMES UPDATED
 """
 
 from fastapi import APIRouter 

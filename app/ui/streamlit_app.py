@@ -235,7 +235,7 @@ class StreamlitChatbot:
         if len(st.session_state.conversation) == 0:
             self.handle_first_message()
         else:
-            self.handle_subsequent_message()
+            self.handle_subsequent_messages()
         
         # Display the full conversation history    
         self.display_conversation()      
