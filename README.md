@@ -1,14 +1,18 @@
 README
 
+# Description
+The hospital ranking assistant allows interaction with Le Point's hospital rankings and exploration of its content. It enables users to ask questions to query one of the rankings and continue the conversation based on the results of the initial question. It is currently accessible through a simple Streamlit application, serving as a user interface for testing and in production mode via FastAPI (in development).
+
 # Project Structure
 
 BackendChatbotHopitaux/
+├── .env
 ├── .gitignore
 ├── Dockerfile
 ├── README.md
 ├── requirements.txt
+├── main.py
 ├── app/
-│   ├── main.py
 │   ├── api/
 │   │   ├── dependencies.py
 │   │   └── routes.py
@@ -19,51 +23,52 @@ BackendChatbotHopitaux/
 │   │   ├── query_model.py
 │   │   └── response_model.py
 │   ├── services/
+│   │   ├── query_extraction_service.py
+│   │   ├── conversation_service.py
 │   │   ├── llm_service.py
 │   │   ├── pipeline_service.py
 │   │   └── processing_service.py
+│   └── ui/
+│       ├── streamlit_app.py
 │   └── utils/
+│       ├── query_detection/
+│       │   ├── institutions.py
+│       │   ├── prompt_formatting.py
+│       │   ├── prompt_instructions.py
+│       │   └── specialties.py
+│       ├── sanity_checks/
+│       │   ├── core_logic_sanity_checks.py
+│       │   ├── fast_api_sanity_checks.py
+│       │   └── streamlit_sanity_checks.py
+│       ├── config.py
 │       ├── distance.py
 │       ├── formatting.py
 │       └── logging.py
+├── data/
+├── history/
 ├── tests/
 
 
-# Chatbot Le Point
 
-## Name
-Assistant Hôpitaux
-
-## Description
-The hospital ranking assistant allows interaction with Le Point's hospital rankings and exploration of its content. It enables users to ask questions to query one of the rankings and continue the conversation based on the results of the initial question. It is currently accessible through a simple Streamlit application, serving as a user interface for this initial POC phase.
-
-
-## Installation
-If you want to launch the Streamlit app, you should create a python environnement named 'chatbot_env_2' with the package from the "requirement.txt" file. 
+# Installation
+If you want to launch the Streamlit app, you should create a python environnement named 'chop_venv' with the package from the "requirement.txt" file. 
 You should as well get an API Key from Open AI and paste it in the '.env' file  to use our model: "gpt-4o-mini".
-You get get it at:
-https://platform.openai.com/docs/overview
 
-## Usage
+# Usage - EDIT 
 Here are the commands to launch the Streamlit app from the terminal anaconda for example: 
-- input "conda activate chatbot_env_2"
+- input "conda activate chop_venv"
 Copy the path of the Front folder
 - input "cd 'paste the path here'"
-- input "streamlit run app.py"
+- input "streamlit run app/ui/streamlit_app.py"
 
 Then you could ask your question.
 
-## Code organization
-The folder contains a file for the Streamlit frontend that sets up the entire visual aspect, including sanity checks, conversation history management to send multiple messages in a row, and the logic for selecting the pathology when multiple options might be applicable.
+# Code organization
+UPDATE!!!! - give high level overview of how code works
 
-The code for the backend is structured into 4 classes:
-A class LLMService used for all LLM calls: sanity checks, information extraction, and conversational aspects.
-A class Processing_class that manages the processing of information retrieved from the question and the exploitation of rankings.
-A class Pipeline_class that orchestrates the entire flow and functions of the other classes to take a user question and provide the final answer.
-
-
-
-## Support
-You can contact Alexis CALVEZ from the company Eulidia at the following email address: acalvez@eulidia.com .
+# Contact
+Anuradha (Annie) Passan - apassan@ext.lepoint.fr, apassan@eulidia.com
+Maxime Kermagoet - mkermagoet@ext.lepoint.fr, mkermagoet@eulidia.com
+Benjamin L'Hyver - blhyver@eulidia.com
 
 
