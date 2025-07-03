@@ -197,14 +197,24 @@ class StreamlitChatbot:
         # Add custom CSS for light blue button background
         st.markdown("""
         <style>
-        .stButton > button[key^="example"] {
+        div[data-testid="stButton"] > button {
             background-color: #E3F2FD !important;
             border: 1px solid #BBDEFB !important;
             color: #1976D2 !important;
+            border-radius: 8px !important;
+            transition: all 0.3s ease !important;
         }
-        .stButton > button[key^="example"]:hover {
+        div[data-testid="stButton"] > button:hover {
             background-color: #BBDEFB !important;
             border: 1px solid #90CAF9 !important;
+            transform: translateY(-1px) !important;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+        }
+        /* Exclude sidebar buttons from styling */
+        section[data-testid="stSidebar"] div[data-testid="stButton"] > button {
+            background-color: #FFFFFF !important;
+            border: 1px solid #CCCCCC !important;
+            color: #000000 !important;
         }
         </style>
         """, unsafe_allow_html=True)
