@@ -197,24 +197,26 @@ class StreamlitChatbot:
         # Add custom CSS for light blue button background
         st.markdown("""
         <style>
-        div[data-testid="stButton"] > button {
+        /* Target all buttons in the main content area (not sidebar) */
+        .main .stButton > button:first-child {
             background-color: #E3F2FD !important;
             border: 1px solid #BBDEFB !important;
             color: #1976D2 !important;
             border-radius: 8px !important;
             transition: all 0.3s ease !important;
         }
-        div[data-testid="stButton"] > button:hover {
+        .main .stButton > button:first-child:hover {
             background-color: #BBDEFB !important;
             border: 1px solid #90CAF9 !important;
             transform: translateY(-1px) !important;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
         }
-        /* Exclude sidebar buttons from styling */
-        section[data-testid="stSidebar"] div[data-testid="stButton"] > button {
-            background-color: #FFFFFF !important;
-            border: 1px solid #CCCCCC !important;
-            color: #000000 !important;
+        
+        /* Alternative selector targeting by button content */
+        button[kind="primary"] {
+            background-color: #E3F2FD !important;
+            border: 1px solid #BBDEFB !important;
+            color: #1976D2 !important;
         }
         </style>
         """, unsafe_allow_html=True)
@@ -226,25 +228,25 @@ class StreamlitChatbot:
         example_questions = [
             "Quel est le meilleur hôpital de Paris ?",
             "J'ai une gastro-entérite et je suis très inquiet. Où puis-je aller à Lille pour me faire soigner ?",
-            "Quels sont les 10 meilleurs hôpitaux privés à Bordeaux pour les maladies cardiaques ?"
+            "Quels sont les 10 meilleurs hôpitaux publics à Bordeaux pour les maladies cardiaques ?"
         ]
         
         with col1:
-            if st.button(example_questions[0], key="example1", help="Cliquez pour poser cette question"):
+            if st.button(example_questions[0], key="example1", help="Cliquez pour poser cette question", type="primary"):
                 # Set prompt and trigger processing
                 st.session_state.prompt = example_questions[0]
                 # Display the question in chat immediately
                 st.chat_message("user").write(example_questions[0])
                 st.rerun()
         with col2:
-            if st.button(example_questions[1], key="example2", help="Cliquez pour poser cette question"):
+            if st.button(example_questions[1], key="example2", help="Cliquez pour poser cette question", type="primary"):
                 # Set prompt and trigger processing
                 st.session_state.prompt = example_questions[1]
                 # Display the question in chat immediately
                 st.chat_message("user").write(example_questions[1])
                 st.rerun()
         with col3:
-            if st.button(example_questions[2], key="example3", help="Cliquez pour poser cette question"):
+            if st.button(example_questions[2], key="example3", help="Cliquez pour poser cette question", type="primary"):
                 # Set prompt and trigger processing
                 st.session_state.prompt = example_questions[2]
                 # Display the question in chat immediately
