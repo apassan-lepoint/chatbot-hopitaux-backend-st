@@ -11,18 +11,20 @@ from pydantic import BaseModel
 class UserQuery(BaseModel):
     """
     Data model representing a user query to the chatbot.
+    
     Attributes:
         prompt (str): The user's input or question for the chatbot.
-        specialty_st (str | None): Optional medical specialty context for the query.
+        detected_specialty (str | None): Optional medical specialty context for the query.
     """
     prompt: str # Required field for the user's input
-    specialty_st: str | None = None # Optional field for medical specialty
+    detected_specialty: str | None = None # Optional field for medical specialty
 
 
 
 class ChatRequest(BaseModel):
     """
     Data model for chat requests to the chatbot.
+    
     Attributes:
         prompt (str): The user's input or question for the chatbot.
         conversation (List[List[str]]): The conversation history as a list of message pairs,

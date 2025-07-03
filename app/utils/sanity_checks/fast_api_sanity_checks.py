@@ -7,29 +7,73 @@ from .core_logic_sanity_checks import (
     SanityCheckException,
     check_message_length_core,
     check_conversation_limit_core,
-    check_message_pertinence_core,
+    sanity_check_message_pertinence_core,
     check_non_french_cities_core,
 )
 
 def check_message_length_fastapi(message):
+    """
+    Check the length of a message.  
+
+    Args:
+        message (str): The message to check.    
+    
+    Raises:
+        HTTPException: If the message exceeds the maximum length, a 400 error is raised with a detailed message.
+    """
     try:
         check_message_length_core(message)
     except SanityCheckException as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+
 def check_conversation_limit_fastapi(conversation, max_messages):
+    """
+    Check if the conversation has reached the maximum number of messages allowed.
+
+    Args:
+        conversation (list): The conversation to check.
+        max_messages (int): The maximum number of messages allowed in the conversation. 
+    
+    Raises:
+        HTTPException: If the conversation exceeds the maximum number of messages, a 400 error is raised with a detailed message.
+    """
     try:
         check_conversation_limit_core(conversation, max_messages)
     except SanityCheckException as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-def check_message_pertinence_fastapi(user_input, llm_service, pertinence_check2=False):
+
+def sanity_check_message_pertinence_fastapi(user_input, llm_service, pertinent_chatbot_use_case=False):
+    """
+    Check if the user input is off-topic (standard or pertinent) and raises an exception if it is.  
+    
+    Args:
+        user_input (str): The user input to check.
+        llm_service: The language model service used for checking pertinence.
+        pertinent_chatbot_use_case (bool, optional): Additional check for pertinence. Defaults to False.
+        
+    Raises:
+        HTTPException: If the user input is off-topic, a 400 error is raised with a detailed message.   
+    """
     try:
-        check_message_pertinence_core(user_input, llm_service, pertinence_check2)
+        sanity_check_message_pertinence_core(user_input, llm_service, pertinent_chatbot_use_case)
     except SanityCheckException as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+
 def check_non_french_cities_fastapi(user_input, llm_service):
+    """
+    Check if the user input contains non-French cities and raises an exception if it does.  
+    
+    Args:
+        user_input (str): The user input to check.
+        llm_service: The language model service used for checking non-French cities.    
+    
+    Raises:
+        HTTPException: If the user input contains non-French cities, a 400 error is raised with a detailed message.
+        
+    """
     try:
         check_non_french_cities_core(user_input, llm_service)
     except SanityCheckException as e:

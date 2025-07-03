@@ -15,8 +15,10 @@ load_dotenv()
 def get_snowflake_connection():
     """
     Establish and return a connection to the Snowflake database using credentials and configuration loaded from environment variables.
+    
     Returns:
         snowflake.connector.connection.SnowflakeConnection: An active Snowflake connection object.
+    
     Raises:
         snowflake.connector.errors.Error: If the connection fails due to invalid credentials or configuration.
     """

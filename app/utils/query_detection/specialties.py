@@ -38,6 +38,7 @@ specialty_categories_dict = {
         "Diabète": ["Diabète de l'adulte", "Diabète de l'enfant et de l’adolescent"]
     }
 
+
 def extract_specialty_keywords(message, specialty_categories_dict): # extract this to utility 
     for category, keywords in specialty_categories_dict.items():
         if any(keyword.lower() in message.lower() for keyword in keywords):

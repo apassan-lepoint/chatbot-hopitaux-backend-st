@@ -23,7 +23,7 @@ from app.utils.logging import get_logger
 from app.utils.sanity_checks.streamlit_sanity_checks import (
     check_message_length_streamlit,
     check_conversation_limit_streamlit,
-    check_message_pertinence_streamlit,
+    sanity_check_message_pertinence_streamlit,
     check_non_french_cities_streamlit,
 )
 
@@ -35,6 +35,25 @@ class StreamlitChatbot:
     
     Provides methods to manage session state, handle user input,interact with 
         LLM services, and display conversation history.
+        
+    Attributes:
+        llm_service (LLMService): Service for interacting with the language model.
+        MAX_MESSAGES (int): Maximum number of messages in the conversation history. 
+    
+    Methods:
+        reset_session_state():      
+            Reset all session state variables, clearing the conversation history and other related variables.
+        display_conversation():
+            Display the conversation history in a chat-like format.
+        append_answer(prompt, specialty):
+            Interact with the LLM service to get the final answer based on the user's prompt and    
+            the selected medical specialty, appending it to the conversation history.
+        handle_first_message():
+            Handle the first message in the conversation, initializing the conversation and processing user input.
+        handle_subsequent_messages():
+            Handle subsequent messages in the conversation, processing user input and generating responses.
+        run():
+            Run the Streamlit application, initializing the UI, handling user input, and managing conversation history.     
     """
     def __init__(self):
         """
@@ -43,7 +62,7 @@ class StreamlitChatbot:
         
         logger.info("Initializing StreamlitChatbot")
         self.llm_service = LLMService()
-        self.MAX_MESSAGES = 10  # Maximum number of messages in the conversation
+        self.MAX_MESSAGES = 5  # Maximum number of messages in the conversation
 
 
     def reset_session_state(self):
@@ -62,7 +81,7 @@ class StreamlitChatbot:
             "conversation": [],
             "selected_option": None,
             "prompt": "",
-            "speciality": "",
+            "specialty": "",
             "city": None,
             "slider_value": None,
         }.items():
@@ -78,7 +97,7 @@ class StreamlitChatbot:
             st.chat_message("assistant").write(bot, unsafe_allow_html=True)
     
                 
-    def append_answer(self, prompt, speciality):
+    def append_answer(self, prompt, specialty):
         """
         This method interacts with the LLM service to get the final answer based on
             the user's prompt and the selected medical specialty.     
@@ -86,16 +105,16 @@ class StreamlitChatbot:
             and appends it to the conversation history in the session state.
         Args:
             prompt (str): The user's input question or query.
-            speciality (str): The medical specialty to filter the response. 
+            specialty (str): The medical specialty to filter the response. 
         Returns:
             None: The function updates the session state with the user's prompt and the chatbot's response. 
         """
         with st.spinner('Chargement'):
-            response = Pipeline().final_answer(prompt=prompt, specialty_st=speciality)
+            response = Pipeline().generate_response(prompt=prompt, detected_specialty=specialty)
             if isinstance(response, tuple):
                 result, link = response
                 if result == 'établissement pas dans ce classement':
-                    result = f"Cet hôpital n'est pas présent pour la spécialité {speciality}"
+                    result = f"Cet hôpital n'est pas présent pour la spécialité {specialty}"
                 result = format_links(result, link)
             else:
                 result = response
@@ -117,25 +136,26 @@ class StreamlitChatbot:
             logger.info(f"User input: {user_input}")
             st.session_state.prompt = user_input
             check_message_length_streamlit(st.session_state.prompt, self.reset_session_state)
-            check_message_pertinence_streamlit(st.session_state.prompt, self.llm_service, self.reset_session_state, pertinence_check2=False)  
-            check_message_pertinence_streamlit(st.session_state.prompt, self.llm_service, self.reset_session_state, pertinence_check2=True)   
+            sanity_check_message_pertinence_streamlit(st.session_state.prompt, self.llm_service, self.reset_session_state, pertinent_chatbot_use_case=False)  
+            sanity_check_message_pertinence_streamlit(st.session_state.prompt, self.llm_service, self.reset_session_state, pertinent_chatbot_use_case=True)   
             check_non_french_cities_streamlit(st.session_state.prompt, self.llm_service, self.reset_session_state)
             
         if st.session_state.prompt:
             # Detect medical specialty if not already set
-            if st.session_state.speciality == "":
-                st.session_state.speciality = self.llm_service.detect_specialty(st.session_state.prompt)
+            if st.session_state.specialty == "":
+                st.session_state.specialty = self.llm_service.detect_specialty(st.session_state.prompt)
 
-            speciality = st.session_state.speciality
-            if speciality.startswith("plusieurs correspondances:"):
+            specialty = st.session_state.specialty
+            if specialty.startswith("multiple matches:"):
                 logger.info("Multiple specialties detected, prompting user for selection")
                 # Extract options from the string
-                options = list(dict.fromkeys(speciality.removeprefix("plusieurs correspondances:").strip().split(',')))
+                options = list(dict.fromkeys(specialty.removeprefix("multiple matches:").strip().split(',')))
                 selected_specialty = st.radio("Précisez le domaine médical concerné :", options, index=None)
+                
                 if selected_specialty:
                     self.append_answer(st.session_state.prompt, selected_specialty)
             else:
-                self.append_answer(st.session_state.prompt, speciality)
+                self.append_answer(st.session_state.prompt, specialty)
     
     
     def handle_subsequent_messages(self):
@@ -150,32 +170,39 @@ class StreamlitChatbot:
         """    
         user_input = st.chat_input("Votre message")
         if user_input:
-            logger.info(f"User input received: {user_input}")
+            logger.info(f"Processing subsequent message: {user_input[:50]}...")
 
             # Prepare conversation history for LLM context
             conv_history = "\n".join(
                 [f"Utilisateur: {q}\nAssistant: {r}" for q, r in st.session_state.conversation]
             ) if hasattr(st.session_state, "conversation") else ""
+            logger.debug(f"Conversation history length: {len(conv_history)} characters")
 
             # Use LLM to detect if this is a modification or a new query
             try:
+                logger.debug("Detecting modification type")
                 mod_type = self.llm_service.detect_modification(user_input, conv_history)
                 logger.info(f"Detected query type: {mod_type}")
             except Exception as e:
                 logger.error(f"Error during modification detection: {e}")
-                mod_type = "nouvelle question"
+                mod_type = 0  # Default to new_question
             
-            if mod_type == "ambiguous":
+            if mod_type == 2:  # ambiguous
+                logger.debug("Query type is ambiguous, prompting user for clarification")
                 user_choice = st.radio(
                     "Je ne suis pas sûr si votre message est une nouvelle question ou une modification de la précédente. Veuillez préciser :",
                     ("Continuer la conversation précédente", "Poser une nouvelle question")
                 )
-                mod_type = "modification" if user_choice == "Continuer la conversation précédente" else "nouvelle question"
+                mod_type = 1 if user_choice == "Continuer la conversation précédente" else 0
+                logger.debug(f"User clarified query type: {mod_type}")
             
-            if mod_type == "modification":
+            if mod_type == 1:  # modification
+                logger.info("Processing conversation modification")
                 st.info("Modification détectée de la question précédente.")
                 last_user_query = next((msg for msg, _ in reversed(st.session_state.conversation) if msg), None)
+                logger.debug(f"Last query: {last_user_query}")
                 full_query = self.llm_service.rewrite_query(last_user_query, user_input)
+                logger.debug(f"Rewritten query: {full_query}")
                 self.append_answer(user_input, full_query)
                 
             # Handle new query
@@ -264,7 +291,7 @@ class StreamlitChatbot:
             "conversation": [],
             "selected_option": None,
             "prompt": "",
-            "speciality": "",
+            "specialty": "",
         }.items():
             if key not in st.session_state:
                 st.session_state[key] = value

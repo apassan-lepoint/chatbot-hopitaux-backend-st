@@ -34,7 +34,7 @@ BackendChatbotHopitaux/
 │       ├── query_detection/
 │       │   ├── institutions.py
 │       │   ├── prompt_formatting.py
-│       │   ├── prompt_instructions.py
+│       │   ├── PROMPT_INSTRUCTIONS.py
 │       │   └── specialties.py
 │       ├── sanity_checks/
 │       │   ├── core_logic_sanity_checks.py

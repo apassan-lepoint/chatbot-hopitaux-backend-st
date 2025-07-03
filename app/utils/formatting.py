@@ -18,14 +18,15 @@ def format_mapping_words_csv(file_path: str) -> str:
     Returns:
         str: A string with each value separated by a newline.
     """
-
     # Read the CSV file and extract the 'Valeurs' column, dropping any NaN values
     df = pd.read_csv(file_path)
     column = df['Valeurs'].dropna()
     
     # Concatenate all values into a single string separated by newlines  
     resultat = column.astype(str).str.cat(sep="\n")
+    
     return resultat
+
 
 def format_correspondance_list(specialty_list: str) -> str:
     """
@@ -38,21 +39,26 @@ def format_correspondance_list(specialty_list: str) -> str:
     Returns:
         str: Formatted string with deduplicated specialties.
     """
-
     # Remove the prefix and strip whitespace
-    options_string = specialty_list.removeprefix("plusieurs correspondances:").strip()
+    options_string = specialty_list.removeprefix("multiple matches:").strip()
+    
     # Split the string into a list by commas
     options_list = options_string.split(',')
+    
     # Remove periods and strip whitespace from each element
     options_list = [element.replace('.', '') for element in options_list]
     options_list = [element.strip() for element in options_list]
+    
     # Filter elements that are present in the original string (deduplication logic)
     result = [element for element in options_list if element in specialty_list]
-    # Reconstruct the formatted specialty string
-    specialty="plusieurs correspondances:"+",".join(result)
-    return specialty
     
-def enlever_accents(original_string: str)-> str:
+    # Reconstruct the formatted specialty string
+    specialty="multiple matches:"+",".join(result)
+    
+    return specialty
+  
+    
+def remove_accents(original_string: str)-> str:
     """
     Remove accents from a string and replace apostrophes with hyphens.
 
@@ -62,16 +68,19 @@ def enlever_accents(original_string: str)-> str:
     Returns:
         str: Normalized string without accents.
     """
-    
     # Normalize the string to separate accents
     normalized_string = unicodedata.normalize('NFD', original_string)
+    
     # Remove all accent characters
     string_no_accents = ''.join(c for c in normalized_string if unicodedata.category(c) != 'Mn')
+    
     # Replace apostrophes with hyphens
     string_no_accents = string_no_accents.replace("'", '-')
+    
     return string_no_accents
     
-def tableau_en_texte(df: pd.DataFrame, no_city: bool)-> str:
+    
+def tableau_en_texte(df: pd.DataFrame, city_not_specified: bool)-> str:
     """
     Convert a DataFrame of hospital results into a formatted text response.
 
@@ -82,8 +91,9 @@ def tableau_en_texte(df: pd.DataFrame, no_city: bool)-> str:
         str: Formatted string for chatbot response.
     """
     descriptions = []
+    
     # Format results without city information
-    if no_city:
+    if city_not_specified:
         for index, row in df.iterrows():
             description = (
                 f"{row['Etablissement']}:"
@@ -94,8 +104,8 @@ def tableau_en_texte(df: pd.DataFrame, no_city: bool)-> str:
         
         # Join all descriptions with line breaks for chatbot display
         joined_text = "<br>\n".join(descriptions)
-        
         return joined_text
+    
     # Format results with city and distance information
     else:  
         for index, row in df.iterrows():
@@ -108,8 +118,8 @@ def tableau_en_texte(df: pd.DataFrame, no_city: bool)-> str:
         
         # Join all descriptions with line breaks for chatbot display
         joined_text = "<br>\n".join(descriptions)
-        
         return joined_text
+    
     
 def format_links(result: str, links: list) -> str:
     """
@@ -125,4 +135,5 @@ def format_links(result: str, links: list) -> str:
     if links:
         for l in links:
             result += f"<br>[🔗Page du classement]({l})"
+
     return result

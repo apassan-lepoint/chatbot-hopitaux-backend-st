@@ -2,12 +2,10 @@
 Defines all API endpoints for the hospital ranking chatbot.
 
 This file registers the main routes for user queries, health checks, and other
-    API functionalities, and organizes them using FastAPI's router system.
-    
-## DOUBLE CHECK FUNCTION NAMES UPDATED
+API functionalities, and organizes them using FastAPI's router system.
 """
 
-from fastapi import APIRouter 
+from fastapi import APIRouter, HTTPException
 from app.services.pipeline_service import Pipeline
 from app.services.llm_service import LLMService
 from app.models.query_model import UserQuery, ChatRequest
@@ -16,92 +14,181 @@ from app.utils.formatting import format_links
 from app.utils.sanity_checks.fast_api_sanity_checks import (
     check_message_length_fastapi,
     check_conversation_limit_fastapi,
-    check_message_pertinence_fastapi,
+    sanity_check_message_pertinence_fastapi,
     check_non_french_cities_fastapi,
 )
 from app.utils.logging import get_logger
 
 logger = get_logger(__name__)
 
-# Initialize the API router instance to define and group related endpoints
-router = APIRouter() 
-# Initialize the pipeline service to use its methods to process incoming requests
-pipeline = Pipeline() 
+# Configuration constants
+MAX_MESSAGES = 5  # Maximum number of messages allowed in a conversation
 
-# Initialize services once
+# French response messages (could be moved to a constants file for i18n)
+AMBIGUOUS_RESPONSE = "Je ne suis pas sûr si votre message est une nouvelle question ou une modification de la précédente. Veuillez préciser."
+
+# Initialize the API router instance to define and group related endpoints
+router = APIRouter()
+
+# Initialize services once at module level for performance optimization
+# These instances will be reused across all requests to avoid initialization overhead
+logger.info("Initializing core services...")
 pipeline = Pipeline()
 llm_service = LLMService()
+logger.info("Core services initialized successfully")
 
-@router.post("/ask", response_model=AskResponse) # Define the /ask endpoint for user queries
-def ask_question(query: UserQuery):
+def perform_sanity_checks(prompt: str, conversation: list = None) -> None:
     """
-    Handles POST requests to the /ask endpoint.
-    Processes a user query by passing the prompt and optional specialty to the pipeline,
-        and returns the chatbot's response and related links.
+    Perform all sanity checks on user input to ensure request validity.
+    
     Args:
-        query (UserQuery): The user's query containing the prompt and optional specialty.
-            Extracted from the request body 
-            Expects a JSON object with "prompt" keys.
-    Returns:
-        dict: JSON object with the chatbot's final answer and links.
+        prompt: The user's input message
+        conversation: Optional conversation history for chat endpoints
+    Raises:
+        HTTPException: If any sanity check fails, with appropriate error code and message
+        
+    Note:
+        - pertinent_chatbot_use_case=False: Basic relevance check
+        - pertinent_chatbot_use_case=True: Advanced relevance check using different criteria
     """
-    logger.info(f"Received /ask request: {query}")
+    logger.debug("Starting sanity checks for user input")
     
-    # Sanity checks for the user query
-    check_message_length_fastapi(query.prompt)
-    check_message_pertinence_fastapi(query.prompt, llm_service, pertinence_check2=False)
-    check_message_pertinence_fastapi(query.prompt, llm_service, pertinence_check2=True)
-    check_non_french_cities_fastapi(query.prompt, llm_service)
+    # Check message length to prevent oversized requests
+    check_message_length_fastapi(prompt)
     
-    # Get result
-    result, link = pipeline.final_answer(prompt=query.prompt, specialty_st=query.specialty_st)
-    logger.info("Response generated for /ask endpoint")
-    return {"result": result, "links": link} 
+    # Perform dual-level pertinence checks for content relevance
+    sanity_check_message_pertinence_fastapi(prompt, llm_service, pertinent_chatbot_use_case=False)
+    sanity_check_message_pertinence_fastapi(prompt, llm_service, pertinent_chatbot_use_case=True)
+    
+    # Validate geographical scope (French cities only)
+    check_non_french_cities_fastapi(prompt, llm_service)
+    
+    # Check conversation length limits for chat endpoints
+    if conversation is not None:
+        check_conversation_limit_fastapi(conversation, max_messages=MAX_MESSAGES)
+    
+    logger.debug("All sanity checks passed successfully")
 
 
-@router.post("/chat", response_model=ChatResponse) # Define the /chat endpoint for multi-turn conversations
-def chat(request: ChatRequest):
+@router.post("/ask", response_model=AskResponse)
+def ask_question(query: UserQuery) -> AskResponse:
     """
-    Multi-turn chat endpoint. Accepts user prompt and conversation history.
-    Determines if the prompt is a modification or a new question.
+    Handles POST requests to the /ask endpoint for single-turn conversations.
+    
     Args:
-        request (ChatRequest): The chat request containing the user's prompt and conversation history.  
+        query: The user's query containing the prompt and optional specialty
+    Returns:
+        AskResponse: JSON object with the chatbot's final answer and links
+    Raises:
+        HTTPException: 
+            - 400: Bad request (failed sanity checks)
+            - 500: Internal server error (processing failures)
+    
+    Example:
+        POST /ask
+        {"prompt": "Meilleurs hôpitaux pour cardiologie à Paris", "detected_specialty": "cardiologie"}
+    """
+    logger.info(f"Received /ask request with prompt length: {len(query.prompt)} chars, specialty: {query.detected_specialty}")
+    
+    try:
+        # Perform comprehensive input validation
+        perform_sanity_checks(query.prompt)
+        logger.debug("Sanity checks completed for /ask request")
+        
+        # Process the query through the main pipeline
+        logger.debug("Starting pipeline processing for /ask request")
+        result, links = pipeline.generate_response(prompt=query.prompt, detected_specialty=query.detected_specialty)
+        
+        logger.info(f"Response generated for /ask endpoint - Links found: {len(links) if links else 0}")
+        return AskResponse(result=result, links=links)
+        
+    except Exception as e:
+        logger.error(f"Error processing /ask request - Prompt: '{query.prompt[:100]}...', Error: {str(e)}")
+        if not isinstance(e, HTTPException):
+            raise HTTPException(status_code=500, detail="Internal server error")
+        raise 
+
+
+@router.post("/chat", response_model=ChatResponse)
+def chat(request: ChatRequest) -> ChatResponse:
+    """
+    Multi-turn chat endpoint that accepts user prompt and conversation history.
+    Determines if the prompt is a modification of a previous question or a new question,
+    and processes accordingly.
+    Args:
+        request: The chat request containing:
+                - prompt: Current user message
+                - conversation: List of [user_msg, assistant_response] pairs
     
     Returns:
-        ChatResponse: The chatbot's response, updated conversation history, and ambiguity flag.
+        ChatResponse: Contains:
+                     - response: The chatbot's response
+                     - conversation: Updated conversation history
+                     - ambiguous: Flag indicating if user intent was unclear
+    
+    Raises:
+        HTTPException: 
+            - 400: Bad request (failed sanity checks, conversation too long)
+            - 500: Internal server error (processing failures)
+    
+    Flow:
+        1. Validate input and conversation history
+        2. Detect if prompt is modification vs new question
+        3. Handle ambiguous cases with clarification request
+        4. Process modifications using conversation context
+        5. Process new questions through full pipeline
     """
-    # Sanity checks for the user query
-    check_message_length_fastapi(request.prompt)
-    check_message_pertinence_fastapi(request.prompt, llm_service, pertinence_check2=False)
-    check_message_pertinence_fastapi(request.prompt, llm_service, pertinence_check2=True)
-    check_non_french_cities_fastapi(request.prompt, llm_service)
-    check_conversation_limit_fastapi(request.conversation, max_messages=10)    
+    logger.info(f"Received /chat request - Prompt length: {len(request.prompt)} chars, "
+                f"Conversation history: {len(request.conversation) if request.conversation else 0} turns")
     
-    # Prepare conversation history string for LLM
-    conv_history = "\n".join(
-        [f"Utilisateur: {q}\nAssistant: {r}" for q, r in request.conversation]
-    ) if request.conversation else ""
+    try:
+        # Perform comprehensive input validation including conversation limits
+        perform_sanity_checks(request.prompt, request.conversation)
+        logger.debug("Sanity checks completed for /chat request")
+        
+        # Prepare conversation history for LLM analysis
+        # Format: "Utilisateur: question\nAssistant: response" per turn
+        conv_history = "\n".join(
+            [f"Utilisateur: {q}\nAssistant: {r}" for q, r in request.conversation]
+        ) if request.conversation else ""
+        
+        logger.debug("Analyzing user intent: modification vs new question")
+        mod_type = llm_service.detect_modification(request.prompt, conv_history)
+        logger.debug(f"Intent analysis result: {mod_type}")
+        
+        # Handle ambiguous user intent - request clarification
+        if mod_type == 2:  # ambiguous
+            logger.info("Ambiguous user intent detected - requesting clarification")
+            return ChatResponse(
+                response=AMBIGUOUS_RESPONSE,
+                conversation=request.conversation,
+                ambiguous=True
+            )
 
-    mod_type = llm_service.detect_modification(request.prompt, conv_history)
-    
-    # Handle ambiguous case: return special response for frontend to handle
-    if mod_type == "ambiguous":
-        return ChatResponse(
-            response="Je ne suis pas sûr si votre message est une nouvelle question ou une modification de la précédente. Veuillez préciser.",
-            conversation=request.conversation,
-            ambiguous=True
-        )
-
-    # Handle modification or new question
-    if mod_type == "modification":
-        result = llm_service.continuer_conv(
-            prompt=request.prompt,
-            conv_history=request.conversation
-        )
+        # Handle conversation continuation/modification
+        if mod_type == 1:  # modification
+            logger.debug("Processing as conversation modification")
+            result = llm_service.continuer_conv(
+                prompt=request.prompt,
+                conv_history=request.conversation
+            )
+            updated_conversation = request.conversation + [[request.prompt, result]]
+            logger.info("Conversation modification processed successfully")
+            return ChatResponse(response=result, conversation=updated_conversation, ambiguous=False)
+        
+        # Handle new question - full pipeline processing
+        logger.debug("Processing as new question through full pipeline")
+        result, links = pipeline.generate_response(prompt=request.prompt)
+        result = format_links(result, links)  # Embed links into response text
         updated_conversation = request.conversation + [[request.prompt, result]]
+        
+        logger.info(f"New question processed successfully - Links found: {len(links) if links else 0}")
         return ChatResponse(response=result, conversation=updated_conversation, ambiguous=False)
-    
-    result, link = pipeline.final_answer(prompt=request.prompt)
-    result = format_links(result, link) # Add links to result
-    updated_conversation = request.conversation + [[request.prompt, result]]
-    return ChatResponse(response=result, conversation=updated_conversation, ambiguous=False)
+        
+    except Exception as e:
+        logger.error(f"Error processing /chat request - Prompt: '{request.prompt[:100]}...', "
+                    f"Conversation turns: {len(request.conversation) if request.conversation else 0}, "
+                    f"Error: {str(e)}")
+        if not isinstance(e, HTTPException):
+            raise HTTPException(status_code=500, detail="Internal server error")
+        raise
