@@ -14,7 +14,7 @@ BackendChatbotHopitaux/
 ├── main.py
 ├── app/
 │   ├── api/
-│   │   ├── dependencies.py
+│   │   ├── dependencies.py 
 │   │   └── routes.py
 │   ├── db/
 │   │   ├── query.py
@@ -68,7 +68,12 @@ UPDATE!!!! - give high level overview of how code works
 
 # Contact
 Anuradha (Annie) Passan - apassan@ext.lepoint.fr, apassan@eulidia.com
-Maxime Kermagoet - mkermagoet@ext.lepoint.fr, mkermagoet@eulidia.com
+Maxime Kermagoet - mkermagoret@ext.lepoint.fr, mkermagoret@eulidia.com
 Benjamin L'Hyver - blhyver@eulidia.com
 
 
+## Files to maybe add
+**app/api/dependencies.py**
+Defines reusable dependencies for FastAPI routes.
+This file contains functions and classes that provide shared logic or resources
+to be injected into API endpoints, such as authentication, database sessions, or configuration.

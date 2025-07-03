@@ -85,7 +85,7 @@ class LLMService:
         return self.query_extractor.check_medical_pertinence_query_ext_service(prompt)
         
     
-    def check_chatbot_pertinence(self, prompt: str) -> str:
+    def check_chatbot_pertinence(self, prompt: str) -> str: 
         """
         Determines if the user's question is relevant to the hospital ranking assistant.
         Args:
@@ -106,6 +106,7 @@ class LLMService:
             str: The detected city or department.
         """
         logger.info(f"Detecting city in prompt: {prompt}")
+        
         return self.query_extractor.detect_city_query_ext_service(prompt)
 
     def detect_topk(self, prompt: str):
@@ -121,7 +122,7 @@ class LLMService:
         topk = self.query_extractor.detect_topk_query_ext_service(prompt)
         if topk != 'non mentionné':
             try:
-                if int(topk) > 50:
+                if int(topk) > 50: # MOVE TO CONFIG THE NUMBER 
                     topk = 'non mentionné'
                 else:
                     topk = int(topk)

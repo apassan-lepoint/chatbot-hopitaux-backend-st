@@ -36,7 +36,6 @@ class StreamlitChatbot:
     Provides methods to manage session state, handle user input,interact with 
         LLM services, and display conversation history.
     """
-    
     def __init__(self):
         """
         Initialize LLM service and max conversation length.
@@ -46,20 +45,18 @@ class StreamlitChatbot:
         self.llm_service = LLMService()
         self.MAX_MESSAGES = 10  # Maximum number of messages in the conversation
 
+
     def reset_session_state(self):
         """
         Reset all session state variables.
-        
         This method clears the conversation history, selected options, user prompt,
             and other related variables in the Streamlit session state.
-        
         Args:
             self: The instance of the StreamlitChatbot class.   
         Returns:
             None: The function updates the session state to clear the conversation history
                 and other related variables.
         """
-        
         logger.info("Resetting session state")
         for key, value in {
             "conversation": [],
@@ -70,6 +67,7 @@ class StreamlitChatbot:
             "slider_value": None,
         }.items():
             st.session_state[key] = value
+    
         
     def display_conversation(self):
         """
@@ -78,23 +76,20 @@ class StreamlitChatbot:
         for user, bot in st.session_state.conversation:
             st.chat_message("user").write(user)
             st.chat_message("assistant").write(bot, unsafe_allow_html=True)
+    
                 
     def append_answer(self, prompt, speciality):
         """
         This method interacts with the LLM service to get the final answer based on
-            the user's prompt and the selected medical specialty. 
-        
+            the user's prompt and the selected medical specialty.     
         It formats the response
             and appends it to the conversation history in the session state.
-        
         Args:
             prompt (str): The user's input question or query.
             speciality (str): The medical specialty to filter the response. 
-            
         Returns:
             None: The function updates the session state with the user's prompt and the chatbot's response. 
         """
-        
         with st.spinner('Chargement'):
             response = Pipeline().final_answer(prompt=prompt, specialty_st=speciality)
             if isinstance(response, tuple):
@@ -106,20 +101,17 @@ class StreamlitChatbot:
                 result = response
         st.session_state.conversation.append((prompt, result))
     
+    
     def handle_first_message(self):
         """
-        This function handles the first message in the conversation.    
-        
+        This function handles the first message in the conversation.        
         It initializes the conversation, checks message length, and processes
             the user input to determine the medical specialty and provide an answer.
-        
         Args:
             self: The instance of the StreamlitChatbot class.      
-        
         Returns:
             None: The function updates the session state with the user's prompt and the chatbot's response.
         """
-        
         user_input = st.chat_input("Votre message")
         if user_input:
             logger.info(f"User input: {user_input}")
@@ -145,6 +137,7 @@ class StreamlitChatbot:
             else:
                 self.append_answer(st.session_state.prompt, speciality)
     
+    
     def handle_subsequent_messages(self):
         """
         Handle subsequent messages in the conversation.
@@ -154,8 +147,7 @@ class StreamlitChatbot:
             self: The instance of the StreamlitChatbot class.
         Returns:
             None: The function updates the session state with the user's prompt and the chatbot's response.
-        """
-        
+        """    
         user_input = st.chat_input("Votre message")
         if user_input:
             logger.info(f"User input received: {user_input}")
@@ -191,26 +183,39 @@ class StreamlitChatbot:
                 st.info("Nouvelle question détectée.")
                 self.append_answer(user_input, user_input)
     
+    
     def run(self):
         """
-        Run the Streamlit application.
-        
+        Run the Streamlit application.    
         This method initializes the UI, handles user input, and manages the conversation
         history.
         """
-        
         logger.info("Running StreamlitChatbot application")
         st.title("Assistant Hôpitaux")
         st.write("Posez votre question ci-dessous.")
         
-        # Display example questions in columns for user inspiration
+        # Display example questions as clickable buttons
+        st.write("**Exemples de questions :**")
         col1, col2, col3 = st.columns(3)
+        
+        example_questions = [
+            "Quel est le meilleur hôpital de Pqris ?",
+            "J'ai une gastro-entérite et je suis très inquiet. Où puis-je aller à Lille pour me faire soigner ?",
+            "Quels sont les 10 meilleurs hôpitaux privés à Bordeaux pour les maladies cardiaques ?"
+        ]
+        
         with col1:
-            st.info("**Quel est le meilleur hôpital de France ?**")
+            if st.button(example_questions[0], key="example1", help="Cliquez pour poser cette question"):
+                st.session_state.prompt = example_questions[0]
+                st.rerun()
         with col2:
-            st.info("**Y a-t-il des hôpitaux publics avec un service de proctologie dans la région Nantaise ?**")
+            if st.button(example_questions[1], key="example2", help="Cliquez pour poser cette question"):
+                st.session_state.prompt = example_questions[1]
+                st.rerun()
         with col3:
-            st.info("**Est-ce que l'hôpital de la pitié salpétrière est un bon hôpital en cas de problèmes auditifs ?**")
+            if st.button(example_questions[2], key="example3", help="Cliquez pour poser cette question"):
+                st.session_state.prompt = example_questions[2]
+                st.rerun()
         
         # Button to start a new conversation
         if st.sidebar.button("🔄 Démarrer une nouvelle conversation"):
@@ -239,6 +244,8 @@ class StreamlitChatbot:
         
         # Display the full conversation history    
         self.display_conversation()      
+        
+        
             
 def main():
     """
@@ -246,6 +253,7 @@ def main():
     """
     chatbot = StreamlitChatbot()
     chatbot.run()
+
 
 if __name__ == "__main__":
     main()

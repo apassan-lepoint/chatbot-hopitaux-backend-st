@@ -38,16 +38,13 @@ def ask_question(query: UserQuery):
     Handles POST requests to the /ask endpoint.
     Processes a user query by passing the prompt and optional specialty to the pipeline,
         and returns the chatbot's response and related links.
-
     Args:
         query (UserQuery): The user's query containing the prompt and optional specialty.
             Extracted from the request body 
             Expects a JSON object with "prompt" keys.
-
     Returns:
         dict: JSON object with the chatbot's final answer and links.
     """
-
     logger.info(f"Received /ask request: {query}")
     
     # Sanity checks for the user query
@@ -61,19 +58,18 @@ def ask_question(query: UserQuery):
     logger.info("Response generated for /ask endpoint")
     return {"result": result, "links": link} 
 
+
 @router.post("/chat", response_model=ChatResponse) # Define the /chat endpoint for multi-turn conversations
 def chat(request: ChatRequest):
     """
     Multi-turn chat endpoint. Accepts user prompt and conversation history.
     Determines if the prompt is a modification or a new question.
-    
     Args:
         request (ChatRequest): The chat request containing the user's prompt and conversation history.  
     
     Returns:
         ChatResponse: The chatbot's response, updated conversation history, and ambiguity flag.
     """
-    
     # Sanity checks for the user query
     check_message_length_fastapi(request.prompt)
     check_message_pertinence_fastapi(request.prompt, llm_service, pertinence_check2=False)
