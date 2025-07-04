@@ -72,6 +72,7 @@ class Pipeline:
         
         return base_message.format(count=count, specialty=specialty_part, location=location_part)
 
+
     def _create_response_and_log(self, message: str, table_str: str, prompt: str) -> str:
         """
         Helper method to create final response, log it, and save to CSV.
@@ -89,6 +90,23 @@ class Pipeline:
         logger.debug(f"Formatted response: {response}")
         return response
 
+    
+    def _try_radius_search(self, df: pd.DataFrame, radius: int, top_k: int, prompt: str) -> str:
+        """
+        Try to find results within a specific radius.
+        
+        Args:
+            df (pd.DataFrame): DataFrame with hospitals and distances
+            radius (int): Search radius in kilometers
+            top_k (int): Number of top hospitals to return
+            prompt (str): The user's question
+            
+        Returns:
+            str: Formatted response string if results found, None otherwise
+        """
+        return self.get_filtered_and_sorted_df(df, radius, top_k, prompt)
+
+    
     def reset_attributes(self):
         """
         Resets pipeline attributes for a new user query.
