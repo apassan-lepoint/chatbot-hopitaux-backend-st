@@ -18,8 +18,14 @@ from typing import Dict
 # Prompt templates for LLM interactions
 PROMPT_INSTRUCTIONS: Dict[str, str] = {
     "detect_specialty_prompt": """
-Voici un message pour lequel tu vas devoir choisir la spécialité qui correspond le plus. 
-Voici mon message : {prompt}.
+Voici un message pour lequel tu vas devoir choisir la spécialité qui correspond le plus.
+
+HISTORIQUE DE CONVERSATION:
+{conv_history}
+
+MESSAGE À ANALYSER: {prompt}
+
+Si un historique de conversation est fourni ci-dessus, analysez le nouveau message en tenant compte du contexte conversationnel. Une spécialité peut être mentionnée de manière implicite si le contexte de la conversation montre qu'on parle d'une spécialité spécifique.
 
 Voici une liste de spécialité pour laquelle tu vas devoir choisir la spécialité qui correspond le plus à mon message : 
 liste des spécialités: '{specialty_list}'. 
@@ -31,17 +37,30 @@ Analysez le message de l'utilisateur et déterminez si une ou plusieurs spécial
 1 - Une spécialité médicale mentionnée
 2 - Plusieurs spécialités médicales mentionnées
 
-Exemples: 
+Exemples pour messages standalone: 
 Pour le message 'Quel est le meilleur hôpital privé à Paris?', tu me répondras 0.
 Pour le message 'Quels sont les trois meilleurs hôpitaux en France', tu me répondras 0.
 Pour le message 'Quel est le meilleur hôpital d'audition?', tu me répondras 1.
 Pour le message 'Je veux soigner mon AVC?', tu me répondras 1.
 Pour le message 'Je cherche un hôpital pour un accouchement', tu me répondras 2.
 Pour le message 'J'ai mal au genou', tu me répondras 2.
+
+Exemples avec contexte conversationnel:
+- Avec historique sur la cardiologie, 'et privé?' → 1 (la spécialité cardiologie est implicitement mentionnée)
+- Avec historique sur plusieurs spécialités, 'pour les enfants' → 2 (peut référer à plusieurs spécialités pédiatriques)
+- Avec historique général, 'orthopédie' → 1 (spécialité explicitement mentionnée)
 """,
 
     "second_detect_specialty_prompt": """
-Voici un message pour lequel tu vas devoir trouver la ou les pathologie(s) qui correspondent le plus: '{prompt}'
+Voici un message pour lequel tu vas devoir trouver la ou les pathologie(s) qui correspondent le plus.
+
+HISTORIQUE DE CONVERSATION:
+{conv_history}
+
+MESSAGE À ANALYSER: '{prompt}'
+
+Si un historique de conversation est fourni ci-dessus, analysez le nouveau message en tenant compte du contexte conversationnel. Une spécialité peut être mentionnée de manière implicite si le contexte de la conversation montre qu'on parle d'une spécialité spécifique.
+
 Voici la liste des pathologies et des mots clés associés pour t'aider: {mapping_words}
 
 Si une seule spécialité de la liste correspond à ma demande, réponds UNIQUEMENT avec la spécialité exacte de la liste. 
@@ -52,15 +71,32 @@ Exemple: pour le message 'Je cherche un hôpital pour un accouchement', tu me r�
 Exemple: pour le message 'J'ai mal au genou', tu me répondras 'plusieurs correspondances: Prothèse de genou, Ligaments du genou'.
 
 Si aucune spécialité de la liste est liée à ma demande, renvoie moi EXACTEMENT ces deux mots: 'aucune correspondance'
+
+ATTENTION: Soyez attentif aux problèmes digestifs et gastro-intestinaux. Les termes comme 'gastro-entérite', 'diarrhée', 'vomissements', 'maux de ventre', 'troubles digestifs' peuvent correspondre à des spécialités comme 'Proctologie', 'Maladies inflammatoires chroniques de l'intestin (MICI)', ou autres spécialités digestives de la liste.
+
+Exemples spécifiques:
+- 'J'ai une gastro-entérite' → 'Proctologie' (si cette spécialité existe dans la liste)
+- 'J'ai des troubles digestifs' → 'Maladies inflammatoires chroniques de l'intestin (MICI)' (si cette spécialité existe dans la liste)
+- 'J'ai mal au ventre' → 'Proctologie' (si cette spécialité existe dans la liste)
+
+Exemples avec contexte conversationnel:
+- Avec historique sur la cardiologie, 'et privé?' → 'Cardiologie interventionnelle' (si cette spécialité existe dans la liste)
+- Avec historique sur plusieurs spécialités du genou, 'pour les enfants' → 'plusieurs correspondances: Orthopédie pédiatrique, Prothèse de genou' (si ces spécialités existent)
+
 N'invente pas de spécialité qui n'est pas dans la liste
 """,
 
     "sanity_check_medical_pertinence_prompt": """
 Évaluez si le message suivant a un rapport avec la santé humaine ou les services de soins.
 
-{conv_history}Message à évaluer: '{prompt}'
+HISTORIQUE DE CONVERSATION:
+{conv_history}
+
+MESSAGE À ÉVALUER: '{prompt}'
 
 Si un historique de conversation est fourni ci-dessus, analysez le nouveau message en tenant compte du contexte conversationnel. Un message peut être pertinent même s'il semble incomplet ou ambigu, si le contexte de la conversation montre qu'il s'agit d'une suite logique d'une discussion sur la santé.
+
+ATTENTION: Les questions de suivi sur les hôpitaux publics/privés sont TOUJOURS pertinentes. Les mots comme "privé", "public", "et privé?", "et public?" dans le contexte d'une discussion sur les hôpitaux sont des continuations légitimes de discussions médicales.
 
 Répondez UNIQUEMENT avec 1 si pertinent, 0 si non pertinent.
 
@@ -71,18 +107,28 @@ Exemples pour messages standalone:
 - 'Les hôpitaux privés sont ils meilleurs que les publiques?' → 1
 - 'Je mange des frites' → 0
 
-Exemples pour messages avec contexte conversationnel:
+Exemples pour messages avec contexte conversationnel (TRÈS IMPORTANT):
 - Avec historique montrant une discussion sur les hôpitaux, 'Et à Lyon ?' → 1 (question de suivi sur les hôpitaux)
 - Avec historique sur la cardiologie, 'Merci' → 1 (remerciement dans contexte médical)
+- Avec historique sur hôpitaux publics, 'et privé?' → 1 (question de suivi sur le secteur privé)
+- Avec historique sur hôpitaux privés, 'et public?' → 1 (question de suivi sur le secteur public)
+- Avec historique sur cardiologie publique, 'privé?' → 1 (question de suivi sur le secteur privé)
+- Avec historique mentionnant "privés", 'et privé?' → 1 (demande de précision sur le secteur privé)
+- Avec historique sur hôpitaux de Bordeaux, 'publics aussi?' → 1 (question de suivi sur le secteur public)
 - Même avec contexte médical, 'Parle-moi de football' → 0 (hors-sujet)
 """,
 
     "sanity_check_chatbot_pertinence_prompt": """
 Vérifiez si cette question concerne le classement des hôpitaux.
 
-{conv_history}Message à évaluer: '{prompt}'
+HISTORIQUE DE CONVERSATION:
+{conv_history}
+
+MESSAGE À ÉVALUER: '{prompt}'
 
 Si un historique de conversation est fourni ci-dessus, analysez le nouveau message en tenant compte du contexte conversationnel. Un message peut être pertinent même s'il semble incomplet ou ambigu, si le contexte de la conversation montre qu'il s'agit d'une suite logique d'une discussion sur les classements d'hôpitaux.
+
+ATTENTION: Les questions de suivi sur les hôpitaux publics/privés sont TOUJOURS pertinentes. Les mots comme "privé", "public", "et privé?", "et public?" dans le contexte d'une discussion sur les hôpitaux sont des continuations légitimes.
 
 Répondez UNIQUEMENT avec 1 si pertinent, 0 si non pertinent.
 
@@ -90,6 +136,7 @@ Une question est pertinente si elle concerne au moins un des cas suivants:
 - Une maladie, un symptôme ou une spécialité médicale  
 - Le classement des hôpitaux et cliniques  
 - La recherche d'un hôpital, d'une clinique ou d'un service médical  
+- Une question de suivi sur les secteurs public/privé des hôpitaux
 
 Exemples de questions pertinentes pour messages standalone (repondre 1):  
 - Quel est la meilleur clinique de France ?
@@ -107,16 +154,24 @@ Exemples de questions non pertinentes pour messages standalone (repondre 0):
 - Dois-je prendre du paracétamol pour ma fièvre ? #Il s'agit d'une demande d'expertise médical qui n'est pas dans le cadre de la recherche d'un établissement de soin
 - Puis-je perdre la vue si j'ai un glaucome? #Il s'agit d'une demande d'expertise médical qui n'est pas dans le cadre de la recherche d'un établissement de soin
 
-Exemples avec contexte conversationnel:
+Exemples avec contexte conversationnel (TRÈS IMPORTANT):
 - Avec historique sur les hôpitaux parisiens, 'Et à Lyon ?' → 1 (question de suivi sur les hôpitaux)
 - Avec historique sur les classements, 'Combien coûte une consultation ?' → 0 (question sur les coûts, pas sur les classements)
 - Avec historique sur la recherche d'hôpital, 'Merci beaucoup' → 1 (remerciement dans contexte de recherche d'hôpital)
+- Avec historique sur hôpitaux publics, 'et privé?' → 1 (question de suivi sur le secteur privé)
+- Avec historique sur hôpitaux privés, 'et public?' → 1 (question de suivi sur le secteur public)
+- Avec historique sur cardiologie publique, 'privé?' → 1 (question de suivi sur le secteur privé)
+- Avec historique mentionnant "privés", 'et privé?' → 1 (demande de précision sur le secteur privé)
+- Avec historique sur hôpitaux de Bordeaux, 'publics aussi?' → 1 (question de suivi sur le secteur public)
 """,
 
     "detect_city_prompt": """
 Analysez cette phrase pour détecter des informations de localisation.
 
-{conv_history}Message à analyser: '{prompt}'
+HISTORIQUE DE CONVERSATION:
+{conv_history}
+
+MESSAGE À ANALYSER: '{prompt}'
 
 Si un historique de conversation est fourni ci-dessus, analysez le nouveau message en tenant compte du contexte conversationnel. Une ville peut être mentionnée de manière implicite si le contexte de la conversation montre qu'on parle d'une localisation spécifique.
 
@@ -135,7 +190,10 @@ Exemples avec contexte conversationnel:
     "second_detect_city_prompt": """
 Quelle ville ou département est mentionné par la phrase suivante?
 
-{conv_history}Message à analyser: '{prompt}'
+HISTORIQUE DE CONVERSATION:
+{conv_history}
+
+MESSAGE À ANALYSER: '{prompt}'
 
 Si un historique de conversation est fourni ci-dessus, analysez le nouveau message en tenant compte du contexte conversationnel. Une ville peut être mentionnée de manière implicite si le contexte de la conversation montre qu'on parle d'une localisation spécifique.
 
@@ -155,44 +213,91 @@ Exemples avec contexte conversationnel:
 """,
 
     "detect_topk_prompt": """
-Extrayez le nombre d'établissements demandés dans: '{prompt}'
+Extrayez le nombre d'établissements demandés dans le message suivant.
+
+HISTORIQUE DE CONVERSATION:
+{conv_history}
+
+MESSAGE À ANALYSER: '{prompt}'
+
+Si un historique de conversation est fourni ci-dessus, analysez le nouveau message en tenant compte du contexte conversationnel. Le nombre d'établissements peut être mentionné de manière implicite si le contexte de la conversation montre qu'on parle d'un nombre spécifique.
+
 Répondez UNIQUEMENT avec le nombre (1-50) ou 0 si non mentionné.
 
 Par exemple: pour la phrase 'Quels sont les trois meilleurs hôpitaux pour soigner mon audition ?', tu me retourneras: '3'.
 
 Si la phrase inclue une expression comme 'le plus xxx' ou du superlatif qui implique implicitement une seule entité comme 'le meilleur', alors tu me retourneras '1'
 Par exemple: pour la phrase 'Quel est la meilleur clinique de Nantes?' ou 'Dis moi l'établissement le plus populaire de France' tu me retourneras: '1'.
+
+Exemples avec contexte conversationnel:
+- Avec historique demandant "les 5 meilleurs", 'et privé?' → 5 (garde le nombre du contexte)
+- Avec historique général, 'le meilleur' → 1 (nouveau nombre explicite)
+- Avec historique sans nombre, 'aussi' → 0 (aucun nombre mentionné)
 """,
 
     "detect_institution_type_prompt": """
-Un des noms exact de ma liste d'établissements est il mentionné précisément dans cette phrase: '{prompt}'? Voici ma liste d'établissements:
-{institution_list}
+Un des noms exact de ma liste d'établissements est il mentionné précisément dans cette phrase?
+
+HISTORIQUE DE CONVERSATION:
+{conv_history}
+
+MESSAGE À ANALYSER: '{prompt}'
+
+Si un historique de conversation est fourni ci-dessus, analysez le nouveau message en tenant compte du contexte conversationnel. Un nom d'établissement peut être mentionné de manière implicite si le contexte de la conversation montre qu'on parle d'un établissement spécifique.
+
+Voici ma liste d'établissements: {institution_list}
+
 Réponds UNIQUEMENT avec le nom d'établissement exact de la liste si la phrase contient un des noms exacts d'établissement.
 Si aucun de ces établissement n'est mentionné dans ma phrase, renvoie moi EXACTEMENT ces deux mots: 'aucune correspondance'.
 Si la Ville de l'établissement est mentionnée mais pas le nom complet, par exemple 'Villeneuve-d'Ascq' est mentionné mais pas 'Clinique de Villeneuve-d'Ascq' alors tu renverras 'aucune correspondance'. 
 
 Voici des exemples sans noms d'établissement: pour la phrase 'Je cherche un hôpital pour soigner mon audition à Toulon ?' ou 'Quelle est la meilleure clinique de Limoges?', tu me répondras 'aucune correspondance'.
-Voici un exemple avec noms d'établissement: pour la phrase 'Est-ce que l'Hôpital Edouard-Herriot est bon en cas de problèmes auditifs ?' tu me répondras 'Hôpital Edouard-Herriot'. 
+Voici un exemple avec noms d'établissement: pour la phrase 'Est-ce que l'Hôpital Edouard-Herriot est bon en cas de problèmes auditifs ?' tu me répondras 'Hôpital Edouard-Herriot'.
+
+Exemples avec contexte conversationnel:
+- Avec historique mentionnant 'Hôpital Edouard-Herriot', 'et privé?' → 'aucune correspondance' (pas de nouvel établissement mentionné)
+- Avec historique général, 'à la Pitié-Salpêtrière' → 'Hôpital Pitié-Salpêtrière' (si ce nom exact existe dans la liste)
 """,
 
     "second_detect_institution_type_prompt": """
-Détectez le type d'établissement de soin dans: '{prompt}'
+Détectez le type d'établissement de soin dans le message suivant.
+
+HISTORIQUE DE CONVERSATION:
+{conv_history}
+
+MESSAGE À ANALYSER: '{prompt}'
+
+Si un historique de conversation est fourni ci-dessus, analysez le nouveau message en tenant compte du contexte conversationnel. Le type d'établissement peut être mentionné de manière implicite si le contexte de la conversation montre qu'on parle d'un type spécifique.
+
 Répondez UNIQUEMENT avec:
 - 0 si aucun type mentionné
 - 1 si public
 - 2 si privé
+
+Exemples avec contexte conversationnel:
+- Avec historique sur les hôpitaux publics, 'et privé?' → 2 (demande maintenant le privé)
+- Avec historique sur les hôpitaux privés, 'et public?' → 1 (demande maintenant le public)
+- Avec historique général, 'aussi' → 0 (aucun type spécifique mentionné)
 """,
 
     "continue_conversation_prompt": """
-Vous êtes un assistant intelligent. Voici l'historique de la conversation précédente entre l'utilisateur et vous :{conv_history}
-Réponds au nouveau message de l'utilisateur:{prompt}
+Vous êtes un assistant intelligent. 
+
+HISTORIQUE DE CONVERSATION:
+{conv_history}
+
+NOUVEAU MESSAGE DE L'UTILISATEUR: {prompt}
+
+Réponds au nouveau message de l'utilisateur en tenant compte de l'historique de conversation.
 """,
         
     "detect_modification_prompt": """
 Analysez si ce message modifie la question précédente en gardant le même contexte (lieu, spécialité, etc.):
 
-Historique: {conv_history}
-Nouveau message: {prompt}
+HISTORIQUE DE CONVERSATION:
+{conv_history}
+
+NOUVEAU MESSAGE: {prompt}
 
 EXEMPLES de modifications (retourner 1):
 - "et privé ?" → modifie le type d'hôpital
@@ -225,8 +330,11 @@ Reformule une nouvelle question complète et précise qui prend en compte la mod
 
     "continuity_check_prompt": """
 Analysez si ce nouveau message est une continuation de la conversation précédente:
-Historique: {conv_history}
-Nouveau message: {prompt}
+
+HISTORIQUE DE CONVERSATION:
+{conv_history}
+
+NOUVEAU MESSAGE: {prompt}
 
 Répondez UNIQUEMENT avec:
 - 1 si c'est une continuation de la conversation
@@ -234,7 +342,15 @@ Répondez UNIQUEMENT avec:
 """,
 
     "search_needed_check_prompt": """
-Déterminez si cette question nécessite une recherche dans les données de classement des hôpitaux: '{prompt}'
+Déterminez si cette question nécessite une recherche dans les données de classement des hôpitaux.
+
+HISTORIQUE DE CONVERSATION:
+{conv_history}
+
+MESSAGE À ANALYSER: '{prompt}'
+
+Si un historique de conversation est fourni ci-dessus, analysez le nouveau message en tenant compte du contexte conversationnel. Une recherche peut être nécessaire même pour des messages courts si le contexte indique une demande de données hospitalières.
+
 Répondez UNIQUEMENT avec 1 si une recherche est nécessaire, 0 sinon.
 
 Une recherche est nécessaire si la question demande:
@@ -247,12 +363,21 @@ Une recherche N'EST PAS nécessaire pour:
 - Des questions générales sur la santé
 - Des demandes d'explications sur les réponses précédentes
 - Des clarifications ou reformulations
+- Des remerciements simples
+
+Exemples avec contexte conversationnel:
+- Avec historique sur la recherche d'hôpitaux, 'et privé?' → 1 (modification de critères de recherche)
+- Avec historique sur classements, 'Merci pour ces informations' → 0 (remerciement simple)
+- Avec historique général, 'les meilleurs à Lyon' → 1 (nouvelle demande de recherche)
 """,
 
     "merge_query_check_prompt": """
 Analysez comment combiner cette nouvelle demande avec la conversation précédente:
-Historique: {conv_history}
-Nouveau message: {prompt}
+
+HISTORIQUE DE CONVERSATION:
+{conv_history}
+
+NOUVEAU MESSAGE: {prompt}
 
 Répondez UNIQUEMENT avec:
 - 1 si les filtres du nouveau message doivent REMPLACER ceux de la conversation précédente
@@ -267,8 +392,10 @@ Exemples:
 Créez une nouvelle question en fusionnant l'historique et le nouveau message.
 Les filtres du nouveau message remplacent ceux conflictuels de l'historique.
 
-Historique: {conv_history}
-Nouveau message: {prompt}
+HISTORIQUE DE CONVERSATION:
+{conv_history}
+
+NOUVEAU MESSAGE: {prompt}
 
 Reformulez en une question complète et précise:
 """,
@@ -276,8 +403,10 @@ Reformulez en une question complète et précise:
     "add_query_rewrite_prompt": """
 Créez une nouvelle question en ajoutant les filtres du nouveau message à ceux de l'historique.
 
-Historique: {conv_history}
-Nouveau message: {prompt}
+HISTORIQUE DE CONVERSATION:
+{conv_history}
+
+NOUVEAU MESSAGE: {prompt}
 
 Reformulez en une question complète et précise qui combine tous les critères:
 """
