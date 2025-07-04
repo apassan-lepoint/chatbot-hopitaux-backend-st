@@ -39,21 +39,35 @@ def format_correspondance_list(specialty_list: str) -> str:
     Returns:
         str: Formatted string with deduplicated specialties.
     """
-    # Remove the prefix and strip whitespace
-    options_string = specialty_list.removeprefix("multiple matches:").strip()
+    # Handle both French and English prefixes
+    if specialty_list.startswith("plusieurs correspondances:"):
+        options_string = specialty_list.removeprefix("plusieurs correspondances:").strip()
+        prefix = "multiple matches:"
+    elif specialty_list.startswith("multiple matches:"):
+        options_string = specialty_list.removeprefix("multiple matches:").strip()
+        prefix = "multiple matches:"
+    else:
+        # If no prefix found, assume the whole string is the options
+        options_string = specialty_list.strip()
+        prefix = "multiple matches:"
     
     # Split the string into a list by commas
     options_list = options_string.split(',')
     
     # Remove periods and strip whitespace from each element
     options_list = [element.replace('.', '') for element in options_list]
-    options_list = [element.strip() for element in options_list]
+    options_list = [element.strip() for element in options_list if element.strip()]
     
-    # Filter elements that are present in the original string (deduplication logic)
-    result = [element for element in options_list if element in specialty_list]
+    # Remove duplicates while preserving order
+    seen = set()
+    result = []
+    for element in options_list:
+        if element not in seen:
+            seen.add(element)
+            result.append(element)
     
     # Reconstruct the formatted specialty string
-    specialty="multiple matches:"+",".join(result)
+    specialty = prefix + ",".join(result)
     
     return specialty
   

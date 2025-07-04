@@ -16,6 +16,7 @@ if repo_root not in sys.path:
     sys.path.insert(0, repo_root)
 
 import streamlit as st
+from datetime import datetime
 from app.services.pipeline_service import Pipeline
 from app.services.llm_service import LLMService
 from app.utils.formatting import format_links
@@ -62,6 +63,48 @@ class StreamlitChatbot:
         self.MAX_MESSAGES = 5  # Maximum number of messages in the conversation
 
 
+    def _get_current_specialty_context(self):
+        """
+        Get the current specialty context from session state.
+        
+        Returns:
+            str: The detected specialty or selected specialty from session state
+        """
+        # Check if user has selected a specialty
+        selected_specialty = get_session_state_value("selected_specialty", None)
+        if selected_specialty:
+            return selected_specialty
+        
+        # Check specialty context first
+        specialty_context = get_session_state_value("specialty_context", None)
+        if specialty_context and specialty_context.get("selected_specialty"):
+            return specialty_context["selected_specialty"]
+        
+        # Check if we have a detected specialty (including single specialties from multiple matches)
+        detected_specialty = get_session_state_value("specialty", "")
+        if detected_specialty and not detected_specialty.startswith(("multiple matches:", "plusieurs correspondances:")):
+            return detected_specialty
+        
+        return ""
+
+    def _normalize_specialty_format(self, specialty: str) -> str:
+        """Normalize specialty format to use consistent prefix."""
+        if specialty.startswith("plusieurs correspondances:"):
+            return specialty.replace("plusieurs correspondances:", "multiple matches:")
+        return specialty
+
+    def _extract_specialty_options(self, specialty: str) -> list:
+        """Extract specialty options from formatted string."""
+        if specialty.startswith("multiple matches:"):
+            options_str = specialty.removeprefix("multiple matches:").strip()
+        elif specialty.startswith("plusieurs correspondances:"):
+            options_str = specialty.removeprefix("plusieurs correspondances:").strip()
+        else:
+            return []
+        
+        return list(dict.fromkeys([opt.strip() for opt in options_str.split(',') if opt.strip()]))
+    
+    
     def _handle_case_with_rewrite(self, case_name: str, user_input: str, conv_history: str, rewrite_method):
         """
         Helper method to handle cases that require query rewriting.
@@ -81,9 +124,12 @@ class StreamlitChatbot:
             rewritten_query = execute_with_spinner('Réécriture de la requête', rewrite_method, user_input, conv_history)
             logger.debug(f"Rewritten query ({case_name.lower()}): {rewritten_query}")
             
-            # Generate response using pipeline (same as FastAPI)
+            # Get current specialty context
+            current_specialty = self._get_current_specialty_context()
+            
+            # Generate response using pipeline with specialty context
             def generate_response():
-                result, links = Pipeline().generate_response(prompt=rewritten_query)
+                result, links = Pipeline().generate_response(prompt=rewritten_query, detected_specialty=current_specialty)
                 # Format links exactly like FastAPI
                 return format_links(result, links)
             
@@ -109,6 +155,8 @@ class StreamlitChatbot:
         try:
             # Get current conversation from session state
             current_conversation = get_conversation_list()
+            
+            # Generate conversational response
             result = execute_with_spinner(
                 'Chargement', 
                 self.llm_service.continue_conversation, 
@@ -138,6 +186,9 @@ class StreamlitChatbot:
             "selected_option": None,
             "prompt": "",
             "specialty": "",
+            "selected_specialty": None,
+            "specialty_context": None,
+            "multiple_specialties": None,
             "city": None,
             "slider_value": None,
         }
@@ -197,21 +248,63 @@ class StreamlitChatbot:
         prompt = get_session_state_value("prompt", "")
         if prompt:
             try:
+                # Check if user has already selected a specialty from multiple options
+                if get_session_state_value("selected_specialty", None) is not None:
+                    # User has selected a specialty, use it
+                    selected_specialty = st.session_state.selected_specialty
+                    logger.info(f"Using previously selected specialty: {selected_specialty}")
+                    self.append_answer(prompt, selected_specialty)
+                    return
+                
+                # Check if we're in the middle of specialty selection
+                multiple_specialties = get_session_state_value("multiple_specialties", None)
+                if multiple_specialties is not None:
+                    # Show radio button for specialty selection
+                    selected_specialty = st.radio(
+                        "Précisez le domaine médical concerné :", 
+                        multiple_specialties, 
+                        index=None,
+                        key="specialty_radio"
+                    )
+                    
+                    if selected_specialty:
+                        # Validate that the selected specialty is valid
+                        if selected_specialty in multiple_specialties:
+                            st.session_state.selected_specialty = selected_specialty
+                            st.session_state.specialty_context = {
+                                'original_query': prompt,
+                                'selected_specialty': selected_specialty,
+                                'timestamp': datetime.now().isoformat()
+                            }
+                            st.session_state.multiple_specialties = None
+                            logger.info(f"User selected valid specialty: {selected_specialty}")
+                            self.append_answer(prompt, selected_specialty)
+                        else:
+                            st.error("Sélection invalide. Veuillez choisir une option dans la liste.")
+                    return
+                
                 # Detect medical specialty if not already set
                 specialty = get_session_state_value("specialty", "")
                 if specialty == "":
-                    st.session_state.specialty = self.llm_service.detect_specialty(prompt)
+                    detected_specialty = self.llm_service.detect_specialty(prompt)
+                    # Normalize the format
+                    st.session_state.specialty = self._normalize_specialty_format(detected_specialty)
                     specialty = st.session_state.specialty
 
                 if specialty.startswith("multiple matches:"):
                     logger.info("Multiple specialties detected, prompting user for selection")
-                    # Extract options from the string
-                    options = list(dict.fromkeys(specialty.removeprefix("multiple matches:").strip().split(',')))
-                    selected_specialty = st.radio("Précisez le domaine médical concerné :", options, index=None)
-                    
-                    if selected_specialty:
-                        self.append_answer(prompt, selected_specialty)
+                    options = self._extract_specialty_options(specialty)
+                    if options:
+                        st.session_state.multiple_specialties = options
+                        st.rerun()
+                    else:
+                        # Fallback to no specialty if extraction fails
+                        self.append_answer(prompt, "aucune correspondance")
                 else:
+                    # Single specialty detected or no specialty
+                    # Handle the case where specialty might be empty or "no specialty match"
+                    if not specialty or specialty in ["no specialty match", "aucune correspondance", ""]:
+                        specialty = "aucune correspondance"
                     self.append_answer(prompt, specialty)
                     
             except Exception as e:
@@ -336,9 +429,12 @@ class StreamlitChatbot:
         st.info("Nouvelle question avec recherche détectée.")
         
         try:
-            # Generate response using pipeline (same as FastAPI)
+            # Get current specialty context
+            current_specialty = self._get_current_specialty_context()
+            
+            # Generate response using pipeline with specialty context
             def generate_response():
-                result, links = Pipeline().generate_response(prompt=user_input)
+                result, links = Pipeline().generate_response(prompt=user_input, detected_specialty=current_specialty)
                 # Format links exactly like FastAPI
                 return format_links(result, links)
             
@@ -414,6 +510,9 @@ class StreamlitChatbot:
             "selected_option": None,
             "prompt": "",
             "specialty": "",
+            "selected_specialty": None,
+            "specialty_context": None,
+            "multiple_specialties": None,
         }
         initialize_session_state(default_values)
         

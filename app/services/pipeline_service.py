@@ -43,6 +43,52 @@ class Pipeline:
         self.institution_name=None
         self.answer=Processing() # Instance of Processing for data extraction and transformation
 
+    def _normalize_specialty_for_display(self, specialty: str) -> str:
+        """
+        Normalize specialty format for display purposes.
+        Converts various specialty formats to user-friendly display format.
+        
+        Args:
+            specialty (str): The specialty string to normalize
+            
+        Returns:
+            str: Normalized specialty string for display
+        """
+        if not specialty:
+            return "aucune correspondance"
+            
+        # Handle no match cases - standardize to French for display
+        if specialty.lower() in ["no specialty match", "aucune correspondance", "no match", ""]:
+            return "aucune correspondance"
+            
+        # Handle multiple matches format
+        if specialty.startswith(("multiple matches:", "plusieurs correspondances:")):
+            if specialty.startswith("multiple matches:"):
+                specialty_list = specialty.replace("multiple matches:", "").strip()
+            else:
+                specialty_list = specialty.replace("plusieurs correspondances:", "").strip()
+            
+            # For display, show the first specialty
+            first_specialty = specialty_list.split(',')[0].strip()
+            return first_specialty
+            
+        return specialty
+
+    def _is_no_specialty_match(self, specialty: str) -> bool:
+        """
+        Check if specialty indicates no match.
+        
+        Args:
+            specialty (str): The specialty string to check
+            
+        Returns:
+            bool: True if specialty indicates no match
+        """
+        if not specialty:
+            return True
+        # Standardize check to handle both languages but prioritize English
+        return specialty.lower() in ["no specialty match", "aucune correspondance", "no match", ""]
+
     
     def _format_response_with_specialty(self, base_message: str, count: int, radius_km: int = None, city: str = None) -> str:
         """
@@ -62,13 +108,14 @@ class Pipeline:
         else:
             location_part = ""
         
-        if self.specialty == 'aucune correspondance':
+        if self._is_no_specialty_match(self.specialty):
             if count == 1:
                 specialty_part = "du palmarès général"
             else:
                 specialty_part = "au classement général" if "classement" in base_message else "du palmarès général"
         else:
-            specialty_part = f"pour la pathologie {self.specialty}" if "pathologie" in base_message else f"pour la pathologie: {self.specialty}"
+            display_specialty = self._normalize_specialty_for_display(self.specialty)
+            specialty_part = f"pour la pathologie {display_specialty}" if "pathologie" in base_message else f"pour la pathologie: {display_specialty}"
         
         return base_message.format(count=count, specialty=specialty_part, location=location_part)
 
@@ -135,24 +182,25 @@ class Pipeline:
         return self.specialty
 
     
-    def build_ranking_dataframe_with_distances(self, prompt: str, excel_path: str )-> pd.DataFrame:
+    def build_ranking_dataframe_with_distances(self, prompt: str, excel_path: str, detected_specialty: str = None) -> pd.DataFrame:
         """
         Retrieves the ranking DataFrame based on the user query, including distance calculations if a city is specified.
         Args:
             prompt (str): The user's question.
             excel_path (str): Path to the ranking Excel file.
+            detected_specialty (str, optional): Pre-detected specialty from conversation context.
         Returns:
             pd.DataFrame: DataFrame with ranking and distance information, or general results if no city is found.
         """
         logger.info(f"Building ranking DataFrame with distances for prompt: {prompt}")
         
         # Find the relevant Excel sheet and extract info
-        self.df_gen=self.answer.find_excel_sheet_with_privacy(prompt)
+        self.df_gen = self.answer.find_excel_sheet_with_privacy(prompt, detected_specialty)
         self.extract_query_parameters(prompt)
         if self.answer.specialty_ranking_unavailable:
             logger.warning("Ranking not found for requested specialty/type")
             return self.df_gen
-        if self.answer.city == 'aucune correspondance':
+        if self.answer.city in ['aucune correspondance', 'no match'] or not self.answer.city:
             logger.info("No city found in the query, returning general ranking DataFrame")
             self.city_not_specified= True
             return self.df_gen
@@ -191,10 +239,11 @@ class Pipeline:
             # If not present, return an appropriate message depending on specialty context
             if validity == False:
                 logger.warning(f"Institution {self.institution_name} not found in DataFrame")
-                if self.specialty=='aucune correspondance':
+                display_specialty = self._normalize_specialty_for_display(self.specialty)
+                if self._is_no_specialty_match(self.specialty):
                     return f"Cet établissement ne fait pas partie des 50 meilleurs établissements du palmarès global"
                 else: 
-                    return f"Cet établissement n'est pas présent pour la pathologie {self.specialty}, vous pouvez cependant consulter le classement suivant:"
+                    return f"Cet établissement n'est pas présent pour la pathologie {display_specialty}, vous pouvez cependant consulter le classement suivant:"
             
             # If present, find its position in the sorted DataFrame
             df_sorted=df.sort_values(by='Note / 20', ascending=False).reset_index(drop=True)
@@ -210,11 +259,12 @@ class Pipeline:
 
             #  Build the response string with the institution's rank and context
             response=f"{self.institution_name} est classé n°{position} "
-            if self.specialty=='aucune correspondance':
+            display_specialty = self._normalize_specialty_for_display(self.specialty)
+            if self._is_no_specialty_match(self.specialty):
                 response=response+f"du palmarès général"
             else:
-                response=response+f"du palmarès {self.specialty}."
-            if self.institution_type!='aucune correspondance':
+                response=response+f"du palmarès {display_specialty}."
+            if self.institution_type not in ['aucune correspondance', 'no match'] and self.institution_type:
                         response=response+f" {self.institution_type}."
             logger.debug(f"Formatted response: {reponse}")
             return response
@@ -279,7 +329,7 @@ class Pipeline:
 
         # Defensive insertion: ensure detected_specialty is never empty or None
         if not detected_specialty or (isinstance(detected_specialty, str) and detected_specialty.strip() == ""):
-            detected_specialty = "aucune correspondance"
+            detected_specialty = "no specialty match"
         
         # Set the specialty in the processing service
         if self.specialty is not None:
@@ -292,7 +342,7 @@ class Pipeline:
         
         # Retrieve the DataFrame with ranking and (if applicable) distances
         logger.debug("Retrieving ranking DataFrame with distances")
-        df = self.build_ranking_dataframe_with_distances(prompt, relevant_file)
+        df = self.build_ranking_dataframe_with_distances(prompt, relevant_file, detected_specialty)
         logger.debug(f"Retrieved DataFrame shape: {df.shape if hasattr(df, 'shape') else 'N/A'}")
         
         # Handle geolocation API errors
@@ -337,10 +387,11 @@ class Pipeline:
             res_str = tableau_en_texte(res_tab, self.city_not_specified)
             
             base_message = "Voici le meilleur établissement" if top_k == 1 else f"Voici les {top_k} meilleurs établissements"
-            if self.specialty == 'aucune correspondance':
+            display_specialty = self._normalize_specialty_for_display(self.specialty)
+            if self._is_no_specialty_match(self.specialty):
                 res = f"{base_message}:<br> \n{res_str}"
             else:
-                res = f"{base_message} pour la pathologie {self.specialty}<br> \n{res_str}"
+                res = f"{base_message} pour la pathologie {display_specialty}<br> \n{res_str}"
             
             logger.debug(f"Result: {res}, Links: {self.link}")
             return (res, self.link)

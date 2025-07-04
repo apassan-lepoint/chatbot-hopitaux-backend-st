@@ -69,7 +69,15 @@ class QueryExtractionService:
             Exception: If the LLM invocation fails.
         """
         formatted_prompt = format_second_detect_specialty_prompt(self.key_words, prompt, conv_history)
-        return invoke_llm_with_error_handling(self.model, formatted_prompt, "detect_specialty")
+        
+        # Add standardization to English after LLM call
+        specialty = invoke_llm_with_error_handling(self.model, formatted_prompt, "detect_specialty")
+        
+        # Standardize French responses to English for internal processing
+        if specialty == 'aucune correspondance':
+            specialty = "no specialty match"
+        
+        return specialty
         
 
     def detect_specialty_full(self, prompt: str, conv_history: str = "") -> str:
@@ -82,7 +90,11 @@ class QueryExtractionService:
         # Step 1: LLM with keyword mapping approach
         specialty = self.detect_specialty(prompt, conv_history=conv_history)
 
-        # Step 2: If ambiguous (multiple matches), clarify using specialty_categories_dict
+        # Step 2: Normalize format - convert French to English format
+        if specialty.startswith("plusieurs correspondances:"):
+            specialty = specialty.replace("plusieurs correspondances:", "multiple matches:")
+
+        # Step 3: If ambiguous (multiple matches), clarify using specialty_categories_dict
         if ',' in specialty and not specialty.startswith('multiple matches:'):
             specialty = 'multiple matches: ' + specialty
 
@@ -94,9 +106,9 @@ class QueryExtractionService:
                 specialty = "no specialty match"
             return specialty
 
-        # Step 3: If no match, we already used the keyword mapping approach in detect_specialty
+        # Step 4: If no match, we already used the keyword mapping approach in detect_specialty
         # No need for additional retry since detect_specialty now uses the keyword mapping
-        if specialty == 'aucune correspondance' or not specialty or specialty.strip() == "":
+        if not specialty or specialty.strip() == "":
             specialty = "no specialty match"
             
         return specialty
