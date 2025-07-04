@@ -150,13 +150,27 @@ Réponds au nouveau message de l'utilisateur:{prompt}
 """,
         
     "detect_modification_prompt": """
-Analysez si ce message modifie la question précédente:
+Analysez si ce message modifie la question précédente en gardant le même contexte (lieu, spécialité, etc.):
+
 Historique: {conv_history}
 Nouveau message: {prompt}
 
+EXEMPLES de modifications (retourner 1):
+- "et privé ?" → modifie le type d'hôpital
+- "et public ?" → modifie le type d'hôpital  
+- "pour neurologie ?" → modifie la spécialité
+- "à Lyon ?" → modifie la ville
+- "orthopédie ?" → remplace la spécialité
+- Questions très courtes qui font référence au contexte précédent
+
+EXEMPLES de nouvelles questions (retourner 0):
+- Questions complètes avec lieu ET spécialité
+- Questions sur un sujet complètement différent
+- Questions générales sur le système
+
 Répondez UNIQUEMENT avec:
 - 0 pour nouvelle question
-- 1 pour modification
+- 1 pour modification de la question précédente
 - 2 pour ambiguous
 """,
         
