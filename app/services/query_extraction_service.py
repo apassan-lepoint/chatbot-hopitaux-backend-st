@@ -56,22 +56,23 @@ class QueryExtractionService:
         self._institution_name = None
         self._institution_mentioned = False
 
-    def detect_specialty(self, prompt: str, specialty_list: list = specialty_list): 
+    def detect_specialty(self, prompt: str, specialty_list: list = specialty_list, conv_history: str = ""): 
         """
         Detects the medical specialty from the given prompt using the keyword mapping approach.
         Args:
             prompt (str): The input prompt containing the query.
             specialty_list (list): A list of specialties (kept for compatibility but not used).
+            conv_history (str): Optional conversation history for context.
         Returns:
             str: The detected specialty from the prompt.
         Raises:
             Exception: If the LLM invocation fails.
         """
-        formatted_prompt = format_second_detect_specialty_prompt(self.key_words, prompt)
+        formatted_prompt = format_second_detect_specialty_prompt(self.key_words, prompt, conv_history)
         return invoke_llm_with_error_handling(self.model, formatted_prompt, "detect_specialty")
         
 
-    def detect_specialty_full(self, prompt: str) -> str:
+    def detect_specialty_full(self, prompt: str, conv_history: str = "") -> str:
         """
         Full specialty detection logic:
         1. Try LLM with keyword mapping approach.
@@ -79,7 +80,7 @@ class QueryExtractionService:
         Always returns a string (never empty).
         """
         # Step 1: LLM with keyword mapping approach
-        specialty = self.detect_specialty(prompt)
+        specialty = self.detect_specialty(prompt, conv_history=conv_history)
 
         # Step 2: If ambiguous (multiple matches), clarify using specialty_categories_dict
         if ',' in specialty and not specialty.startswith('multiple matches:'):

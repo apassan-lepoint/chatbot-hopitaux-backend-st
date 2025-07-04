@@ -94,12 +94,13 @@ class LLMService:
             logger.error(f"{operation_name} failed: {e}")
             raise
 
-    def detect_specialty(self, prompt: str) -> str: 
+    def detect_specialty(self, prompt: str, conv_history: str = "") -> str: 
         """
         Determines the medical specialty relevant to the user's question using the LLM.
         
         Args:
             prompt (str): The user's question.
+            conv_history (str): Optional conversation history for context.
         
         Returns:
             str: The detected specialty or a message indicating no match.
@@ -110,7 +111,7 @@ class LLMService:
         return self._execute_with_logging(
             "Detecting specialty", 
             prompt, 
-            self.query_extractor.detect_specialty_full
+            lambda p: self.query_extractor.detect_specialty_full(p, conv_history)
         )
 
     def sanity_check_medical_pertinence(self, prompt: str, conv_history: str = "") -> str:

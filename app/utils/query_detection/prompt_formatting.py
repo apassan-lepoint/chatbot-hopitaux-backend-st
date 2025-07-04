@@ -22,8 +22,10 @@ def format_sanity_check_chatbot_pertinence_prompt(prompt: str, conv_history: str
     )
 
 
-def format_second_detect_specialty_prompt(mapping_words, prompt):
-    return PROMPT_INSTRUCTIONS["second_detect_specialty_prompt"].format(mapping_words=mapping_words, prompt=prompt)
+def format_second_detect_specialty_prompt(mapping_words, prompt, conv_history=""):
+    # Format conversation history with proper prefix if provided, empty string otherwise
+    formatted_history = f"Historique de la conversation:\n{conv_history}\n\n" if conv_history.strip() else ""
+    return PROMPT_INSTRUCTIONS["second_detect_specialty_prompt"].format(mapping_words=mapping_words, prompt=prompt, conv_history=formatted_history)
 
 
 def format_detect_city_prompt(prompt: str, conv_history: str = "") -> str:
