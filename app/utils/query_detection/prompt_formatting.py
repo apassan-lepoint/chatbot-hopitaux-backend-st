@@ -46,4 +46,23 @@ def format_detect_modification_prompt(prompt, conv_history):
 
 def format_rewrite_query_prompt(last_query, modification):
     return PROMPT_INSTRUCTIONS["rewrite_query_prompt"].format(last_query=last_query, modification=modification)
-    
+
+
+def format_continuity_check_prompt(prompt, conv_history):
+    return PROMPT_INSTRUCTIONS["continuity_check_prompt"].format(prompt=prompt, conv_history=conv_history)
+
+
+def format_search_needed_check_prompt(prompt):
+    return PROMPT_INSTRUCTIONS["search_needed_check_prompt"].format(prompt=prompt)
+
+
+def format_merge_query_check_prompt(prompt, conv_history):
+    return PROMPT_INSTRUCTIONS["merge_query_check_prompt"].format(prompt=prompt, conv_history=conv_history)
+
+
+def format_merge_query_rewrite_prompt(prompt, conv_history):
+    return PROMPT_INSTRUCTIONS["merge_query_rewrite_prompt"].format(prompt=prompt, conv_history=conv_history)
+
+
+def format_add_query_rewrite_prompt(prompt, conv_history):
+    return PROMPT_INSTRUCTIONS["add_query_rewrite_prompt"].format(prompt=prompt, conv_history=conv_history)

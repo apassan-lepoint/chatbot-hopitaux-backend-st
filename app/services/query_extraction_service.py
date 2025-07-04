@@ -25,6 +25,7 @@ from app.utils.query_detection.institutions import institution_list, institution
 
 from app.utils.query_detection.specialties import specialty_categories_dict, extract_specialty_keywords
 from app.utils.formatting import format_correspondance_list
+from app.utils.llm_helpers import invoke_llm_with_error_handling, invoke_llm_and_parse_boolean
 
 logger = get_logger(__name__)
 
@@ -40,26 +41,7 @@ class QueryExtractionService:
         key_words (optional): A dictionary of keywords to use for detecting specialties.
             If not provided, defaults to None.
         _institution_name: The name of the institution detected in the query.
-        _institution_mentioned: A boolean indicating whether an institution was mentioned in the query.
-    
-    Methods:
-        detect_specialty(prompt: str, specialty_list: list = specialty_list) -> str:
-            Detects the medical specialty from the given prompt using keyword mapping approach.
-        detect_specialty_full(prompt: str) -> str:
-            Full specialty detection logic that combines LLM detection, keyword mapping, and specialty clarification.
-        sanity_check_medical_pertinence(prompt: str) -> str:
-            Checks the medical pertinence of the given prompt using the LLM.
-        sanity_check_chatbot_pertinence(prompt: str) -> str:     
-            Checks the pertinence of the given prompt for the chatbot using the LLM.
-        detect_city(prompt: str) -> str:
-            Detects the city from the given prompt using the LLM.
-        detect_topk(prompt: str) -> str:
-            Detects the top-k results from the given prompt using the LLM.
-        detect_institution_type(prompt: str, institution_list: str = institution_list) -> str:
-            Determines if the user's question mentions a public or private hospital, or none.
-            Also detects if a specific institution is mentioned.
-        institution_name: Property to get the name of the detected institution.
-        institution_mentioned: Property to check if an institution was mentioned in the query.  
+        _institution_mentioned: A boolean indicating whether an institution was mentioned in the query. 
     """
     def __init__(self, model, key_words=None):
         """
@@ -74,7 +56,6 @@ class QueryExtractionService:
         self._institution_name = None
         self._institution_mentioned = False
 
-    
     def detect_specialty(self, prompt: str, specialty_list: list = specialty_list): 
         """
         Detects the medical specialty from the given prompt using the keyword mapping approach.
@@ -87,13 +68,7 @@ class QueryExtractionService:
             Exception: If the LLM invocation fails.
         """
         formatted_prompt = format_second_detect_specialty_prompt(self.key_words, prompt)
-        try:
-            response = self.model.invoke(formatted_prompt)
-        except Exception as e:
-            logger.error(f"LLM invocation failed in detect_specialty: {e}")
-            raise
-        
-        return response.content.strip() if hasattr(response, "content") else str(response).strip()
+        return invoke_llm_with_error_handling(self.model, formatted_prompt, "detect_specialty")
         
 
     def detect_specialty_full(self, prompt: str) -> str:
@@ -132,14 +107,7 @@ class QueryExtractionService:
         Returns True if medically pertinent, False otherwise.
         """
         formatted_prompt = format_sanity_check_medical_pertinence_prompt(prompt)
-        try:
-            response = self.model.invoke(formatted_prompt)
-            raw_response = response.content.strip() if hasattr(response, "content") else str(response).strip()
-            return parse_boolean_response(raw_response)
-        except Exception as e:
-            logger.error(f"LLM invocation failed in sanity_check_medical_pertinence: {e}")
-            raise
-
+        return invoke_llm_and_parse_boolean(self.model, formatted_prompt, "sanity_check_medical_pertinence")
 
     def sanity_check_chatbot_pertinence(self, prompt):
         """
@@ -147,13 +115,7 @@ class QueryExtractionService:
         Returns True if relevant to chatbot, False otherwise.
         """
         formatted_prompt = format_sanity_check_chatbot_pertinence_prompt(prompt)
-        try:
-            response = self.model.invoke(formatted_prompt)
-            raw_response = response.content.strip() if hasattr(response, "content") else str(response).strip()
-            return parse_boolean_response(raw_response)
-        except Exception as e:
-            logger.error(f"LLM invocation failed in sanity_check_chatbot_pertinence: {e}")
-            raise
+        return invoke_llm_and_parse_boolean(self.model, formatted_prompt, "sanity_check_chatbot_pertinence")
 
 
     def detect_city(self, prompt):
@@ -167,24 +129,14 @@ class QueryExtractionService:
         - string: actual city name
         """
         formatted_prompt = format_detect_city_prompt(prompt)
-        try:
-            response1 = self.model.invoke(formatted_prompt)
-            raw_response = response1.content.strip() if hasattr(response1, "content") else str(response1).strip()
-            city_status = parse_city_response(raw_response)
-        except Exception as e:
-            logger.error(f"LLM invocation failed in detect_city: {e}")
-            raise
+        raw_response = invoke_llm_with_error_handling(self.model, formatted_prompt, "detect_city")
+        city_status = parse_city_response(raw_response)
         
         # If a clear city is mentioned, retrieve the actual city name in a second LLM call
         if city_status == CityResponse.CITY_MENTIONED:
             formatted_prompt2 = format_second_detect_city_prompt(prompt)
-            try:
-                response2 = self.model.invoke(formatted_prompt2)
-                city_name = response2.content.strip() if hasattr(response2, "content") else str(response2).strip()
-                return city_name  # Return the actual city name
-            except Exception as e:
-                logger.error(f"LLM invocation failed in detect_city (second call): {e}")
-                raise
+            city_name = invoke_llm_with_error_handling(self.model, formatted_prompt2, "detect_city (second call)")
+            return city_name  # Return the actual city name
         
         return city_status  # Return the numeric status code
 
@@ -195,14 +147,9 @@ class QueryExtractionService:
         Returns integer for top-k or 0 if not mentioned.
         """
         formatted_prompt = format_detect_topk_prompt(prompt)
-        try:
-            response = self.model.invoke(formatted_prompt)
-            raw_response = response.content.strip() if hasattr(response, "content") else str(response).strip()
-            topk = parse_numeric_response(raw_response, 0)
-            return topk if 1 <= topk <= 50 else 0
-        except Exception as e:
-            logger.error(f"LLM invocation failed in get_topk: {e}")
-            raise
+        raw_response = invoke_llm_with_error_handling(self.model, formatted_prompt, "get_topk")
+        topk = parse_numeric_response(raw_response, 0)
+        return topk if 1 <= topk <= 50 else 0
     
     
     @property
@@ -221,14 +168,8 @@ class QueryExtractionService:
         Also detects if a specific institution is mentioned.
         """
         formatted_prompt = format_detect_institution_type_prompt(prompt, institution_list)
-        try:
-            response1 = self.model.invoke(formatted_prompt)
-        except Exception as e:
-            logger.error(f"LLM invocation failed in is_public_or_private: {e}")
-            raise
-
-        institution_name = response1.content.strip() if hasattr(response1, "content") else str(response1).strip()
-        logger.debug(f"LLM response: {response1}")
+        institution_name = invoke_llm_with_error_handling(self.model, formatted_prompt, "is_public_or_private")
+        logger.debug(f"LLM response: {institution_name}")
         
         # Check if the institution is in the list (split for robust matching)
         institution_names = [name.strip() for name in institution_list.split(",")]
@@ -236,7 +177,7 @@ class QueryExtractionService:
             self._institution_mentioned = True
             self._institution_name = institution_name
             logger.info(f"Institution mentioned: {institution_name}")
-            institution_line= institution_coordinates_df[institution_coordinates_df['Etablissement'].str.contains(institution_name, case=False, na=False)]
+            institution_line = institution_coordinates_df[institution_coordinates_df['Etablissement'].str.contains(institution_name, case=False, na=False)]
             if not institution_line.empty:
                 institution_type = institution_line.iloc[0, 4]
             else:
@@ -247,22 +188,17 @@ class QueryExtractionService:
             self._institution_name = None
             logger.info("No institution detected, checking for public/private criterion")
             formatted_prompt2 = format_second_detect_institution_type_prompt(prompt)
-            try:
-                response2 = self.model.invoke(formatted_prompt2)
-                raw_response = response2.content.strip() if hasattr(response2, "content") else str(response2).strip()
-                institution_type_code = parse_institution_type_response(raw_response)
+            raw_response = invoke_llm_with_error_handling(self.model, formatted_prompt2, "is_public_or_private (second call)")
+            institution_type_code = parse_institution_type_response(raw_response)
+            
+            # Convert parsed response to expected string format for compatibility
+            if institution_type_code == "public":
+                institution_type = "Public"
+            elif institution_type_code == "private":
+                institution_type = "Privé"
+            else:  # "no match"
+                institution_type = "aucune correspondance"
                 
-                # Convert parsed response to expected string format for compatibility
-                if institution_type_code == "public":
-                    institution_type = "Public"
-                elif institution_type_code == "private":
-                    institution_type = "Privé"
-                else:  # "no match"
-                    institution_type = "aucune correspondance"
-                    
-            except Exception as e:
-                logger.error(f"LLM invocation failed in is_public_or_private (second call): {e}")
-                raise
-            logger.debug(f"LLM response (second call): {response2}")
+            logger.debug(f"LLM response (second call): {raw_response}")
         
         return institution_type

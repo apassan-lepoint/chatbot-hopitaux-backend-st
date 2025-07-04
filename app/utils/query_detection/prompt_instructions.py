@@ -168,5 +168,64 @@ Voici la modification ou précision apportée par l'utilisateur :
 {modification}
 
 Reformule une nouvelle question complète et précise qui prend en compte la modification.
+""",
+
+    "continuity_check_prompt": """
+Analysez si ce nouveau message est une continuation de la conversation précédente:
+Historique: {conv_history}
+Nouveau message: {prompt}
+
+Répondez UNIQUEMENT avec:
+- 1 si c'est une continuation de la conversation
+- 0 si c'est une nouvelle question indépendante
+""",
+
+    "search_needed_check_prompt": """
+Déterminez si cette question nécessite une recherche dans les données de classement des hôpitaux: '{prompt}'
+Répondez UNIQUEMENT avec 1 si une recherche est nécessaire, 0 sinon.
+
+Une recherche est nécessaire si la question demande:
+- Des recommandations d'hôpitaux spécifiques
+- Des classements ou comparaisons d'établissements
+- Des informations sur les meilleurs hôpitaux pour une spécialité
+- Des données factuelles sur les performances hospitalières
+
+Une recherche N'EST PAS nécessaire pour:
+- Des questions générales sur la santé
+- Des demandes d'explications sur les réponses précédentes
+- Des clarifications ou reformulations
+""",
+
+    "merge_query_check_prompt": """
+Analysez comment combiner cette nouvelle demande avec la conversation précédente:
+Historique: {conv_history}
+Nouveau message: {prompt}
+
+Répondez UNIQUEMENT avec:
+- 1 si les filtres du nouveau message doivent REMPLACER ceux de la conversation précédente
+- 0 si les filtres du nouveau message doivent s'AJOUTER à ceux de la conversation précédente
+
+Exemples:
+- "Et à Lyon maintenant?" -> 1 (remplace la ville)
+- "Aussi pour les enfants" -> 0 (ajoute une spécialité)
+""",
+
+    "merge_query_rewrite_prompt": """
+Créez une nouvelle question en fusionnant l'historique et le nouveau message.
+Les filtres du nouveau message remplacent ceux conflictuels de l'historique.
+
+Historique: {conv_history}
+Nouveau message: {prompt}
+
+Reformulez en une question complète et précise:
+""",
+
+    "add_query_rewrite_prompt": """
+Créez une nouvelle question en ajoutant les filtres du nouveau message à ceux de l'historique.
+
+Historique: {conv_history}
+Nouveau message: {prompt}
+
+Reformulez en une question complète et précise qui combine tous les critères:
 """
 }

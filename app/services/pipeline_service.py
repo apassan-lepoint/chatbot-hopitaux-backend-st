@@ -28,19 +28,7 @@ class Pipeline:
         institution_mentioned (bool): Flag indicating if a specific institution was mentioned in the query.
         institution_name (str): Name of the institution mentioned in the query.
         answer (Processing): Instance of Processing class for data extraction and transformation.
-    
-    Methods:
-        reset_attributes():
-            Resets the pipeline attributes for a new user query.
-        extract_query_parameters(prompt: str) -> str:
-            Extracts key aspects of the user query: city, institution type, and specialty.
-        build_ranking_dataframe_with_distances(prompt: str, excel_path: str) -> pd.DataFrame:
-            Retrieves the ranking DataFrame based on the user query, including distance calculations if a city is specified.
-        get_filtered_and_sorted_df(df: pd.DataFrame, max_radius_km: int, top_k: int, prompt: str) -> str:
-            Filters and sorts the ranking DataFrame by distance and score, and formats the response.
-        generate_response(prompt: str, top_k: int = 3, max_radius_km: int = 50, detected_specialty: str=None) -> str:
-            Main entry point to process the user question and return a formatted answer with ranking and links. 
-    """
+      """
     def __init__(self):
         """
         Initializes the Pipeline class, sets up file paths, and prepares variables for query processing.
@@ -56,6 +44,51 @@ class Pipeline:
         self.answer=Processing() # Instance of Processing for data extraction and transformation
 
     
+    def _format_response_with_specialty(self, base_message: str, count: int, radius_km: int = None, city: str = None) -> str:
+        """
+        Helper method to format response messages with specialty context.
+        
+        Args:
+            base_message: Base message template
+            count: Number of establishments
+            radius_km: Search radius in kilometers (optional)
+            city: City name (optional)
+        
+        Returns:
+            str: Formatted response message
+        """
+        if radius_km and city:
+            location_part = f" dans un rayon de {radius_km}km autour de {city}"
+        else:
+            location_part = ""
+        
+        if self.specialty == 'aucune correspondance':
+            if count == 1:
+                specialty_part = "du palmarès général"
+            else:
+                specialty_part = "au classement général" if "classement" in base_message else "du palmarès général"
+        else:
+            specialty_part = f"pour la pathologie {self.specialty}" if "pathologie" in base_message else f"pour la pathologie: {self.specialty}"
+        
+        return base_message.format(count=count, specialty=specialty_part, location=location_part)
+
+    def _create_response_and_log(self, message: str, table_str: str, prompt: str) -> str:
+        """
+        Helper method to create final response, log it, and save to CSV.
+        
+        Args:
+            message: Response message
+            table_str: Formatted table string
+            prompt: Original user prompt
+        
+        Returns:
+            str: Complete formatted response
+        """
+        response = f"{message}\n{table_str}"
+        self.answer.create_csv(question=prompt, reponse=response)
+        logger.debug(f"Formatted response: {response}")
+        return response
+
     def reset_attributes(self):
         """
         Resets pipeline attributes for a new user query.
@@ -177,25 +210,21 @@ class Pipeline:
         if self.sorted_df.shape[0] == top_k:
             logger.info(f"Found {top_k} results within {max_radius_km}km")
             # Format the top_k results as a text table
-            res_str= tableau_en_texte(self.sorted_df, self.city_not_specified)
-            if self.specialty=='aucune correspondance':
-                reponse=f"Voici les {top_k} meilleurs établissements du palmarès général dans un rayon de {max_radius_km}km autour de {self.city}:\n{res_str}"
-            else:
-                reponse=f"Voici les {top_k} meilleurs établissements pour la pathologie: {self.specialty} dans un rayon de {max_radius_km}km autour de {self.city}:\n{res_str}"
-            # Save the query and response to history
-            self.answer.create_csv(question=prompt, reponse=reponse)
-            logger.debug(f"Formatted response: {reponse}")
-            return reponse
+            res_str = tableau_en_texte(self.sorted_df, self.city_not_specified)
+            message = self._format_response_with_specialty(
+                "Voici les {count} meilleurs établissements {specialty}{location}:",
+                top_k, max_radius_km, self.city
+            )
+            return self._create_response_and_log(message, res_str, prompt)
+        
         # If the search radius is at its maximum, return all found institutions (even if less than top_k)
-        elif max_radius_km==500:
-            res_str= tableau_en_texte(self.sorted_df, self.city_not_specified)
-            if self.specialty=='aucune correspondance':
-                reponse=f"Voici les {self.sorted_df.shape[0]} meilleurs établissements au classement général dans un rayon de {max_radius_km}km autour de {self.city}:<br>\n{res_str}"
-            else:
-                reponse=f"Voici les {self.sorted_df.shape[0]} meilleurs établissements pour la pathologie {self.specialty} dans un rayon de {max_radius_km}km autour de {self.city}:<br>\n{res_str}"
-            self.answer.create_csv(question=prompt, reponse=reponse)
-            logger.debug(f"Formatted response: {reponse}")
-            return reponse
+        elif max_radius_km == 500:
+            res_str = tableau_en_texte(self.sorted_df, self.city_not_specified)
+            message = self._format_response_with_specialty(
+                "Voici les {count} meilleurs établissements {specialty}{location}:<br>",
+                self.sorted_df.shape[0], max_radius_km, self.city
+            )
+            return self._create_response_and_log(message, res_str, prompt)
         
         # If no results found, return None so the caller can try with a larger radius
         logger.warning("No results found within current radius")
@@ -272,47 +301,29 @@ class Pipeline:
             return res, self.link
         
         # If a city was found, try to find results within increasing radii
-        if self.city_not_specified== False:
+        if self.city_not_specified == False:
             logger.info("City found, searching for results within increasing radii")
-            # Try with initial radius
-            res = self.get_filtered_and_sorted_df(df, max_radius_km, top_k,prompt)
-            if res:
-                logger.debug(f"Result: {res}, Links: {self.link}")
-                return res, self.link
-            # If no result, try with 100km radius
-            extended_radius_km = 100
-            res = self.get_filtered_and_sorted_df(df, extended_radius_km, top_k,prompt)
-            if res:
-                self.answer.create_csv(question=prompt, reponse=res)
-                logger.debug(f"Result: {res}, Links: {self.link}")
-                return res, self.link
-             # If still no result, try with 200 km
-            extended_radius_km = 200
-            res = self.get_filtered_and_sorted_df(df, extended_radius_km, top_k,prompt)
-            if res:
-                self.answer.create_csv(question=prompt, reponse=res)
-                logger.debug(f"Result: {res}, Links: {self.link}")
-                return res, self.link
-            # If still no result, try with 500 km (maximum)
-            maximum_radius_km = 500
-            res=self.get_filtered_and_sorted_df(df, maximum_radius_km, top_k,prompt)
-            self.answer.create_csv(question=prompt, reponse=res)
-            logger.debug(f"Result: {res}, Links: {self.link}")
-            return res, self.link
+            # Try with progressively larger radii: 50km, 100km, 200km, 500km
+            for radius in [max_radius_km, 100, 200, 500]:
+                res = self._try_radius_search(df, radius, top_k, prompt)
+                if res:
+                    return res, self.link
+            # If we get here, no results were found even at maximum radius
+            logger.warning("No results found even at maximum radius")
+            return "Aucun résultat trouvé dans votre région.", self.link
         
         else:
             logger.info("No city found, returning general ranking")
             # If no city was found, return the top_k institutions from the general ranking 
             self.extract_query_parameters(prompt)
-            res_tab=self.df_gen.nlargest(top_k, "Note / 20")
+            res_tab = self.df_gen.nlargest(top_k, "Note / 20")
             res_str = tableau_en_texte(res_tab, self.city_not_specified)
-            if top_k==1:
-                res=f"Voici le meilleur établissement "
-            else: 
-                res=f"Voici les {top_k} meilleurs établissements "
-            if self.specialty== 'aucune correspondance':
-                res=res+f":<br> \n{res_str}"
+            
+            base_message = "Voici le meilleur établissement" if top_k == 1 else f"Voici les {top_k} meilleurs établissements"
+            if self.specialty == 'aucune correspondance':
+                res = f"{base_message}:<br> \n{res_str}"
             else:
-                res=res+f"pour la pathologie {self.specialty}<br> \n{res_str}"
+                res = f"{base_message} pour la pathologie {self.specialty}<br> \n{res_str}"
+            
             logger.debug(f"Result: {res}, Links: {self.link}")
             return (res, self.link)

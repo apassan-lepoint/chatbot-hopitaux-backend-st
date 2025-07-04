@@ -112,9 +112,13 @@ def ask_question(query: UserQuery) -> AskResponse:
 @router.post("/chat", response_model=ChatResponse)
 def chat(request: ChatRequest) -> ChatResponse:
     """
-    Multi-turn chat endpoint that accepts user prompt and conversation history.
-    Determines if the prompt is a modification of a previous question or a new question,
-    and processes accordingly.
+    Multi-turn chat endpoint using 6-case approach.
+    Determines how to handle the user's subsequent message based on 4 checks:
+    1. Is it on-topic?
+    2. Is it a continuation of conversation?
+    3. Does it need search in hospital data?
+    4. How should queries be merged?
+    
     Args:
         request: The chat request containing:
                 - prompt: Current user message
@@ -130,65 +134,75 @@ def chat(request: ChatRequest) -> ChatResponse:
         HTTPException: 
             - 400: Bad request (failed sanity checks, conversation too long)
             - 500: Internal server error (processing failures)
-    
-    Flow:
-        1. Validate input and conversation history
-        2. Detect if prompt is modification vs new question
-        3. Handle ambiguous cases with clarification request
-        4. Process modifications using conversation context
-        5. Process new questions through full pipeline
     """
     logger.info(f"Received /chat request - Prompt length: {len(request.prompt)} chars, "
                 f"Conversation history: {len(request.conversation) if request.conversation else 0} turns")
     
     try:
-        # Perform comprehensive input validation including conversation limits
+        # Perform comprehensive input validation
         perform_sanity_checks(request.prompt, request.conversation)
         logger.debug("Sanity checks completed for /chat request")
         
         # Prepare conversation history for LLM analysis
-        # Format: "Utilisateur: question\nAssistant: response" per turn
         conv_history = "\n".join(
             [f"Utilisateur: {q}\nAssistant: {r}" for q, r in request.conversation]
         ) if request.conversation else ""
         
-        logger.debug("Analyzing user intent: modification vs new question")
-        mod_type = llm_service.detect_modification(request.prompt, conv_history)
-        logger.debug(f"Intent analysis result: {mod_type}")
+        # Analyze subsequent message using 4-check system
+        logger.debug("Analyzing subsequent message using 4-check system")
+        analysis = llm_service.analyze_subsequent_message(request.prompt, conv_history)
+        case = llm_service.determine_case(analysis)
+        logger.info(f"Determined case: {case}, Analysis: {analysis}")
         
-        # Handle ambiguous user intent - request clarification
-        if mod_type == 2:  # ambiguous
-            logger.info("Ambiguous user intent detected - requesting clarification")
-            return ChatResponse(
-                response=AMBIGUOUS_RESPONSE,
-                conversation=request.conversation,
-                ambiguous=True
-            )
-
-        # Handle conversation continuation/modification
-        if mod_type == 1:  # modification
-            logger.debug("Processing as conversation modification")
-            result = llm_service.continuer_conv(
-                prompt=request.prompt,
-                conv_history=request.conversation
-            )
+        # Handle different cases
+        if case == "case1":
+            # Off-topic message
+            result = "Je n'ai pas bien saisi la nature de votre demande. Merci de reformuler une question relative aux classements des hôpitaux."
             updated_conversation = request.conversation + [[request.prompt, result]]
-            logger.info("Conversation modification processed successfully")
             return ChatResponse(response=result, conversation=updated_conversation, ambiguous=False)
         
-        # Handle new question - full pipeline processing
-        logger.debug("Processing as new question through full pipeline")
-        result, links = pipeline.generate_response(prompt=request.prompt)
-        result = format_links(result, links)  # Embed links into response text
-        updated_conversation = request.conversation + [[request.prompt, result]]
+        elif case == "case2":
+            # Continuation + search needed + merge query
+            logger.debug("Processing Case 2: merge query and search")
+            rewritten_query = llm_service.rewrite_query_merge(request.prompt, conv_history)
+            result, links = pipeline.generate_response(prompt=rewritten_query)
+            result = format_links(result, links)
+            updated_conversation = request.conversation + [[request.prompt, result]]
+            return ChatResponse(response=result, conversation=updated_conversation, ambiguous=False)
         
-        logger.info(f"New question processed successfully - Links found: {len(links) if links else 0}")
-        return ChatResponse(response=result, conversation=updated_conversation, ambiguous=False)
+        elif case == "case3":
+            # Continuation + search needed + add query
+            logger.debug("Processing Case 3: add query and search")
+            rewritten_query = llm_service.rewrite_query_add(request.prompt, conv_history)
+            result, links = pipeline.generate_response(prompt=rewritten_query)
+            result = format_links(result, links)
+            updated_conversation = request.conversation + [[request.prompt, result]]
+            return ChatResponse(response=result, conversation=updated_conversation, ambiguous=False)
+        
+        elif case == "case4":
+            # Continuation + no search needed (LLM handles)
+            logger.debug("Processing Case 4: LLM continuation")
+            result = llm_service.continue_conversation(request.prompt, request.conversation)
+            updated_conversation = request.conversation + [[request.prompt, result]]
+            return ChatResponse(response=result, conversation=updated_conversation, ambiguous=False)
+        
+        elif case == "case5":
+            # New question + search needed
+            logger.debug("Processing Case 5: new question with search")
+            result, links = pipeline.generate_response(prompt=request.prompt)
+            result = format_links(result, links)
+            updated_conversation = request.conversation + [[request.prompt, result]]
+            return ChatResponse(response=result, conversation=updated_conversation, ambiguous=False)
+        
+        else:  # case6
+            # New question + no search needed (LLM handles)
+            logger.debug("Processing Case 6: LLM new question")
+            result = llm_service.continue_conversation(request.prompt, request.conversation)
+            updated_conversation = request.conversation + [[request.prompt, result]]
+            return ChatResponse(response=result, conversation=updated_conversation, ambiguous=False)
         
     except Exception as e:
-        logger.error(f"Error processing /chat request - Prompt: '{request.prompt[:100]}...', "
-                    f"Conversation turns: {len(request.conversation) if request.conversation else 0}, "
-                    f"Error: {str(e)}")
+        logger.error(f"Error processing /chat request: {str(e)}")
         if not isinstance(e, HTTPException):
             raise HTTPException(status_code=500, detail="Internal server error")
         raise

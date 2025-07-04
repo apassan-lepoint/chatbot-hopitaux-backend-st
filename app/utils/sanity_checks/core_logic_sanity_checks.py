@@ -4,7 +4,7 @@ This module contains sanity checks that are used in both the Streamlit and Fast 
 
 import streamlit as st
 import logging
-from app.utils.response_parser import CityResponse
+from app.utils.query_detection.response_parser import CityResponse
 
 logger = logging.getLogger(__name__)
 

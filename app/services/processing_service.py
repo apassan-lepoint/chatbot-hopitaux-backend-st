@@ -39,18 +39,6 @@ class Processing:
         df_with_cities (pd.DataFrame | None): Rankings merged with location data.
         institution_mentioned (str | None): Institution name mentioned in query.
         paths (dict): Configuration dictionary containing file paths.
-    
-    Methods:
-        __init__(): Initializes the Processing instance with default values and services.
-        get_infos(prompt: str): Extracts specialty, city, and institution type from user query.
-        generate_response_links(matching_rows: pd.DataFrame = None) -> list: Generates web URLs for ranking pages.
-        load_and_transform_for_no_specialty(category: str) -> pd.DataFrame: Loads general ranking tables.
-        load_excel_sheets(matching_rows: pd.DataFrame) -> pd.DataFrame: Loads specialty-specific Excel sheets.
-        find_excel_sheet_with_specialty(prompt: str) -> pd.DataFrame: Finds ranking data by specialty only.
-        find_excel_sheet_with_privacy(prompt: str) -> pd.DataFrame: Finds ranking data by specialty and type.
-        extract_local_hospitals(df: pd.DataFrame = None) -> pd.DataFrame: Merges rankings with location data.
-        get_df_with_distances() -> pd.DataFrame: Calculates distances from query city to hospitals.
-        create_csv(question: str, reponse: str): Saves query and response to CSV history file.
     """
     
     def __init__(self):
@@ -82,6 +70,58 @@ class Processing:
         self.paths= PATHS
     
     
+    def _load_ranking_dataframe(self, file_path: str, category: str) -> pd.DataFrame:
+        """
+        Helper method to load and prepare ranking DataFrame with category.
+        
+        Args:
+            file_path: Path to the CSV file
+            category: Category to assign to the data
+            
+        Returns:
+            pd.DataFrame: Prepared DataFrame with category and renamed columns
+        """
+        df = pd.read_csv(file_path)
+        df['Catégorie'] = category
+        df = df.rename(columns={'Score final': 'Note / 20', 'Nom Print': 'Etablissement'})
+        logger.debug(f"Loaded {category} rankings: {len(df)} rows")
+        return df
+
+    def _generate_web_link(self, specialty: str, institution_type: str) -> str:
+        """
+        Helper method to generate a single web ranking link.
+        
+        Args:
+            specialty: Medical specialty name
+            institution_type: Institution type (public/private)
+            
+        Returns:
+            str: Generated web link URL
+        """
+        web_link = specialty.replace(' ', '-')
+        web_link = f'https://www.lepoint.fr/hopitaux/classements/{web_link}-{institution_type}.php'
+        web_link = web_link.lower()
+        return remove_accents(web_link)
+
+    def _filter_ranking_by_criteria(self, specialty: str, institution_type: str = None) -> pd.DataFrame:
+        """
+        Helper method to filter ranking DataFrame by specialty and optionally by institution type.
+        
+        Args:
+            specialty: Medical specialty to filter by
+            institution_type: Institution type to filter by (optional)
+            
+        Returns:
+            pd.DataFrame: Filtered DataFrame
+        """
+        matching_rows = self.ranking_df[self.ranking_df["Spécialité"].str.contains(specialty, case=False, na=False)]
+        
+        if institution_type:
+            institution_type_french = self.get_institution_type_in_french(institution_type)
+            matching_rows = matching_rows[matching_rows["Catégorie"].str.contains(institution_type_french, case=False, na=False)]
+        
+        return matching_rows
+
     def get_institution_type_in_french(self, english_type: str) -> str:
         """Convert English institution type constants to French for data table matching."""
         conversion_map = {
@@ -115,59 +155,46 @@ class Processing:
         return None
 
 
-    def generate_response_links(self, matching_rows: str = None) -> str:
+    def generate_response_links(self, matching_rows: pd.DataFrame = None) -> list:
         """
         Generates web links to the relevant ranking pages based on specialty and institution type.
 
-        Args: CHECK IF STR OR DATAFRAME!!!!
-            matching_rows (str, optional): Rows from the ranking sheet that match the query.
+        Args:
+            matching_rows (pd.DataFrame, optional): Rows from the ranking sheet that match the query.
 
         Returns:
             list or None: List of generated URLs or None if not applicable.
         """
-
         logger.info("Generating ranking links")
-        
-        self.web_ranking_link=[]
+        self.web_ranking_link = []
 
         # If no specialty, suggest general ranking links
-        if self.specialty== 'no match':
-            institution_type_in_french = self.get_institution_type_in_french(self.institution_type)
-            if institution_type_in_french == 'Public':
-                self.web_ranking_link=[self.weblinks["public"]]
-            elif institution_type_in_french == 'Privé':
-                self.web_ranking_link=[self.weblinks["privé"]]
+        if self.specialty == 'no match':
+            institution_type_french = self.get_institution_type_in_french(self.institution_type)
+            if institution_type_french == 'Public':
+                self.web_ranking_link = [self.weblinks["public"]]
+            elif institution_type_french == 'Privé':
+                self.web_ranking_link = [self.weblinks["privé"]]
             else:
-                self.web_ranking_link=[self.weblinks["public"],self.weblinks["privé"]]
+                self.web_ranking_link = [self.weblinks["public"], self.weblinks["privé"]]
             return None
-        institution_type = self.institution_type
-        
+
         # If ranking not found, suggest the opposite type
-        if self.specialty_ranking_unavailable==True:
-            institution_type_in_french = self.get_institution_type_in_french(self.institution_type)
-            if institution_type_in_french == 'Public':
-                institution_type='prive'
-            if institution_type_in_french == 'Privé':
-                institution_type='public'
-            web_ranking_link = self.specialty.replace(' ', '-')
-            web_ranking_link='https://www.lepoint.fr/hopitaux/classements/'+ web_ranking_link + '-'+institution_type+'.php'
-            web_ranking_link=web_ranking_link.lower()
-            web_ranking_link=remove_accents(web_ranking_link)
-            self.web_ranking_link.append(web_ranking_link)
+        if self.specialty_ranking_unavailable:
+            institution_type_french = self.get_institution_type_in_french(self.institution_type)
+            opposite_type = 'prive' if institution_type_french == 'Public' else 'public'
+            web_link = self._generate_web_link(self.specialty, opposite_type)
+            self.web_ranking_link.append(web_link)
             return self.web_ranking_link
 
         # Generate links for each matching specialty/category row
-        for _, row in matching_rows.iterrows():
-            web_ranking_link = row["Spécialité"].replace(' ', '-')
-            # Convert to French for URL generation
-            category_in_french = self.get_institution_type_in_french(row["Catégorie"]) if row["Catégorie"] in ["public", "private"] else row["Catégorie"]
-            web_ranking_link='https://www.lepoint.fr/hopitaux/classements/'+ web_ranking_link + '-'+ category_in_french +'.php'
-            web_ranking_link=web_ranking_link.lower()
-            web_ranking_link=remove_accents(web_ranking_link)
-            self.web_ranking_link.append(web_ranking_link)
-        
+        if matching_rows is not None:
+            for _, row in matching_rows.iterrows():
+                category_french = self.get_institution_type_in_french(row["Catégorie"]) if row["Catégorie"] in ["public", "private"] else row["Catégorie"]
+                web_link = self._generate_web_link(row["Spécialité"], category_french)
+                self.web_ranking_link.append(web_link)
+
         logger.info(f"Generated ranking links: {self.web_ranking_link}")
-        
         return self.web_ranking_link
 
 
@@ -182,42 +209,23 @@ class Processing:
         Returns:
             pd.DataFrame: The combined DataFrame of relevant institutions.
         """
-        
         logger.info(f"Loading general rankings for category: {category}")
         
-        dfs = []
-        
         try:
-            # Load both public and private rankings if no specific category is requested
             if category == 'no specialty match':
                 logger.debug("Loading both public and private rankings")
-                df_private = pd.read_csv(self.paths["ranking_overall_private_path"])
-                df_private['Catégorie'] = 'Privé'
-                dfs.append(df_private)
-                logger.debug(f"Loaded private rankings: {len(df_private)} rows")
-                
-                df_public = pd.read_csv(self.paths["ranking_overall_public_path"])
-                df_public['Catégorie'] = 'Public'
-                dfs.append(df_public)
-                logger.debug(f"Loaded public rankings: {len(df_public)} rows")
-
-                df = pd.concat(dfs, join="inner", ignore_index=True)
-            
+                df_private = self._load_ranking_dataframe(self.paths["ranking_overall_private_path"], 'Privé')
+                df_public = self._load_ranking_dataframe(self.paths["ranking_overall_public_path"], 'Public')
+                df = pd.concat([df_private, df_public], join="inner", ignore_index=True)
             elif category == 'Public':
                 logger.debug("Loading public rankings only")
-                df = pd.read_csv(self.paths["ranking_overall_public_path"])
-                df['Catégorie'] = 'Public'
-                logger.debug(f"Loaded public rankings: {len(df)} rows")
+                df = self._load_ranking_dataframe(self.paths["ranking_overall_public_path"], 'Public')
             elif category == 'Privé':
                 logger.debug("Loading private rankings only")
-                df = pd.read_csv(self.paths["ranking_overall_private_path"])
-                df['Catégorie'] = 'Privé'
-                logger.debug(f"Loaded private rankings: {len(df)} rows")
+                df = self._load_ranking_dataframe(self.paths["ranking_overall_private_path"], 'Privé')
             else:
                 raise ValueError(f"Unknown category: {category}")
             
-            # Rename columns for consistency
-            df = df.rename(columns={'Score final': 'Note / 20', 'Nom Print': 'Etablissement'})
             logger.info(f"Successfully loaded general rankings, final shape: {df.shape}")
             return df
             
@@ -281,17 +289,15 @@ class Processing:
         """
         logger.info(f"Finding Excel sheet with specialty for prompt: {prompt}")
         
-        matching_rows = self.ranking_df[self.ranking_df["Spécialité"].str.contains(self.specialty, case=False, na=False)]
-        self.web_ranking_link=[]
+        matching_rows = self._filter_ranking_by_criteria(self.specialty)
+        self.web_ranking_link = []
         self.generate_response_links(matching_rows)
         self.specialty_df = self.load_excel_sheets(matching_rows)
         
         logger.info("Loaded specialty DataFrame")
-        
         return self.specialty_df
 
-
-    def find_excel_sheet_with_privacy(self,prompt: str) -> pd.DataFrame:
+    def find_excel_sheet_with_privacy(self, prompt: str) -> pd.DataFrame:
         """
         Finds and loads ranking data based on both specialty and institution type.
 
@@ -301,36 +307,32 @@ class Processing:
         Returns:
             pd.DataFrame: DataFrame with the relevant filtered data.
         """
-        
         logger.info(f"Finding Excel sheet with privacy for prompt: {prompt}")
         
         self.get_infos(prompt)
-        specialty=self.specialty
+        specialty = self.specialty
         
         # Defensive insertion: ensure specialty is never empty or None
         if not specialty or (isinstance(specialty, str) and specialty.strip() == ""):
             specialty = "no specialty match"
         
         # If no specialty, load general table
-        if specialty== 'no specialty match':
+        if specialty == 'no specialty match':
             self.generate_response_links()
-            institution_type_in_french = self.get_institution_type_in_french(self.institution_type)
-            self.specialty_df=self.load_and_transform_for_no_specialty(category=institution_type_in_french)
+            institution_type_french = self.get_institution_type_in_french(self.institution_type)
+            self.specialty_df = self.load_and_transform_for_no_specialty(category=institution_type_french)
             return self.specialty_df
         
         # If no public/private criterion, load by specialty only
         if self.institution_type == 'no match':
             return self.find_excel_sheet_with_specialty(prompt)
 
-         # Filter rows by specialty and category
-        matching_rows = self.ranking_df[self.ranking_df["Spécialité"].str.contains(specialty, case=False, na=False)]
-        institution_type_in_french = self.get_institution_type_in_french(self.institution_type)
-        matching_rows = matching_rows[matching_rows["Catégorie"].str.contains(institution_type_in_french, case=False, na=False)]
+        # Filter rows by specialty and category using helper method
+        matching_rows = self._filter_ranking_by_criteria(specialty, self.institution_type)
         self.generate_response_links(matching_rows)
         self.specialty_df = self.load_excel_sheets(matching_rows)
         
         logger.debug(f"Loaded specialty DataFrame: {self.specialty_df}")
-        
         return self.specialty_df
 
 
@@ -360,7 +362,6 @@ class Processing:
         Returns:
             pd.DataFrame or None: DataFrame with distance information, or None if geolocation fails.
         """
-
         logger.info(f"Calculating distances from query city: {self.city}")
         
         # Get coordinates for the query city
@@ -382,11 +383,6 @@ class Processing:
         if dropped_count > 0:
             logger.debug(f"Dropped {dropped_count} rows with missing city information")
 
-        # Helper function for distance calculation (not used in lambda, but kept for clarity)
-        def _distance(city):
-            city_coords = get_coordinates(self.df_with_cities, city)
-            return distance_to_query(query_coords, city_coords, city, self.df_with_cities, self.geolocation_api_error)
-        
         # Calculate distance for each hospital/city        
         self.df_with_cities['Distance'] = self.df_with_cities['City'].apply(
             lambda city: distance_to_query(

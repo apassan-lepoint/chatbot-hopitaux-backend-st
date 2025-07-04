@@ -26,6 +26,18 @@ from app.utils.sanity_checks.streamlit_sanity_checks import (
     sanity_check_message_pertinence_streamlit,
     check_non_french_cities_streamlit,
 )
+from app.utils.streamlit_helpers import (
+    initialize_session_state,
+    reset_session_state,
+    append_to_conversation,
+    create_example_button,
+    display_conversation_history,
+    format_conversation_history_for_llm,
+    execute_with_spinner,
+    get_conversation_list,
+    get_conversation_length,
+    get_session_state_value
+)
 
 logger = get_logger(__name__)
 
@@ -39,21 +51,6 @@ class StreamlitChatbot:
     Attributes:
         llm_service (LLMService): Service for interacting with the language model.
         MAX_MESSAGES (int): Maximum number of messages in the conversation history. 
-    
-    Methods:
-        reset_session_state():      
-            Reset all session state variables, clearing the conversation history and other related variables.
-        display_conversation():
-            Display the conversation history in a chat-like format.
-        append_answer(prompt, specialty):
-            Interact with the LLM service to get the final answer based on the user's prompt and    
-            the selected medical specialty, appending it to the conversation history.
-        handle_first_message():
-            Handle the first message in the conversation, initializing the conversation and processing user input.
-        handle_subsequent_messages():
-            Handle subsequent messages in the conversation, processing user input and generating responses.
-        run():
-            Run the Streamlit application, initializing the UI, handling user input, and managing conversation history.     
     """
     def __init__(self):
         """
@@ -64,6 +61,40 @@ class StreamlitChatbot:
         self.llm_service = LLMService()
         self.MAX_MESSAGES = 5  # Maximum number of messages in the conversation
 
+
+    def _handle_case_with_rewrite(self, case_name: str, user_input: str, conv_history: str, rewrite_method):
+        """
+        Helper method to handle cases that require query rewriting.
+        
+        Args:
+            case_name: Name of the case for display
+            user_input: User's input message
+            conv_history: Conversation history
+            rewrite_method: Method to use for query rewriting
+        """
+        st.info(f"{case_name} détectée.")
+        rewritten_query = execute_with_spinner('Réécriture de la requête', rewrite_method, user_input, conv_history)
+        logger.debug(f"Rewritten query ({case_name.lower()}): {rewritten_query}")
+        self.append_answer(user_input, rewritten_query)
+
+    def _handle_conversational_case(self, case_name: str, user_input: str):
+        """
+        Helper method to handle conversational cases.
+        
+        Args:
+            case_name: Name of the case for display
+            user_input: User's input message
+        """
+        st.info(f"{case_name} détectée.")
+        # Get current conversation from session state using helper
+        current_conversation = get_conversation_list()
+        result = execute_with_spinner(
+            'Chargement', 
+            self.llm_service.continue_conversation, 
+            user_input, 
+            current_conversation
+        )
+        append_to_conversation(user_input, result)
 
     def reset_session_state(self):
         """
@@ -77,24 +108,15 @@ class StreamlitChatbot:
                 and other related variables.
         """
         logger.info("Resetting session state")
-        for key, value in {
+        reset_values = {
             "conversation": [],
             "selected_option": None,
             "prompt": "",
             "specialty": "",
             "city": None,
             "slider_value": None,
-        }.items():
-            st.session_state[key] = value
-    
-        
-    def display_conversation(self):
-        """
-        Display the conversation history with chat-like styling.
-        """
-        for user, bot in st.session_state.conversation:
-            st.chat_message("user").write(user)
-            st.chat_message("assistant").write(bot, unsafe_allow_html=True)
+        }
+        reset_session_state(reset_values)
     
                 
     def append_answer(self, prompt, specialty):
@@ -109,7 +131,7 @@ class StreamlitChatbot:
         Returns:
             None: The function updates the session state with the user's prompt and the chatbot's response. 
         """
-        with st.spinner('Chargement'):
+        def generate_response():
             response = Pipeline().generate_response(prompt=prompt, detected_specialty=specialty)
             if isinstance(response, tuple):
                 result, link = response
@@ -118,7 +140,10 @@ class StreamlitChatbot:
                 result = format_links(result, link)
             else:
                 result = response
-        st.session_state.conversation.append((prompt, result))
+            return result
+        
+        result = execute_with_spinner('Chargement', generate_response)
+        append_to_conversation(prompt, result)
     
     
     def handle_first_message(self):
@@ -140,12 +165,14 @@ class StreamlitChatbot:
             sanity_check_message_pertinence_streamlit(st.session_state.prompt, self.llm_service, self.reset_session_state, pertinent_chatbot_use_case=True)   
             check_non_french_cities_streamlit(st.session_state.prompt, self.llm_service, self.reset_session_state)
             
-        if st.session_state.prompt:
+        prompt = get_session_state_value("prompt", "")
+        if prompt:
             # Detect medical specialty if not already set
-            if st.session_state.specialty == "":
-                st.session_state.specialty = self.llm_service.detect_specialty(st.session_state.prompt)
+            specialty = get_session_state_value("specialty", "")
+            if specialty == "":
+                st.session_state.specialty = self.llm_service.detect_specialty(prompt)
+                specialty = st.session_state.specialty
 
-            specialty = st.session_state.specialty
             if specialty.startswith("multiple matches:"):
                 logger.info("Multiple specialties detected, prompting user for selection")
                 # Extract options from the string
@@ -153,64 +180,71 @@ class StreamlitChatbot:
                 selected_specialty = st.radio("Précisez le domaine médical concerné :", options, index=None)
                 
                 if selected_specialty:
-                    self.append_answer(st.session_state.prompt, selected_specialty)
+                    self.append_answer(prompt, selected_specialty)
             else:
-                self.append_answer(st.session_state.prompt, specialty)
+                self.append_answer(prompt, specialty)
     
     
     def handle_subsequent_messages(self):
         """
-        Handle subsequent messages in the conversation.
-        This method processes user input, checks for medical specialties, and
-        generates responses based on the conversation history.
-        Args:
-            self: The instance of the StreamlitChatbot class.
-        Returns:
-            None: The function updates the session state with the user's prompt and the chatbot's response.
+        Handle subsequent messages using 6-case approach.
+        This method processes user input using the 4-check system to determine
+        how to handle the conversation continuation.
         """    
         user_input = st.chat_input("Votre message")
         if user_input:
             logger.info(f"Processing subsequent message: {user_input[:50]}...")
 
             # Prepare conversation history for LLM context
-            conv_history = "\n".join(
-                [f"Utilisateur: {q}\nAssistant: {r}" for q, r in st.session_state.conversation]
-            ) if hasattr(st.session_state, "conversation") else ""
+            conv_history = format_conversation_history_for_llm()
             logger.debug(f"Conversation history length: {len(conv_history)} characters")
 
-            # Use LLM to detect if this is a modification or a new query
+            # Analyze subsequent message using 4-check system
             try:
-                logger.debug("Detecting modification type")
-                mod_type = self.llm_service.detect_modification(user_input, conv_history)
-                logger.info(f"Detected query type: {mod_type}")
+                logger.debug("Analyzing subsequent message using 4-check system")
+                analysis = self.llm_service.analyze_subsequent_message(user_input, conv_history)
+                case = self.llm_service.determine_case(analysis)
+                logger.info(f"Determined case: {case}, Analysis: {analysis}")
             except Exception as e:
-                logger.error(f"Error during modification detection: {e}")
-                mod_type = 0  # Default to new_question
+                logger.error(f"Error during case analysis: {e}")
+                case = "case6"  # Default to LLM handling
             
-            if mod_type == 2:  # ambiguous
-                logger.debug("Query type is ambiguous, prompting user for clarification")
-                user_choice = st.radio(
-                    "Je ne suis pas sûr si votre message est une nouvelle question ou une modification de la précédente. Veuillez préciser :",
-                    ("Continuer la conversation précédente", "Poser une nouvelle question")
+            # Handle different cases using helper methods
+            case_handlers = {
+                "case1": lambda: self._handle_off_topic_case(user_input),
+                "case2": lambda: self._handle_case_with_rewrite(
+                    "Continuation avec fusion de requête", 
+                    user_input, conv_history, 
+                    self.llm_service.rewrite_query_merge
+                ),
+                "case3": lambda: self._handle_case_with_rewrite(
+                    "Continuation avec ajout de critères", 
+                    user_input, conv_history, 
+                    self.llm_service.rewrite_query_add
+                ),
+                "case4": lambda: self._handle_conversational_case(
+                    "Continuation conversationnelle", user_input
+                ),
+                "case5": lambda: self._handle_new_search_case(user_input),
+                "case6": lambda: self._handle_conversational_case(
+                    "Nouvelle question conversationnelle", user_input
                 )
-                mod_type = 1 if user_choice == "Continuer la conversation précédente" else 0
-                logger.debug(f"User clarified query type: {mod_type}")
+            }
             
-            if mod_type == 1:  # modification
-                logger.info("Processing conversation modification")
-                st.info("Modification détectée de la question précédente.")
-                last_user_query = next((msg for msg, _ in reversed(st.session_state.conversation) if msg), None)
-                logger.debug(f"Last query: {last_user_query}")
-                full_query = self.llm_service.rewrite_query(last_user_query, user_input)
-                logger.debug(f"Rewritten query: {full_query}")
-                self.append_answer(user_input, full_query)
-                
-            # Handle new query
-            else:
-                st.info("Nouvelle question détectée.")
-                self.append_answer(user_input, user_input)
-    
-    
+            handler = case_handlers.get(case, case_handlers["case6"])
+            handler()
+
+    def _handle_off_topic_case(self, user_input: str):
+        """Handle off-topic messages (case1)."""
+        st.info("Message hors sujet détecté.")
+        result = "Je n'ai pas bien saisi la nature de votre demande. Merci de reformuler une question relative aux classements des hôpitaux."
+        append_to_conversation(user_input, result)
+
+    def _handle_new_search_case(self, user_input: str):
+        """Handle new search questions (case5)."""
+        st.info("Nouvelle question avec recherche détectée.")
+        self.append_answer(user_input, user_input)
+
     def run(self):
         """
         Run the Streamlit application.    
@@ -258,27 +292,11 @@ class StreamlitChatbot:
             "Quels sont les 10 meilleurs hôpitaux publics à Bordeaux pour les maladies cardiaques ?"
         ]
         
-        with col1:
-            if st.button(example_questions[0], key="example1", help="Cliquez pour poser cette question", type="primary"):
-                # Set prompt and trigger processing
-                st.session_state.prompt = example_questions[0]
-                # Display the question in chat immediately
-                st.chat_message("user").write(example_questions[0])
-                st.rerun()
-        with col2:
-            if st.button(example_questions[1], key="example2", help="Cliquez pour poser cette question", type="primary"):
-                # Set prompt and trigger processing
-                st.session_state.prompt = example_questions[1]
-                # Display the question in chat immediately
-                st.chat_message("user").write(example_questions[1])
-                st.rerun()
-        with col3:
-            if st.button(example_questions[2], key="example3", help="Cliquez pour poser cette question", type="primary"):
-                # Set prompt and trigger processing
-                st.session_state.prompt = example_questions[2]
-                # Display the question in chat immediately
-                st.chat_message("user").write(example_questions[2])
-                st.rerun()
+        # Create example buttons using helper method
+        columns = [col1, col2, col3]
+        for i, (col, question) in enumerate(zip(columns, example_questions)):
+            with col:
+                create_example_button(question, f"example{i+1}")
         
         # Button to start a new conversation
         if st.sidebar.button("🔄 Démarrer une nouvelle conversation"):
@@ -287,26 +305,25 @@ class StreamlitChatbot:
             st.rerun()
        
         # Initialize session state variables if not already present
-        for key, value in {
+        default_values = {
             "conversation": [],
             "selected_option": None,
             "prompt": "",
             "specialty": "",
-        }.items():
-            if key not in st.session_state:
-                st.session_state[key] = value
+        }
+        initialize_session_state(default_values)
         
         # Check if conversation limit is reached
-        check_conversation_limit_streamlit(st.session_state.conversation, self.MAX_MESSAGES, self.reset_session_state)
+        check_conversation_limit_streamlit(get_conversation_list(), self.MAX_MESSAGES, self.reset_session_state)
         
         # Handle the first message or subsequent messages
-        if len(st.session_state.conversation) == 0:
+        if get_conversation_length() == 0:
             self.handle_first_message()
         else:
             self.handle_subsequent_messages()
         
         # Display the full conversation history    
-        self.display_conversation()      
+        display_conversation_history()      
         
         
             
