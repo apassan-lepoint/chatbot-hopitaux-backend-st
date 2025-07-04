@@ -306,7 +306,7 @@ class Pipeline:
         if self.answer.specialty_ranking_unavailable :
             logger.warning("Ranking not found for requested specialty/type, suggesting alternative")
             if self.answer.institution_type=='Public':   
-                return "Nous n'avons pas d'établissement publique pour cette pathologie, mais un classement des établissements privés existe. ", self.link
+                return "Nous n'avons pas d'établissement public pour cette pathologie, mais un classement des établissements privés existe. ", self.link
             elif self.answer.institution_type=='Privé': 
                 return "Nous n'avons pas d'établissement privé pour cette pathologie, mais un classement des établissements publics existe. ", self.link
 
