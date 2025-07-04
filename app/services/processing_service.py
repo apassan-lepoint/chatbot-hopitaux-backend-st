@@ -117,19 +117,50 @@ class Processing:
         matching_rows = self.ranking_df[self.ranking_df["Spécialité"].str.contains(specialty, case=False, na=False)]
         
         if institution_type:
-            institution_type_french = self.get_institution_type_in_french(institution_type)
+            institution_type_french = self.normalize_institution_type(institution_type)
             matching_rows = matching_rows[matching_rows["Catégorie"].str.contains(institution_type_french, case=False, na=False)]
         
         return matching_rows
 
-    def get_institution_type_in_french(self, english_type: str) -> str:
-        """Convert English institution type constants to French for data table matching."""
-        conversion_map = {
+    def normalize_institution_type(self, institution_type: str) -> str:
+        """
+        Automatically normalize institution type to French format used in data.
+        Handles both English and French input, returns standardized French format.
+        """
+        if not institution_type or institution_type == "no match":
+            return "no match"
+            
+        # Convert to lowercase for comparison
+        type_lower = institution_type.lower().strip()
+        
+        # Mapping of all possible variations to standardized French
+        type_mapping = {
+            # English variations
             "public": "Public",
-            "private": "Privé", 
-            "no match": "no specialty match"
+            "private": "Privé",
+            
+            # French variations (ensure consistency)
+            "privé": "Privé",    # lowercase French with accent
+            "prive": "Privé",    # lowercase French without accent
+            
+            # Handle common variations
+            "publique": "Public",
+            "privée": "Privé"
         }
-        return conversion_map.get(english_type, english_type)
+        
+        return type_mapping.get(type_lower, institution_type)
+    
+    def get_institution_type_for_url(self, institution_type: str) -> str:
+        """Convert institution type to format expected by web URLs."""
+        normalized = self.normalize_institution_type(institution_type)
+        
+        url_mapping = {
+            "Public": "public",
+            "Privé": "prive",
+            "no match": "no match"
+        }
+        
+        return url_mapping.get(normalized, normalized.lower())
     
     
     def get_infos(self, prompt: str) -> None:
@@ -170,7 +201,7 @@ class Processing:
 
         # If no specialty, suggest general ranking links
         if self.specialty == 'no match':
-            institution_type_french = self.get_institution_type_in_french(self.institution_type)
+            institution_type_french = self.normalize_institution_type(self.institution_type)
             if institution_type_french == 'Public':
                 self.web_ranking_link = [self.weblinks["public"]]
             elif institution_type_french == 'Privé':
@@ -181,7 +212,7 @@ class Processing:
 
         # If ranking not found, suggest the opposite type
         if self.specialty_ranking_unavailable:
-            institution_type_french = self.get_institution_type_in_french(self.institution_type)
+            institution_type_french = self.normalize_institution_type(self.institution_type)
             opposite_type = 'prive' if institution_type_french == 'Public' else 'public'
             web_link = self._generate_web_link(self.specialty, opposite_type)
             self.web_ranking_link.append(web_link)
@@ -190,8 +221,8 @@ class Processing:
         # Generate links for each matching specialty/category row
         if matching_rows is not None:
             for _, row in matching_rows.iterrows():
-                category_french = self.get_institution_type_in_french(row["Catégorie"]) if row["Catégorie"] in ["public", "private"] else row["Catégorie"]
-                web_link = self._generate_web_link(row["Spécialité"], category_french)
+                category_for_url = self.get_institution_type_for_url(row["Catégorie"])
+                web_link = self._generate_web_link(row["Spécialité"], category_for_url)
                 self.web_ranking_link.append(web_link)
 
         logger.info(f"Generated ranking links: {self.web_ranking_link}")
@@ -320,7 +351,7 @@ class Processing:
         # If no specialty, load general table
         if specialty == 'no specialty match':
             self.generate_response_links()
-            institution_type_french = self.get_institution_type_in_french(self.institution_type)
+            institution_type_french = self.normalize_institution_type(self.institution_type)
             self.specialty_df = self.load_and_transform_for_no_specialty(category=institution_type_french)
             return self.specialty_df
         
