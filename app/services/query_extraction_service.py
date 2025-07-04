@@ -153,12 +153,16 @@ class QueryExtractionService:
         return city_status  # Return the numeric status code
 
 
-    def detect_topk(self, prompt):
+    def detect_topk(self, prompt, conv_history=""):
         """
         Detects the top-k results from the given prompt using the LLM.
         Returns integer for top-k or 0 if not mentioned.
+        
+        Args:
+            prompt: The message to analyze
+            conv_history: Optional conversation history for context
         """
-        formatted_prompt = format_detect_topk_prompt(prompt)
+        formatted_prompt = format_detect_topk_prompt(prompt, conv_history)
         raw_response = invoke_llm_with_error_handling(self.model, formatted_prompt, "get_topk")
         topk = parse_numeric_response(raw_response, 0)
         return topk if 1 <= topk <= 50 else 0
@@ -174,12 +178,17 @@ class QueryExtractionService:
         return self._institution_mentioned
 
     
-    def detect_institution_type(self, prompt: str, institution_list: str = institution_list):
+    def detect_institution_type(self, prompt: str, institution_list: str = institution_list, conv_history: str = ""):
         """
         Determines if the user's question mentions a public or private hospital, or none.
         Also detects if a specific institution is mentioned.
+        
+        Args:
+            prompt (str): The user's question
+            institution_list (str): List of institutions to check
+            conv_history (str): Optional conversation history for context
         """
-        formatted_prompt = format_detect_institution_type_prompt(prompt, institution_list)
+        formatted_prompt = format_detect_institution_type_prompt(prompt, institution_list, conv_history)
         institution_name = invoke_llm_with_error_handling(self.model, formatted_prompt, "is_public_or_private")
         logger.debug(f"LLM response: {institution_name}")
         
@@ -199,7 +208,7 @@ class QueryExtractionService:
             self._institution_mentioned = False
             self._institution_name = None
             logger.info("No institution detected, checking for public/private criterion")
-            formatted_prompt2 = format_second_detect_institution_type_prompt(prompt)
+            formatted_prompt2 = format_second_detect_institution_type_prompt(prompt, conv_history)
             raw_response = invoke_llm_with_error_handling(self.model, formatted_prompt2, "is_public_or_private (second call)")
             institution_type_code = parse_institution_type_response(raw_response)
             

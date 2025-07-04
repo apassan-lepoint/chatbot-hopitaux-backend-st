@@ -174,13 +174,17 @@ class LLMService:
             lambda p: self.query_extractor.detect_city(p, conv_history)
         )
 
-    def detect_topk(self, prompt: str):
+    def detect_topk(self, prompt: str, conv_history: str = ""):
         """
         Identifies if the number of institutions to display is mentioned in the user's question.
         Returns integer for top-k or 'non mentionné' if not mentioned.
+        
+        Args:
+            prompt (str): The user's question.
+            conv_history (str): Optional conversation history for context.
         """
         def _detect_topk_with_fallback(prompt: str):
-            topk = self.query_extractor.detect_topk(prompt)
+            topk = self.query_extractor.detect_topk(prompt, conv_history)
             return topk if topk > 0 else 'non mentionné'
         
         return self._execute_with_logging(
@@ -189,12 +193,13 @@ class LLMService:
             _detect_topk_with_fallback
         )
 
-    def detect_institution_type(self, prompt: str) -> str:
+    def detect_institution_type(self, prompt: str, conv_history: str = "") -> str:
         """
         Determines if the user's question mentions a public or private institution, or a specific institution.
         
         Args:
             prompt (str): The user's question.
+            conv_history (str): Optional conversation history for context.
         
         Returns:
             str: The detected institution type or name.
@@ -205,7 +210,7 @@ class LLMService:
         return self._execute_with_logging(
             "Detecting institution type",
             prompt,
-            self.query_extractor.detect_institution_type
+            lambda p: self.query_extractor.detect_institution_type(p, conv_history=conv_history)
         )  
 
     

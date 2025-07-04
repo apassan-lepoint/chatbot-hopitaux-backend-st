@@ -46,16 +46,22 @@ def format_second_detect_city_prompt(prompt: str, conv_history: str = "") -> str
     )
 
 
-def format_detect_topk_prompt(prompt):
-    return PROMPT_INSTRUCTIONS["detect_topk_prompt"].format(prompt=prompt)
+def format_detect_topk_prompt(prompt, conv_history=""):
+    # Format conversation history with proper prefix if provided, empty string otherwise
+    formatted_history = f"Historique de la conversation:\n{conv_history}\n\n" if conv_history.strip() else ""
+    return PROMPT_INSTRUCTIONS["detect_topk_prompt"].format(prompt=prompt, conv_history=formatted_history)
 
 
-def format_detect_institution_type_prompt(prompt, institution_list):
-    return PROMPT_INSTRUCTIONS["detect_institution_type_prompt"].format(prompt=prompt, institution_list=institution_list)
+def format_detect_institution_type_prompt(prompt, institution_list, conv_history=""):
+    # Format conversation history with proper prefix if provided, empty string otherwise
+    formatted_history = f"Historique de la conversation:\n{conv_history}\n\n" if conv_history.strip() else ""
+    return PROMPT_INSTRUCTIONS["detect_institution_type_prompt"].format(prompt=prompt, institution_list=institution_list, conv_history=formatted_history)
 
 
-def format_second_detect_institution_type_prompt(prompt):
-    return PROMPT_INSTRUCTIONS["second_detect_institution_type_prompt"].format(prompt=prompt)
+def format_second_detect_institution_type_prompt(prompt, conv_history=""):
+    # Format conversation history with proper prefix if provided, empty string otherwise
+    formatted_history = f"Historique de la conversation:\n{conv_history}\n\n" if conv_history.strip() else ""
+    return PROMPT_INSTRUCTIONS["second_detect_institution_type_prompt"].format(prompt=prompt, conv_history=formatted_history)
 
 
 def format_continue_conversation_prompt(prompt, conv_history):
@@ -74,8 +80,10 @@ def format_continuity_check_prompt(prompt, conv_history):
     return PROMPT_INSTRUCTIONS["continuity_check_prompt"].format(prompt=prompt, conv_history=conv_history)
 
 
-def format_search_needed_check_prompt(prompt):
-    return PROMPT_INSTRUCTIONS["search_needed_check_prompt"].format(prompt=prompt)
+def format_search_needed_check_prompt(prompt, conv_history=""):
+    # Format conversation history with proper prefix if provided, empty string otherwise
+    formatted_history = f"Historique de la conversation:\n{conv_history}\n\n" if conv_history.strip() else ""
+    return PROMPT_INSTRUCTIONS["search_needed_check_prompt"].format(prompt=prompt, conv_history=formatted_history)
 
 
 def format_merge_query_check_prompt(prompt, conv_history):
