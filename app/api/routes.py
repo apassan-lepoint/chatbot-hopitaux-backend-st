@@ -5,6 +5,7 @@ This file registers the main routes for user queries, health checks, and other
 API functionalities, and organizes them using FastAPI's router system.
 """
 
+import re
 from fastapi import APIRouter, HTTPException
 from app.services.pipeline_service import Pipeline
 from app.services.llm_service import LLMService
@@ -48,26 +49,38 @@ def perform_sanity_checks(prompt: str, conversation: list = None) -> None:
         HTTPException: If any sanity check fails, with appropriate error code and message
         
     Note:
+        - For subsequent messages (when conversation history exists), all pertinence checks
+          use the full conversation context for better contextual understanding
         - pertinent_chatbot_use_case=False: Basic relevance check
         - pertinent_chatbot_use_case=True: Advanced relevance check using different criteria
+        - Geographical scope validation also uses conversation context for subsequent messages
     """
     logger.debug("Starting sanity checks for user input")
     
     # Check message length to prevent oversized requests
     check_message_length_fastapi(prompt)
     
-    # Perform dual-level pertinence checks for content relevance
-    sanity_check_message_pertinence_fastapi(prompt, llm_service, pertinent_chatbot_use_case=False)
-    sanity_check_message_pertinence_fastapi(prompt, llm_service, pertinent_chatbot_use_case=True)
+    # Prepare conversation history for context-aware checks if available
+    conv_history = ""
+    if conversation is not None and len(conversation) > 0:
+        conv_history = "\n".join([f"Utilisateur: {q}\nAssistant: {r}" for q, r in conversation])
+        logger.debug("Checking pertinence with full conversation context")
+    else:
+        logger.debug("Checking pertinence without conversation context")
     
-    # Validate geographical scope (French cities only)
-    check_non_french_cities_fastapi(prompt, llm_service)
+    # Perform all pertinence checks with conversation context
+    sanity_check_message_pertinence_fastapi(prompt, llm_service, pertinent_chatbot_use_case=False, conv_history=conv_history)
+    sanity_check_message_pertinence_fastapi(prompt, llm_service, pertinent_chatbot_use_case=True, conv_history=conv_history)
+    
+    # Also validate geographical scope using conversation context
+    check_non_french_cities_fastapi(prompt, llm_service, conv_history=conv_history)
     
     # Check conversation length limits for chat endpoints
     if conversation is not None:
         check_conversation_limit_fastapi(conversation, max_messages=MAX_MESSAGES)
     
     logger.debug("All sanity checks passed successfully")
+
 
 
 @router.post("/ask", response_model=AskResponse)

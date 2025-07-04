@@ -65,6 +65,7 @@ class StreamlitChatbot:
     def _handle_case_with_rewrite(self, case_name: str, user_input: str, conv_history: str, rewrite_method):
         """
         Helper method to handle cases that require query rewriting.
+        Matches FastAPI cases 2 and 3.
         
         Args:
             case_name: Name of the case for display
@@ -72,29 +73,53 @@ class StreamlitChatbot:
             conv_history: Conversation history
             rewrite_method: Method to use for query rewriting
         """
+        logger.debug(f"Processing {case_name}")
         st.info(f"{case_name} détectée.")
-        rewritten_query = execute_with_spinner('Réécriture de la requête', rewrite_method, user_input, conv_history)
-        logger.debug(f"Rewritten query ({case_name.lower()}): {rewritten_query}")
-        self.append_answer(user_input, rewritten_query)
+        
+        try:
+            # Rewrite query using the specified method
+            rewritten_query = execute_with_spinner('Réécriture de la requête', rewrite_method, user_input, conv_history)
+            logger.debug(f"Rewritten query ({case_name.lower()}): {rewritten_query}")
+            
+            # Generate response using pipeline (same as FastAPI)
+            def generate_response():
+                result, links = Pipeline().generate_response(prompt=rewritten_query)
+                # Format links exactly like FastAPI
+                return format_links(result, links)
+            
+            result = execute_with_spinner('Chargement', generate_response)
+            append_to_conversation(user_input, result)
+            
+        except Exception as e:
+            logger.error(f"Error in {case_name}: {e}")
+            st.error(f"Erreur lors du traitement: {case_name}")
 
     def _handle_conversational_case(self, case_name: str, user_input: str):
         """
         Helper method to handle conversational cases.
+        Matches FastAPI cases 4 and 6.
         
         Args:
             case_name: Name of the case for display
             user_input: User's input message
         """
+        logger.debug(f"Processing {case_name}")
         st.info(f"{case_name} détectée.")
-        # Get current conversation from session state using helper
-        current_conversation = get_conversation_list()
-        result = execute_with_spinner(
-            'Chargement', 
-            self.llm_service.continue_conversation, 
-            user_input, 
-            current_conversation
-        )
-        append_to_conversation(user_input, result)
+        
+        try:
+            # Get current conversation from session state
+            current_conversation = get_conversation_list()
+            result = execute_with_spinner(
+                'Chargement', 
+                self.llm_service.continue_conversation, 
+                user_input, 
+                current_conversation
+            )
+            append_to_conversation(user_input, result)
+            
+        except Exception as e:
+            logger.error(f"Error in {case_name}: {e}")
+            st.error(f"Erreur lors du traitement: {case_name}")
 
     def reset_session_state(self):
         """
@@ -131,19 +156,18 @@ class StreamlitChatbot:
         Returns:
             None: The function updates the session state with the user's prompt and the chatbot's response. 
         """
-        def generate_response():
-            response = Pipeline().generate_response(prompt=prompt, detected_specialty=specialty)
-            if isinstance(response, tuple):
-                result, link = response
-                if result == 'établissement pas dans ce classement':
-                    result = f"Cet hôpital n'est pas présent pour la spécialité {specialty}"
-                result = format_links(result, link)
-            else:
-                result = response
-            return result
-        
-        result = execute_with_spinner('Chargement', generate_response)
-        append_to_conversation(prompt, result)
+        try:
+            def generate_response():
+                result, links = Pipeline().generate_response(prompt=prompt, detected_specialty=specialty)
+                # Format links exactly like FastAPI
+                return format_links(result, links)
+            
+            result = execute_with_spinner('Chargement', generate_response)
+            append_to_conversation(prompt, result)
+            
+        except Exception as e:
+            logger.error(f"Error in append_answer: {e}")
+            st.error("Erreur lors de la génération de la réponse.")
     
     
     def handle_first_message(self):
@@ -158,31 +182,41 @@ class StreamlitChatbot:
         """
         user_input = st.chat_input("Votre message")
         if user_input:
-            logger.info(f"User input: {user_input}")
+            logger.info(f"Received first message - Prompt length: {len(user_input)} chars")
             st.session_state.prompt = user_input
-            check_message_length_streamlit(st.session_state.prompt, self.reset_session_state)
-            sanity_check_message_pertinence_streamlit(st.session_state.prompt, self.llm_service, self.reset_session_state, pertinent_chatbot_use_case=False)  
-            sanity_check_message_pertinence_streamlit(st.session_state.prompt, self.llm_service, self.reset_session_state, pertinent_chatbot_use_case=True)   
-            check_non_french_cities_streamlit(st.session_state.prompt, self.llm_service, self.reset_session_state)
+            
+            try:
+                # Perform sanity checks for first message (no conversation history)
+                self._perform_sanity_checks(user_input)
+                logger.debug("Sanity checks completed for first message")
+                
+            except Exception as e:
+                logger.error(f"Sanity check failed for first message: {e}")
+                return  # Exit early if sanity checks fail
             
         prompt = get_session_state_value("prompt", "")
         if prompt:
-            # Detect medical specialty if not already set
-            specialty = get_session_state_value("specialty", "")
-            if specialty == "":
-                st.session_state.specialty = self.llm_service.detect_specialty(prompt)
-                specialty = st.session_state.specialty
+            try:
+                # Detect medical specialty if not already set
+                specialty = get_session_state_value("specialty", "")
+                if specialty == "":
+                    st.session_state.specialty = self.llm_service.detect_specialty(prompt)
+                    specialty = st.session_state.specialty
 
-            if specialty.startswith("multiple matches:"):
-                logger.info("Multiple specialties detected, prompting user for selection")
-                # Extract options from the string
-                options = list(dict.fromkeys(specialty.removeprefix("multiple matches:").strip().split(',')))
-                selected_specialty = st.radio("Précisez le domaine médical concerné :", options, index=None)
-                
-                if selected_specialty:
-                    self.append_answer(prompt, selected_specialty)
-            else:
-                self.append_answer(prompt, specialty)
+                if specialty.startswith("multiple matches:"):
+                    logger.info("Multiple specialties detected, prompting user for selection")
+                    # Extract options from the string
+                    options = list(dict.fromkeys(specialty.removeprefix("multiple matches:").strip().split(',')))
+                    selected_specialty = st.radio("Précisez le domaine médical concerné :", options, index=None)
+                    
+                    if selected_specialty:
+                        self.append_answer(prompt, selected_specialty)
+                else:
+                    self.append_answer(prompt, specialty)
+                    
+            except Exception as e:
+                logger.error(f"Error processing first message: {e}")
+                st.error("Erreur lors du traitement de votre message.")
     
     
     def handle_subsequent_messages(self):
@@ -193,57 +227,127 @@ class StreamlitChatbot:
         """    
         user_input = st.chat_input("Votre message")
         if user_input:
-            logger.info(f"Processing subsequent message: {user_input[:50]}...")
-
-            # Prepare conversation history for LLM context
-            conv_history = format_conversation_history_for_llm()
-            logger.debug(f"Conversation history length: {len(conv_history)} characters")
-
-            # Analyze subsequent message using 4-check system
+            logger.info(f"Received subsequent message - Prompt length: {len(user_input)} chars, "
+                       f"Conversation history: {get_conversation_length()} turns")
+            
             try:
-                logger.debug("Analyzing subsequent message using 4-check system")
-                analysis = self.llm_service.analyze_subsequent_message(user_input, conv_history)
-                case = self.llm_service.determine_case(analysis)
-                logger.info(f"Determined case: {case}, Analysis: {analysis}")
+                # Perform comprehensive input validation (same as FastAPI)
+                current_conversation = get_conversation_list()
+                self._perform_sanity_checks(user_input, current_conversation)
+                logger.debug("Sanity checks completed for subsequent message")
+                
+                # Prepare conversation history for LLM analysis (same as FastAPI)
+                conv_history = "\n".join([f"Utilisateur: {q}\nAssistant: {r}" for q, r in current_conversation])
+                
+                # Analyze and handle message (same as FastAPI)
+                self._analyze_and_handle_message(user_input, conv_history)
+                
             except Exception as e:
-                logger.error(f"Error during case analysis: {e}")
-                case = "case6"  # Default to LLM handling
+                logger.error(f"Error processing subsequent message: {str(e)}")
+                st.error("Une erreur s'est produite lors du traitement de votre message.")
+
+    def _perform_sanity_checks(self, prompt: str, conversation: list = None):
+        """
+        Perform all sanity checks on user input - matches FastAPI perform_sanity_checks.
+        
+        Args:
+            prompt: The user's input message
+            conversation: Optional conversation history for chat endpoints
+        Raises:
+            Exception: If any sanity check fails, with appropriate error message
+        """
+        logger.debug("Starting sanity checks for user input")
+        
+        # Check message length to prevent oversized requests
+        check_message_length_streamlit(prompt, self.reset_session_state)
+        
+        # Prepare conversation history for context-aware checks if available
+        conv_history = ""
+        if conversation is not None and len(conversation) > 0:
+            conv_history = "\n".join([f"Utilisateur: {q}\nAssistant: {r}" for q, r in conversation])
+            logger.debug("Checking pertinence with full conversation context")
+        else:
+            logger.debug("Checking pertinence without conversation context")
+        
+        # Perform all pertinence checks with conversation context
+        sanity_check_message_pertinence_streamlit(prompt, self.llm_service, self.reset_session_state, pertinent_chatbot_use_case=False, conv_history=conv_history)
+        sanity_check_message_pertinence_streamlit(prompt, self.llm_service, self.reset_session_state, pertinent_chatbot_use_case=True, conv_history=conv_history)
+        
+        # Also validate geographical scope using conversation context
+        check_non_french_cities_streamlit(prompt, self.llm_service, self.reset_session_state, conv_history=conv_history)
+        
+        # Check conversation length limits for chat endpoints
+        if conversation is not None:
+            check_conversation_limit_streamlit(conversation, self.MAX_MESSAGES, self.reset_session_state)
+        
+        logger.debug("All sanity checks passed successfully")
+
+    def _analyze_and_handle_message(self, user_input: str, conv_history: str):
+        """
+        Analyze subsequent message and handle based on determined case.
+        
+        Args:
+            user_input: The user's input message
+            conv_history: Formatted conversation history for LLM
+        """
+        try:
+            # Analyze subsequent message using 4-check system
+            logger.debug("Analyzing subsequent message using 4-check system")
+            analysis = self.llm_service.analyze_subsequent_message(user_input, conv_history)
+            case = self.llm_service.determine_case(analysis)
+            logger.info(f"Determined case: {case}, Analysis: {analysis}")
             
-            # Handle different cases using helper methods
-            case_handlers = {
-                "case1": lambda: self._handle_off_topic_case(user_input),
-                "case2": lambda: self._handle_case_with_rewrite(
-                    "Continuation avec fusion de requête", 
-                    user_input, conv_history, 
-                    self.llm_service.rewrite_query_merge
-                ),
-                "case3": lambda: self._handle_case_with_rewrite(
-                    "Continuation avec ajout de critères", 
-                    user_input, conv_history, 
-                    self.llm_service.rewrite_query_add
-                ),
-                "case4": lambda: self._handle_conversational_case(
-                    "Continuation conversationnelle", user_input
-                ),
-                "case5": lambda: self._handle_new_search_case(user_input),
-                "case6": lambda: self._handle_conversational_case(
-                    "Nouvelle question conversationnelle", user_input
-                )
-            }
-            
-            handler = case_handlers.get(case, case_handlers["case6"])
-            handler()
+            # Handle different cases (same as FastAPI)
+            if case == "case1":
+                self._handle_off_topic_case(user_input)
+            elif case == "case2":
+                self._handle_case_with_rewrite("Continuation avec fusion de requête", user_input, conv_history, self.llm_service.rewrite_query_merge)
+            elif case == "case3":
+                self._handle_case_with_rewrite("Continuation avec ajout de requête", user_input, conv_history, self.llm_service.rewrite_query_add)
+            elif case == "case4":
+                self._handle_conversational_case("Continuation LLM", user_input)
+            elif case == "case5":
+                self._handle_new_search_case(user_input)
+            else:  # case6
+                self._handle_conversational_case("Nouvelle question LLM", user_input)
+                
+        except Exception as e:
+            logger.error(f"Error during case analysis: {e}")
+            st.error("Une erreur s'est produite lors de l'analyse de votre message. Veuillez réessayer.")
 
     def _handle_off_topic_case(self, user_input: str):
-        """Handle off-topic messages (case1)."""
+        """
+        Handle off-topic messages (case1).
+        Matches FastAPI case 1.
+        """
+        logger.debug("Processing Case 1: off-topic message")
         st.info("Message hors sujet détecté.")
+        
+        # Use the exact same response as FastAPI
         result = "Je n'ai pas bien saisi la nature de votre demande. Merci de reformuler une question relative aux classements des hôpitaux."
         append_to_conversation(user_input, result)
 
     def _handle_new_search_case(self, user_input: str):
-        """Handle new search questions (case5)."""
+        """
+        Handle new search questions (case5).
+        Matches FastAPI case 5.
+        """
+        logger.debug("Processing Case 5: new question with search")
         st.info("Nouvelle question avec recherche détectée.")
-        self.append_answer(user_input, user_input)
+        
+        try:
+            # Generate response using pipeline (same as FastAPI)
+            def generate_response():
+                result, links = Pipeline().generate_response(prompt=user_input)
+                # Format links exactly like FastAPI
+                return format_links(result, links)
+            
+            result = execute_with_spinner('Chargement', generate_response)
+            append_to_conversation(user_input, result)
+            
+        except Exception as e:
+            logger.error(f"Error in new search case: {e}")
+            st.error("Erreur lors du traitement de votre nouvelle question.")
 
     def run(self):
         """

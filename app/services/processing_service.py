@@ -127,7 +127,7 @@ class Processing:
         conversion_map = {
             "public": "Public",
             "private": "Privé", 
-            "no match": "aucune correspondance"
+            "no match": "no specialty match"
         }
         return conversion_map.get(english_type, english_type)
     
@@ -204,7 +204,8 @@ class Processing:
             that do not mention a specific specialty.
 
         Args:
-            category (str): The institution category (public/private) requested.
+            category (str): The institution category (public/private) requested. 
+                          Accepted values: 'no specialty match', 'Public', 'Privé'
 
         Returns:
             pd.DataFrame: The combined DataFrame of relevant institutions.

@@ -52,7 +52,7 @@ def check_conversation_limit_streamlit(conversation, max_messages, reset_callbac
         reset_callback()
         st.rerun()
 
-def sanity_check_message_pertinence_streamlit(user_input, llm_service, reset_callback, pertinent_chatbot_use_case=False):
+def sanity_check_message_pertinence_streamlit(user_input, llm_service, reset_callback, pertinent_chatbot_use_case=False, conv_history=""):
     """
     Validates message relevance to hospital topics using LLM service.
     
@@ -61,18 +61,19 @@ def sanity_check_message_pertinence_streamlit(user_input, llm_service, reset_cal
         llm_service: LLM service instance for relevance checking.
         reset_callback (callable): Function to reset application state.
         pertinent_chatbot_use_case (bool, optional): Enable secondary pertinence check. Defaults to False.
+        conv_history (str, optional): Conversation history for context. Defaults to "".
         
     Raises:
         Stops Streamlit execution if message is not relevant to hospital topics.
     """
     try:
-        sanity_check_message_pertinence_core(user_input, llm_service, pertinent_chatbot_use_case)
+        sanity_check_message_pertinence_core(user_input, llm_service, pertinent_chatbot_use_case, conv_history)
     except SanityCheckException as e:
         reset_callback()
         st.warning(str(e))
         st.stop()
 
-def check_non_french_cities_streamlit(user_input, llm_service, reset_callback):
+def check_non_french_cities_streamlit(user_input, llm_service, reset_callback, conv_history=""):
     """
     Validates that mentioned cities are French locations using LLM service.
     
@@ -80,12 +81,13 @@ def check_non_french_cities_streamlit(user_input, llm_service, reset_callback):
         user_input (str): User's input message to validate.
         llm_service: LLM service instance for city validation.
         reset_callback (callable): Function to reset application state.
+        conv_history (str, optional): Conversation history for context. Defaults to "".
         
     Raises:
         Stops Streamlit execution if non-French cities are detected.
     """
     try:
-        check_non_french_cities_core(user_input, llm_service)
+        check_non_french_cities_core(user_input, llm_service, conv_history)
     except SanityCheckException as e:
         reset_callback()
         st.warning(str(e))

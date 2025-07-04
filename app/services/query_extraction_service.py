@@ -101,24 +101,31 @@ class QueryExtractionService:
         return specialty
    
     
-    def sanity_check_medical_pertinence(self, prompt):
+    def sanity_check_medical_pertinence(self, prompt, conv_history=""):
         """
         Checks the medical pertinence of the given prompt using the LLM.
         Returns True if medically pertinent, False otherwise.
+        
+        Args:
+            prompt: The message to check
+            conv_history: Optional conversation history for context
         """
-        formatted_prompt = format_sanity_check_medical_pertinence_prompt(prompt)
+        formatted_prompt = format_sanity_check_medical_pertinence_prompt(prompt, conv_history)
         return invoke_llm_and_parse_boolean(self.model, formatted_prompt, "sanity_check_medical_pertinence")
 
-    def sanity_check_chatbot_pertinence(self, prompt):
+    def sanity_check_chatbot_pertinence(self, prompt, conv_history=""):
         """
         Checks the pertinence of the given prompt for the chatbot using the LLM.
         Returns True if relevant to chatbot, False otherwise.
+        
+        Args:
+            prompt: The message to check
+            conv_history: Optional conversation history for context
         """
-        formatted_prompt = format_sanity_check_chatbot_pertinence_prompt(prompt)
+        formatted_prompt = format_sanity_check_chatbot_pertinence_prompt(prompt, conv_history)
         return invoke_llm_and_parse_boolean(self.model, formatted_prompt, "sanity_check_chatbot_pertinence")
 
-
-    def detect_city(self, prompt):
+    def detect_city(self, prompt, conv_history=""):
         """
         Detects the city from the given prompt using the LLM.
         Returns: numeric code for status OR city name string if specific city found.
@@ -127,14 +134,18 @@ class QueryExtractionService:
         - 2: ambiguous city  
         - 3: clear city mentioned
         - string: actual city name
+        
+        Args:
+            prompt: The message to analyze
+            conv_history: Optional conversation history for context
         """
-        formatted_prompt = format_detect_city_prompt(prompt)
+        formatted_prompt = format_detect_city_prompt(prompt, conv_history)
         raw_response = invoke_llm_with_error_handling(self.model, formatted_prompt, "detect_city")
         city_status = parse_city_response(raw_response)
         
         # If a clear city is mentioned, retrieve the actual city name in a second LLM call
         if city_status == CityResponse.CITY_MENTIONED:
-            formatted_prompt2 = format_second_detect_city_prompt(prompt)
+            formatted_prompt2 = format_second_detect_city_prompt(prompt, conv_history)
             city_name = invoke_llm_with_error_handling(self.model, formatted_prompt2, "detect_city (second call)")
             return city_name  # Return the actual city name
         

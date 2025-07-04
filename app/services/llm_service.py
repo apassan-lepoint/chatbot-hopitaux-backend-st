@@ -113,12 +113,13 @@ class LLMService:
             self.query_extractor.detect_specialty_full
         )
 
-    def sanity_check_medical_pertinence(self, prompt: str) -> str:
+    def sanity_check_medical_pertinence(self, prompt: str, conv_history: str = "") -> str:
         """
         Determines if the user's question is off-topic for the assistant.
         
         Args:
             prompt (str): The user's question.
+            conv_history (str): Optional conversation history for context.
         
         Returns:
             str: The LLM's off-topic assessment.
@@ -129,15 +130,16 @@ class LLMService:
         return self._execute_with_logging(
             "Checking medical pertinence",
             prompt,
-            self.query_extractor.sanity_check_medical_pertinence
+            lambda p: self.query_extractor.sanity_check_medical_pertinence(p, conv_history)
         )
 
-    def sanity_check_chatbot_pertinence(self, prompt: str) -> str: 
+    def sanity_check_chatbot_pertinence(self, prompt: str, conv_history: str = "") -> str: 
         """
         Determines if the user's question is relevant to the hospital ranking assistant.
         
         Args:
             prompt (str): The user's question.
+            conv_history (str): Optional conversation history for context.
         
         Returns:
             str: The LLM's assessment of relevance.
@@ -148,27 +150,27 @@ class LLMService:
         return self._execute_with_logging(
             "Checking chatbot pertinence",
             prompt,
-            self.query_extractor.sanity_check_chatbot_pertinence
+            lambda p: self.query_extractor.sanity_check_chatbot_pertinence(p, conv_history)
         )
 
-    def detect_city(self, prompt: str) -> str:
+    def detect_city(self, prompt: str, conv_history: str = "") -> str:
         """
-        Identifies the city or department mentioned in the user's question.
-        Handles ambiguous cases with a two-step LLM process.
+        Determines the city mentioned in the user's question.
         
         Args:
             prompt (str): The user's question.
+            conv_history (str): Optional conversation history for context.
         
         Returns:
-            str: The detected city or department.
-            
+            str: The LLM's city detection result.
+        
         Raises:
             Exception: If the city detection fails, an error is logged and raised.
         """
         return self._execute_with_logging(
             "Detecting city",
             prompt,
-            self.query_extractor.detect_city
+            lambda p: self.query_extractor.detect_city(p, conv_history)
         )
 
     def detect_topk(self, prompt: str):

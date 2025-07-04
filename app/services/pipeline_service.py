@@ -72,7 +72,6 @@ class Pipeline:
         
         return base_message.format(count=count, specialty=specialty_part, location=location_part)
 
-
     def _create_response_and_log(self, message: str, table_str: str, prompt: str) -> str:
         """
         Helper method to create final response, log it, and save to CSV.

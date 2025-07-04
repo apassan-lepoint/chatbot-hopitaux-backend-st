@@ -56,19 +56,34 @@ N'invente pas de spécialité qui n'est pas dans la liste
 """,
 
     "sanity_check_medical_pertinence_prompt": """
-Évaluez si le message suivant a un rapport avec la santé humaine ou les services de soins: '{prompt}'
+Évaluez si le message suivant a un rapport avec la santé humaine ou les services de soins.
+
+{conv_history}Message à évaluer: '{prompt}'
+
+Si un historique de conversation est fourni ci-dessus, analysez le nouveau message en tenant compte du contexte conversationnel. Un message peut être pertinent même s'il semble incomplet ou ambigu, si le contexte de la conversation montre qu'il s'agit d'une suite logique d'une discussion sur la santé.
+
 Répondez UNIQUEMENT avec 1 si pertinent, 0 si non pertinent.
 
-Exemples : 
-Par exemple pour le message: 'J'ai un cancer à Paris', tu retourneras: 1.
-Par exemple pour le message: 'Cataracte', tu retourneras: 1.
-Par exemple pour le message: 'J'ai mal aux pieds', tu retourneras: 1.
-Par exemple pour le message: 'Les hôpitaux privés sont ils meilleurs que les publiques?', tu retourneras: 1.
-Par exemple pour le message: 'Je mange des frites', tu retourneras: 0.
+Exemples pour messages standalone: 
+- 'J'ai un cancer à Paris' → 1
+- 'Cataracte' → 1  
+- 'J'ai mal aux pieds' → 1
+- 'Les hôpitaux privés sont ils meilleurs que les publiques?' → 1
+- 'Je mange des frites' → 0
+
+Exemples pour messages avec contexte conversationnel:
+- Avec historique montrant une discussion sur les hôpitaux, 'Et à Lyon ?' → 1 (question de suivi sur les hôpitaux)
+- Avec historique sur la cardiologie, 'Merci' → 1 (remerciement dans contexte médical)
+- Même avec contexte médical, 'Parle-moi de football' → 0 (hors-sujet)
 """,
 
     "sanity_check_chatbot_pertinence_prompt": """
-Vérifiez si cette question concerne le classement des hôpitaux: '{prompt}'
+Vérifiez si cette question concerne le classement des hôpitaux.
+
+{conv_history}Message à évaluer: '{prompt}'
+
+Si un historique de conversation est fourni ci-dessus, analysez le nouveau message en tenant compte du contexte conversationnel. Un message peut être pertinent même s'il semble incomplet ou ambigu, si le contexte de la conversation montre qu'il s'agit d'une suite logique d'une discussion sur les classements d'hôpitaux.
+
 Répondez UNIQUEMENT avec 1 si pertinent, 0 si non pertinent.
 
 Une question est pertinente si elle concerne au moins un des cas suivants:
@@ -76,7 +91,7 @@ Une question est pertinente si elle concerne au moins un des cas suivants:
 - Le classement des hôpitaux et cliniques  
 - La recherche d'un hôpital, d'une clinique ou d'un service médical  
 
-Exemples de questions pertinentes (repondre 1) :  
+Exemples de questions pertinentes pour messages standalone (repondre 1):  
 - Quel est la meilleur clinique de France ?
 - Conseille moi un hôpital à Lyon 
 - Je chercher un service de pneumologie
@@ -87,32 +102,56 @@ Exemples de questions pertinentes (repondre 1) :
 - Est-ce que l'Institut mutualiste Montsouris est bon ?
 - Y a-t-il des hôpitaux privés avec un service de cardiologie interventionnelle ?
 
-Exemples de questions non pertinentes (repondre 0) :  
+Exemples de questions non pertinentes pour messages standalone (repondre 0):  
 - Pourquoi les hôpitaux sont-ils en crise ?  #Il s'agit d'une demande d'information qui n'est pas dans le cadre direct de la recherche d'un établissement de soin
 - Dois-je prendre du paracétamol pour ma fièvre ? #Il s'agit d'une demande d'expertise médical qui n'est pas dans le cadre de la recherche d'un établissement de soin
 - Puis-je perdre la vue si j'ai un glaucome? #Il s'agit d'une demande d'expertise médical qui n'est pas dans le cadre de la recherche d'un établissement de soin
+
+Exemples avec contexte conversationnel:
+- Avec historique sur les hôpitaux parisiens, 'Et à Lyon ?' → 1 (question de suivi sur les hôpitaux)
+- Avec historique sur les classements, 'Combien coûte une consultation ?' → 0 (question sur les coûts, pas sur les classements)
+- Avec historique sur la recherche d'hôpital, 'Merci beaucoup' → 1 (remerciement dans contexte de recherche d'hôpital)
 """,
 
     "detect_city_prompt": """
-Analysez cette phrase pour détecter des informations de localisation: '{prompt}'
+Analysez cette phrase pour détecter des informations de localisation.
+
+{conv_history}Message à analyser: '{prompt}'
+
+Si un historique de conversation est fourni ci-dessus, analysez le nouveau message en tenant compte du contexte conversationnel. Une ville peut être mentionnée de manière implicite si le contexte de la conversation montre qu'on parle d'une localisation spécifique.
+
 Répondez avec:
 - 0 si aucune localisation n'est mentionnée
 - 1 si ville étrangère  
 - 2 si confusion entre villes françaises
 - 3 si une ville ou localisation française claire est mentionnée
+
+Exemples avec contexte conversationnel:
+- Avec historique mentionnant Paris, 'Et à Lyon ?' → 3 (Lyon est mentionné)
+- Avec historique sur Marseille, 'Merci' → 0 (aucune nouvelle localisation)
+- Avec historique général, 'À Londres ?' → 1 (ville étrangère)
 """,
 
     "second_detect_city_prompt": """
-Quelle ville ou département est mentionné par la phrase suivante : '{prompt}'?
+Quelle ville ou département est mentionné par la phrase suivante?
+
+{conv_history}Message à analyser: '{prompt}'
+
+Si un historique de conversation est fourni ci-dessus, analysez le nouveau message en tenant compte du contexte conversationnel. Une ville peut être mentionnée de manière implicite si le contexte de la conversation montre qu'on parle d'une localisation spécifique.
+
 Si une ville est mentionnée, réponds UNIQUEMENT avec le nom de ville.
-Par exemple:  pour la phrase, 'Trouve moi un hôpital à Lyon', tu me retourneras: 'Lyon'.
+Par exemple: pour la phrase 'Trouve moi un hôpital à Lyon', tu me retourneras: 'Lyon'.
 
 Si un département est mentionné, réponds UNIQUEMENT avec le numéro du département.
-Par exemple:  pour la phrase, 'Je veux être hospitalisé dans le 92', tu me retourneras: '92'.               
+Par exemple: pour la phrase 'Je veux être hospitalisé dans le 92', tu me retourneras: '92'.               
 
 Si aucune localisation n'est mentionnée dans ma phrase, renvoie moi EXACTEMENT ces deux mots: 'aucune correspondance'.
-Par exemple:  pour la phrase, 'Je veux un classement des meilleurs établissements en France', tu me retourneras: 'aucune correspondance'.
-Par exemple:  pour la phrase, 'Quelle est la meilleur clinique pour une chirurgie à la montagne', tu me retourneras: 'aucune correspondance'.
+Par exemple: pour la phrase 'Je veux un classement des meilleurs établissements en France', tu me retourneras: 'aucune correspondance'.
+Par exemple: pour la phrase 'Quelle est la meilleur clinique pour une chirurgie à la montagne', tu me retourneras: 'aucune correspondance'.
+
+Exemples avec contexte conversationnel:
+- Avec historique mentionnant Paris, 'Et à Lyon ?' → 'Lyon'
+- Avec historique sur Marseille, 'Merci' → 'aucune correspondance'
 """,
 
     "detect_topk_prompt": """

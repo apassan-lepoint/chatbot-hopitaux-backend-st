@@ -44,7 +44,7 @@ def check_conversation_limit_fastapi(conversation, max_messages):
         raise HTTPException(status_code=400, detail=str(e))
 
 
-def sanity_check_message_pertinence_fastapi(user_input, llm_service, pertinent_chatbot_use_case=False):
+def sanity_check_message_pertinence_fastapi(user_input, llm_service, pertinent_chatbot_use_case=False, conv_history=""):
     """
     Check if the user input is off-topic (standard or pertinent) and raises an exception if it is.  
     
@@ -52,29 +52,31 @@ def sanity_check_message_pertinence_fastapi(user_input, llm_service, pertinent_c
         user_input (str): The user input to check.
         llm_service: The language model service used for checking pertinence.
         pertinent_chatbot_use_case (bool, optional): Additional check for pertinence. Defaults to False.
+        conv_history (str, optional): Conversation history for context. Defaults to "".
         
     Raises:
         HTTPException: If the user input is off-topic, a 400 error is raised with a detailed message.   
     """
     try:
-        sanity_check_message_pertinence_core(user_input, llm_service, pertinent_chatbot_use_case)
+        sanity_check_message_pertinence_core(user_input, llm_service, pertinent_chatbot_use_case, conv_history)
     except SanityCheckException as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
-def check_non_french_cities_fastapi(user_input, llm_service):
+def check_non_french_cities_fastapi(user_input, llm_service, conv_history=""):
     """
     Check if the user input contains non-French cities and raises an exception if it does.  
     
     Args:
         user_input (str): The user input to check.
-        llm_service: The language model service used for checking non-French cities.    
+        llm_service: The language model service used for checking non-French cities.
+        conv_history (str, optional): Conversation history for context. Defaults to "".    
     
     Raises:
         HTTPException: If the user input contains non-French cities, a 400 error is raised with a detailed message.
         
     """
     try:
-        check_non_french_cities_core(user_input, llm_service)
+        check_non_french_cities_core(user_input, llm_service, conv_history)
     except SanityCheckException as e:
         raise HTTPException(status_code=400, detail=str(e))

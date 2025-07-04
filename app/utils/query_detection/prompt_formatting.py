@@ -4,24 +4,44 @@ This module contains functions to format prompts for various tasks in the chatbo
 
 from app.utils.query_detection.prompt_instructions import PROMPT_INSTRUCTIONS
 
-def format_sanity_check_medical_pertinence_prompt(prompt: str) -> str:
-    return PROMPT_INSTRUCTIONS["sanity_check_medical_pertinence_prompt"].format(prompt=prompt)
+def format_sanity_check_medical_pertinence_prompt(prompt: str, conv_history: str = "") -> str:
+    # Format conversation history with proper prefix if provided
+    formatted_history = f"Historique de la conversation:\n{conv_history}\n\n" if conv_history.strip() else ""
+    return PROMPT_INSTRUCTIONS["sanity_check_medical_pertinence_prompt"].format(
+        prompt=prompt, 
+        conv_history=formatted_history
+    )
 
 
-def format_sanity_check_chatbot_pertinence_prompt(prompt):
-    return PROMPT_INSTRUCTIONS["sanity_check_chatbot_pertinence_prompt"].format(prompt=prompt)
+def format_sanity_check_chatbot_pertinence_prompt(prompt: str, conv_history: str = "") -> str:
+    # Format conversation history with proper prefix if provided
+    formatted_history = f"Historique de la conversation:\n{conv_history}\n\n" if conv_history.strip() else ""
+    return PROMPT_INSTRUCTIONS["sanity_check_chatbot_pertinence_prompt"].format(
+        prompt=prompt, 
+        conv_history=formatted_history
+    )
 
 
 def format_second_detect_specialty_prompt(mapping_words, prompt):
     return PROMPT_INSTRUCTIONS["second_detect_specialty_prompt"].format(mapping_words=mapping_words, prompt=prompt)
 
 
-def format_detect_city_prompt(prompt):
-    return PROMPT_INSTRUCTIONS["detect_city_prompt"].format(prompt=prompt)
+def format_detect_city_prompt(prompt: str, conv_history: str = "") -> str:
+    # Format conversation history with proper prefix if provided
+    formatted_history = f"Historique de la conversation:\n{conv_history}\n\n" if conv_history.strip() else ""
+    return PROMPT_INSTRUCTIONS["detect_city_prompt"].format(
+        prompt=prompt, 
+        conv_history=formatted_history
+    )
 
 
-def format_second_detect_city_prompt(prompt):
-    return PROMPT_INSTRUCTIONS["second_detect_city_prompt"].format(prompt=prompt)
+def format_second_detect_city_prompt(prompt: str, conv_history: str = "") -> str:
+    # Format conversation history with proper prefix if provided  
+    formatted_history = f"Historique de la conversation:\n{conv_history}\n\n" if conv_history.strip() else ""
+    return PROMPT_INSTRUCTIONS["second_detect_city_prompt"].format(
+        prompt=prompt, 
+        conv_history=formatted_history
+    )
 
 
 def format_detect_topk_prompt(prompt):
