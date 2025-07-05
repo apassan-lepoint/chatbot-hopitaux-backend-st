@@ -328,6 +328,9 @@ class StreamlitChatbot:
             logger.info(f"Received subsequent message - Prompt length: {len(user_input)} chars, "
                        f"Conversation history: {get_conversation_length()} turns")
             
+            # Store the user input for potential specialty selection
+            st.session_state.prompt = user_input
+            
             try:
                 # Perform comprehensive input validation (same as FastAPI)
                 current_conversation = get_conversation_list()
@@ -343,6 +346,35 @@ class StreamlitChatbot:
             except Exception as e:
                 logger.error(f"Error processing subsequent message: {str(e)}")
                 st.error("Une erreur s'est produite lors du traitement de votre message.")
+        
+        # Check if we're in the middle of specialty selection for subsequent messages
+        multiple_specialties = get_session_state_value("multiple_specialties", None)
+        if multiple_specialties is not None:
+            # Show radio button for specialty selection
+            selected_specialty = st.radio(
+                "Précisez le domaine médical concerné :", 
+                multiple_specialties, 
+                index=None,
+                key="specialty_radio_subsequent"
+            )
+            
+            if selected_specialty:
+                # Validate that the selected specialty is valid
+                if selected_specialty in multiple_specialties:
+                    st.session_state.selected_specialty = selected_specialty
+                    st.session_state.specialty_context = {
+                        'original_query': get_session_state_value("prompt", ""),
+                        'selected_specialty': selected_specialty,
+                        'timestamp': datetime.now().isoformat()
+                    }
+                    st.session_state.multiple_specialties = None
+                    logger.info(f"User selected valid specialty in subsequent message: {selected_specialty}")
+                    # Use the current prompt for the specialty selection
+                    current_prompt = get_session_state_value("prompt", "")
+                    self.append_answer(current_prompt, selected_specialty)
+                else:
+                    st.error("Sélection invalide. Veuillez choisir une option dans la liste.")
+            return
 
     def _perform_sanity_checks(self, prompt: str, conversation: list = None):
         """
@@ -436,6 +468,26 @@ class StreamlitChatbot:
         try:
             # Get current specialty context
             current_specialty = self._get_current_specialty_context()
+            
+            # If no current specialty, try to detect it from the new input
+            if not current_specialty or current_specialty == "no specialty match":
+                detected_specialty = self.llm_service.detect_specialty(user_input)
+                normalized_specialty = self._normalize_specialty_format(detected_specialty)
+                
+                # Handle multiple matches case
+                if normalized_specialty.startswith("multiple matches:"):
+                    logger.info("Multiple specialties detected in new search, prompting user for selection")
+                    options = self._extract_specialty_options(normalized_specialty)
+                    if options:
+                        st.session_state.multiple_specialties = options
+                        st.session_state.prompt = user_input  # Store the current prompt
+                        st.rerun()
+                        return
+                    else:
+                        # Fallback to no specialty if extraction fails
+                        current_specialty = "no specialty match"
+                else:
+                    current_specialty = normalized_specialty if normalized_specialty else "no specialty match"
             
             # Generate response using pipeline with specialty context
             def generate_response():
