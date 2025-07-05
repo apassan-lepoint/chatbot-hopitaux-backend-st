@@ -323,30 +323,6 @@ class StreamlitChatbot:
         This method processes user input using the 4-check system to determine
         how to handle the conversation continuation.
         """    
-        user_input = st.chat_input("Votre message")
-        if user_input:
-            logger.info(f"Received subsequent message - Prompt length: {len(user_input)} chars, "
-                       f"Conversation history: {get_conversation_length()} turns")
-            
-            # Store the user input for potential specialty selection
-            st.session_state.prompt = user_input
-            
-            try:
-                # Perform comprehensive input validation (same as FastAPI)
-                current_conversation = get_conversation_list()
-                self._perform_sanity_checks(user_input, current_conversation)
-                logger.debug("Sanity checks completed for subsequent message")
-                
-                # Prepare conversation history for LLM analysis (same as FastAPI)
-                conv_history = "\n".join([f"Utilisateur: {q}\nAssistant: {r}" for q, r in current_conversation])
-                
-                # Analyze and handle message (same as FastAPI)
-                self._analyze_and_handle_message(user_input, conv_history)
-                
-            except Exception as e:
-                logger.error(f"Error processing subsequent message: {str(e)}")
-                st.error("Une erreur s'est produite lors du traitement de votre message.")
-        
         # Check if we're in the middle of specialty selection for subsequent messages
         multiple_specialties = get_session_state_value("multiple_specialties", None)
         if multiple_specialties is not None:
@@ -375,6 +351,30 @@ class StreamlitChatbot:
                 else:
                     st.error("Sélection invalide. Veuillez choisir une option dans la liste.")
             return
+        
+        user_input = st.chat_input("Votre message")
+        if user_input:
+            logger.info(f"Received subsequent message - Prompt length: {len(user_input)} chars, "
+                       f"Conversation history: {get_conversation_length()} turns")
+            
+            # Store the user input for potential specialty selection
+            st.session_state.prompt = user_input
+            
+            try:
+                # Perform comprehensive input validation (same as FastAPI)
+                current_conversation = get_conversation_list()
+                self._perform_sanity_checks(user_input, current_conversation)
+                logger.debug("Sanity checks completed for subsequent message")
+                
+                # Prepare conversation history for LLM analysis (same as FastAPI)
+                conv_history = "\n".join([f"Utilisateur: {q}\nAssistant: {r}" for q, r in current_conversation])
+                
+                # Analyze and handle message (same as FastAPI)
+                self._analyze_and_handle_message(user_input, conv_history)
+                
+            except Exception as e:
+                logger.error(f"Error processing subsequent message: {str(e)}")
+                st.error("Une erreur s'est produite lors du traitement de votre message.")
 
     def _perform_sanity_checks(self, prompt: str, conversation: list = None):
         """
