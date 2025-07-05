@@ -21,13 +21,13 @@ logger = get_logger(__name__)
 
 class Processing:
     def __init__(self):
-        self.palmares_df = None
+        self.ranking_df = None
         self.llm_service = LLMService()
         self.specialty_df = None
         self.institution_name = None
-        self.ranking_not_found = False
-        self.lien_classement_web = None
-        self.geopy_problem = False
+        self.specialty_ranking_unavailable = False
+        self.web_ranking_link = None
+        self.geolocation_api_error = False
 
         self.weblinks = {
             "public": "https://www.lepoint.fr/hopitaux/classements/tableau-d-honneur-public.php",
@@ -45,8 +45,8 @@ class Processing:
         # Extracts specialty, city, and institution type from the prompt using LLMService
         if self.specialty is None:
             self.specialty = self.llm_service.detect_specialty(prompt)
-            self.palmares_df = pd.read_excel(self.paths["ranking_file_path"], sheet_name="Palmarès")
-        self.palmares_df = pd.read_excel(self.paths["ranking_file_path"], sheet_name="Palmarès")
+            self.ranking_df = pd.read_excel(self.paths["ranking_file_path"], sheet_name="Palmarès")
+        self.ranking_df = pd.read_excel(self.paths["ranking_file_path"], sheet_name="Palmarès")
         self.city = self.llm_service.detect_city(prompt)
         self.institution_type = self.llm_service.detect_institution_type(prompt)
         self.institution_mentioned = self.llm_service.institution_mentioned
@@ -57,35 +57,35 @@ class Processing:
         return remove_accents(chaine)
 
     def _generate_lien_classement(self, matching_rows: pd.DataFrame = None) -> list:
-        self.lien_classement_web = []
+        self.web_ranking_link = []
         if self.specialty == 'aucune correspondance':
             if self.institution_type == 'Public':
-                self.lien_classement_web = [self.weblinks["public"]]
+                self.web_ranking_link = [self.weblinks["public"]]
             elif self.institution_type == 'Privé':
-                self.lien_classement_web = [self.weblinks["privé"]]
+                self.web_ranking_link = [self.weblinks["privé"]]
             else:
-                self.lien_classement_web = [self.weblinks["public"], self.weblinks["privé"]]
+                self.web_ranking_link = [self.weblinks["public"], self.weblinks["privé"]]
             return None
         etat = self.institution_type
-        if self.ranking_not_found:
+        if self.specialty_ranking_unavailable:
             if self.institution_type == 'Public':
                 etat = 'prive'
             if self.institution_type == 'Privé':
                 etat = 'public'
-            lien_classement_web = self.specialty.replace(' ', '-')
-            lien_classement_web = f'https://www.lepoint.fr/hopitaux/classements/{lien_classement_web}-{etat}.php'
-            lien_classement_web = lien_classement_web.lower()
-            lien_classement_web = self.enlever_accents(lien_classement_web)
-            self.lien_classement_web.append(lien_classement_web)
-            return self.lien_classement_web
+            web_ranking_link = self.specialty.replace(' ', '-')
+            web_ranking_link = f'https://www.lepoint.fr/hopitaux/classements/{web_ranking_link}-{etat}.php'
+            web_ranking_link = web_ranking_link.lower()
+            web_ranking_link = self.enlever_accents(web_ranking_link)
+            self.web_ranking_link.append(web_ranking_link)
+            return self.web_ranking_link
 
         for _, row in matching_rows.iterrows():
-            lien_classement_web = row["Spécialité"].replace(' ', '-')
-            lien_classement_web = f'https://www.lepoint.fr/hopitaux/classements/{lien_classement_web}-{row["Catégorie"]}.php'
-            lien_classement_web = lien_classement_web.lower()
-            lien_classement_web = self.enlever_accents(lien_classement_web)
-            self.lien_classement_web.append(lien_classement_web)
-        return self.lien_classement_web
+            web_ranking_link = row["Spécialité"].replace(' ', '-')
+            web_ranking_link = f'https://www.lepoint.fr/hopitaux/classements/{web_ranking_link}-{row["Catégorie"]}.php'
+            web_ranking_link = web_ranking_link.lower()
+            web_ranking_link = self.enlever_accents(web_ranking_link)
+            self.web_ranking_link.append(web_ranking_link)
+        return self.web_ranking_link
 
     def _load_and_transform_for_no_specialty(self, category: str) -> pd.DataFrame:
         if category == 'aucune correspondance':
@@ -125,12 +125,12 @@ class Processing:
             if self.specialty != 'aucune correspondance' and self.institution_type != 'aucune correspondance':
                 res = []
                 res.append("Nous n'avons pas d'établissement de ce type pour cette pathologie")
-                self.ranking_not_found = True
+                self.specialty_ranking_unavailable = True
                 return res
 
     def find_excel_sheet_with_specialty(self, prompt: str) -> pd.DataFrame:
-        matching_rows = self.palmares_df[self.palmares_df["Spécialité"].str.contains(self.specialty, case=False, na=False)]
-        self.lien_classement_web = []
+        matching_rows = self.ranking_df[self.ranking_df["Spécialité"].str.contains(self.specialty, case=False, na=False)]
+        self.web_ranking_link = []
         self._generate_lien_classement(matching_rows)
         self.specialty_df = self.load_excel_sheets(matching_rows)
         return self.specialty_df
@@ -144,7 +144,7 @@ class Processing:
             return self.specialty_df
         if self.institution_type == 'aucune correspondance':
             return self.find_excel_sheet_with_specialty(prompt)
-        matching_rows = self.palmares_df[self.palmares_df["Spécialité"].str.contains(specialty, case=False, na=False)]
+        matching_rows = self.ranking_df[self.ranking_df["Spécialité"].str.contains(specialty, case=False, na=False)]
         matching_rows = matching_rows[matching_rows["Catégorie"].str.contains(self.institution_type, case=False, na=False)]
         self._generate_lien_classement(matching_rows)
         self.specialty_df = self.load_excel_sheets(matching_rows)
@@ -168,7 +168,7 @@ class Processing:
             else:
                 return None
         except Exception as e:
-            self.geopy_problem = True
+            self.geolocation_api_error = True
             return None
 
     def get_coordinates(self, city_name: str) -> tuple:
@@ -179,7 +179,7 @@ class Processing:
 
     def get_df_with_distances(self) -> pd.DataFrame:
         query_coords = self.exget_coordinates(self.city)
-        if self.geopy_problem:
+        if self.geolocation_api_error:
             return None
         self.df_with_cities = self.df_with_cities.dropna(subset=['City'])
 
@@ -190,7 +190,7 @@ class Processing:
                     res = geodesic(query_coords, city_coords).kilometers
                     return res
                 except Exception as e:
-                    self.geopy_problem = True
+                    self.geolocation_api_error = True
                     return None
             else:
                 return None
