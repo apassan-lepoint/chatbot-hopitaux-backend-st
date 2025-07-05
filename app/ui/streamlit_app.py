@@ -487,8 +487,8 @@ class StreamlitChatbot:
         col1, col2, col3 = st.columns(3)
         
         example_questions = [
-            "Quel est le meilleur hôpital de Paris ?",
-            "J'ai une gastro-entérite et je suis très inquiet. Où puis-je aller à Lille pour me faire soigner ?",
+            "Quel est le meilleur hôpital de Paris pour cancer de la vessie?",
+            "Où puis-je aller à Lille pour me faire soigner ?",
             "Quels sont les 10 meilleurs hôpitaux publics à Bordeaux pour les maladies cardiaques ?"
         ]
         
