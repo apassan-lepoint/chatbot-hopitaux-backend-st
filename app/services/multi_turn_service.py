@@ -44,7 +44,7 @@ class MultiTurnService:
         logger.info(f"Analyzing subsequent message: {prompt[:50]}...")
         
         # Check 1: Is message pertinent to chatbot?
-        on_topic = self._check_pertinence(prompt)
+        on_topic = self._check_pertinence(prompt, conv_history)
         logger.debug(f"Check 1 - on_topic: {on_topic}")
         
         if not on_topic:
@@ -55,7 +55,7 @@ class MultiTurnService:
         logger.debug(f"Check 2 - continuity: {continuity}")
         
         # Check 3: Does it need search in ranking data?
-        search_needed = self._check_search_needed(prompt)
+        search_needed = self._check_search_needed(prompt, conv_history)
         logger.debug(f"Check 3 - search_needed: {search_needed}")
         
         # Build result dictionary
@@ -73,9 +73,9 @@ class MultiTurnService:
         
         return result
     
-    def _check_pertinence(self, prompt: str) -> bool:
+    def _check_pertinence(self, prompt: str, conv_history: str = "") -> bool:
         """Check if message is pertinent to chatbot."""
-        formatted_prompt = format_sanity_check_chatbot_pertinence_prompt(prompt)
+        formatted_prompt = format_sanity_check_chatbot_pertinence_prompt(prompt, conv_history)
         return invoke_llm_and_parse_boolean(self.model, formatted_prompt, "check_pertinence")
     
     def _check_continuity(self, prompt: str, conv_history: str) -> bool:
@@ -83,9 +83,9 @@ class MultiTurnService:
         formatted_prompt = format_continuity_check_prompt(prompt, conv_history)
         return invoke_llm_and_parse_boolean(self.model, formatted_prompt, "check_continuity")
     
-    def _check_search_needed(self, prompt: str) -> bool:
+    def _check_search_needed(self, prompt: str, conv_history: str = "") -> bool:
         """Check if message requires search in ranking data."""
-        formatted_prompt = format_search_needed_check_prompt(prompt)
+        formatted_prompt = format_search_needed_check_prompt(prompt, conv_history)
         return invoke_llm_and_parse_boolean(self.model, formatted_prompt, "check_search_needed")
     
     def _check_merge_query(self, prompt: str, conv_history: str) -> bool:
