@@ -340,6 +340,31 @@ class Pipeline:
             logger.debug("Set specialty to None")
         relevant_file=self.ranking_file_path
         
+        # Extract query parameters to get the specialty
+        extracted_specialty = self.extract_query_parameters(prompt)
+        
+        # Handle multiple matches case - ask user to choose
+        if extracted_specialty and extracted_specialty.startswith(("multiple matches:", "plusieurs correspondances:")):
+            logger.info("Multiple specialty matches detected, asking user to choose")
+            
+            # Extract the list of specialties
+            if extracted_specialty.startswith("multiple matches:"):
+                specialty_list = extracted_specialty.replace("multiple matches:", "").strip()
+            else:
+                specialty_list = extracted_specialty.replace("plusieurs correspondances:", "").strip()
+            
+            # Format the specialties as a numbered list
+            specialties = [s.strip() for s in specialty_list.split(',') if s.strip()]
+            
+            if specialties:
+                response = "Je trouve plusieurs spécialités correspondant à votre demande. Veuillez préciser laquelle vous intéresse :\n\n"
+                for i, specialty in enumerate(specialties, 1):
+                    response += f"{i}. {specialty}\n"
+                response += "\nPouvez-vous me dire quelle spécialité vous intéresse précisément ?"
+                
+                logger.debug(f"Multiple matches response: {response}")
+                return response
+        
         # Retrieve the DataFrame with ranking and (if applicable) distances
         logger.debug("Retrieving ranking DataFrame with distances")
         df = self.build_ranking_dataframe_with_distances(prompt, relevant_file, detected_specialty)
