@@ -343,31 +343,18 @@ class Pipeline:
         # Extract query parameters to get the specialty
         extracted_specialty = self.extract_query_parameters(prompt)
         
-        # Handle multiple matches case FIRST - before any processing (only if no specific specialty was provided)
-        if extracted_specialty and extracted_specialty.startswith(("multiple matches:", "plusieurs correspondances:")) and (not detected_specialty or detected_specialty == "no specialty match"):
-            logger.info("Multiple specialty matches detected, asking user to choose")
-            
-            # Extract the list of specialties
-            if extracted_specialty.startswith("multiple matches:"):
-                specialty_list = extracted_specialty.replace("multiple matches:", "").strip()
-            else:
-                specialty_list = extracted_specialty.replace("plusieurs correspondances:", "").strip()
-            
-            # Format the specialties as clickable options
-            specialties = [s.strip() for s in specialty_list.split(',') if s.strip()]
-            
-            if specialties:
-                # For UI compatibility, return the raw format that Streamlit expects
-                # This allows the Streamlit app to extract the options and show them as radio buttons
-                response = f"multiple matches: {', '.join(specialties)}"
-                
-                logger.debug(f"Multiple matches response: {response}")
-                return response, None  # Return tuple with None for links
-        
         # If we have a detected_specialty that's not "no specialty match", use it instead of extracted_specialty
         if detected_specialty and detected_specialty != "no specialty match":
             logger.info(f"Using provided detected_specialty: {detected_specialty}")
             extracted_specialty = detected_specialty
+        
+        # Check if multiple specialties were detected and return early for UI handling
+        if extracted_specialty and extracted_specialty.startswith("multiple matches:"):
+            logger.info("Multiple specialty matches detected, returning for UI selection")
+            specialty_list = extracted_specialty.replace("multiple matches:", "").strip()
+            formatted_response = f"multiple matches: {specialty_list}"
+            logger.debug(f"Returning multiple matches response: {formatted_response}")
+            return formatted_response, None
         
         # Retrieve the DataFrame with ranking and (if applicable) distances
         logger.debug("Retrieving ranking DataFrame with distances")
