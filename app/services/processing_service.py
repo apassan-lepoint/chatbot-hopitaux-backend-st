@@ -168,7 +168,7 @@ class Processing:
                 logger.warning(f"Error filtering by specialty '{specialty}': {e}")
                 return pd.DataFrame()
 
-        if institution_type:
+        if institution_type and institution_type not in ['no match', 'aucune correspondance']:
             institution_type_french = self.normalize_institution_type(institution_type)
             logger.debug(f"Filtering by institution type: '{institution_type}' -> '{institution_type_french}'")
             logger.debug(f"Available categories in ranking data: {self.ranking_df['Catégorie'].unique()}")
