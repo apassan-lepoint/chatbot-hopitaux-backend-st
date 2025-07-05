@@ -173,7 +173,7 @@ class Processing:
             logger.debug(f"Filtering by institution type: '{institution_type}' -> '{institution_type_french}'")
             logger.debug(f"Available categories in ranking data: {self.ranking_df['Catégorie'].unique()}")
 
-            if institution_type_french != "no match":
+            if institution_type_french not in ["no match", "aucune correspondance"]:
                 try:
                     matching_rows = matching_rows[matching_rows["Catégorie"].str.contains(institution_type_french, case=False, na=False)]
                     logger.debug(f"Found {len(matching_rows)} rows after filtering by institution type")
@@ -187,8 +187,8 @@ class Processing:
         Automatically normalize institution type to French format used in data.
         Handles both English and French input, returns standardized French format.
         """
-        if not institution_type or institution_type == "no match":
-            return "no match"
+        if not institution_type or institution_type in ["no match", "aucune correspondance"]:
+            return "aucune correspondance"
             
         # Convert to lowercase for comparison
         type_lower = institution_type.lower().strip()
@@ -196,6 +196,10 @@ class Processing:
         
         # Mapping of all possible variations to standardized French
         type_mapping = {
+            # No match cases
+            "aucune correspondance": "aucune correspondance",
+            "no match": "aucune correspondance",
+            
             # English variations
             "public": "Public",
             "private": "Privé",
@@ -209,7 +213,7 @@ class Processing:
             "privée": "Privé"
         }
         
-        normalized = type_mapping.get(type_lower, institution_type)
+        normalized = type_mapping.get(type_lower, "aucune correspondance")  # Default to no match for unrecognized types
         logger.debug(f"Normalized institution type: '{institution_type}' -> '{normalized}'")
         return normalized
     
@@ -220,7 +224,7 @@ class Processing:
         url_mapping = {
             "Public": "public",
             "Privé": "prive",
-            "no match": "no match"
+            "aucune correspondance": "aucune correspondance"
         }
         
         return url_mapping.get(normalized, normalized.lower())
@@ -290,7 +294,7 @@ class Processing:
         self.web_ranking_link = []
 
         # If no specialty, suggest general ranking links
-        if self.specialty == 'no match' or not self.specialty:
+        if self.specialty in ['no match', 'no specialty match', 'aucune correspondance'] or not self.specialty:
             logger.debug("No specialty detected, generating general ranking links")
             institution_type_french = self.normalize_institution_type(self.institution_type)
             if institution_type_french == 'Public':
@@ -464,10 +468,10 @@ class Processing:
         
         # Defensive insertion: ensure specialty is never empty or None
         if not specialty or (isinstance(specialty, str) and specialty.strip() == ""):
-            specialty = "aucune correspondance"
+            specialty = "no specialty match"
         
         # If no specialty, load general table
-        if specialty == 'aucune correspondance':
+        if specialty in ['aucune correspondance', 'no specialty match']:
             logger.debug("No specialty match found, loading general rankings")
             self.generate_response_links()
             institution_type_french = self.normalize_institution_type(self.institution_type)
@@ -482,7 +486,7 @@ class Processing:
             return self.specialty_df
         
         # If no public/private criterion, load by specialty only
-        if self.institution_type == 'no match':
+        if self.institution_type in ['no match', 'aucune correspondance']:
             logger.debug("No institution type match found, loading by specialty only")
             return self.find_excel_sheet_with_specialty(prompt)
 
