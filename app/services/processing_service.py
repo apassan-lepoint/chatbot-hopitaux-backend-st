@@ -15,11 +15,27 @@ from app.utils.query_detection.institutions import institution_coordinates_df
 from app.utils.config import PATHS
 from app.services.llm_service import LLMService
 from app.utils.formatting import remove_accents
-from app.utils.distance import exget_coordinates, get_coordinates, distance_to_query
+from app.utils.distance import exget_coordinates, distance_to_query
 from app.utils.logging import get_logger
 logger = get_logger(__name__)
 
 class Processing:
+    """
+    Methods:
+    - get_infos: Extracts specialty, city, and institution type from the prompt.
+    - enlever_accents: Removes accents from a string.
+    - _generate_lien_classement: Generates web ranking links based on specialty and institution type.
+    - _load_and_transform_for_no_specialty: Loads and transforms data for cases with no specialty specified.
+    - load_excel_sheets: Loads Excel sheets based on matching rows from the ranking DataFrame.
+    - find_excel_sheet_with_specialty: Finds the Excel sheet corresponding to the specified specialty.
+    - find_excel_sheet_with_privacy: Finds the Excel sheet based on specialty and institution type.
+    - extract_local_hospitals: Merges institution coordinates with specialty data to create a DataFrame with cities and coordinates.
+    - exget_coordinates: Extracts coordinates for a given city name using geolocation API.
+    - get_coordinates: Retrieves coordinates from the DataFrame based on the city name.
+    - get_df_with_distances: Calculates distances from a query city to all hospitals in the DataFrame.
+    - create_csv: Creates a CSV file to log the question, response, and other details.
+    """
+    
     def __init__(self):
         self.ranking_df = None
         self.llm_service = LLMService()
@@ -150,7 +166,7 @@ class Processing:
         self.specialty_df = self.load_excel_sheets(matching_rows)
         return self.specialty_df
 
-    def extract_loca_hospitals(self, df: pd.DataFrame = None) -> pd.DataFrame:
+    def extract_local_hospitals(self, df: pd.DataFrame = None) -> pd.DataFrame:
         coordonnees_df = self.institution_coordinates_df.dropna()
         notes_df = self.specialty_df
         coordonnees_df = coordonnees_df[["Etablissement", "Ville", "Latitude", "Longitude"]]
@@ -158,42 +174,13 @@ class Processing:
         self.df_with_cities = pd.merge(coordonnees_df, notes_df, on="Etablissement", how="inner")
         self.df_with_cities.rename(columns={"Ville": "City"}, inplace=True)
         return self.df_with_cities
-
-    def exget_coordinates(self, city_name: str) -> tuple:
-        try:
-            geolocator = Nominatim(user_agent="city_distance_calculator")
-            location = geolocator.geocode(city_name)
-            if location:
-                return (location.latitude, location.longitude)
-            else:
-                return None
-        except Exception as e:
-            self.geolocation_api_error = True
-            return None
-
-    def get_coordinates(self, city_name: str) -> tuple:
-        df = self.df_with_cities
-        result = df[df['City'] == city_name][['Latitude', 'Longitude']]
-        latitude, longitude = result.iloc[0]
-        return (latitude, longitude)
+    
 
     def get_df_with_distances(self) -> pd.DataFrame:
-        query_coords = self.exget_coordinates(self.city)
+        query_coords = exget_coordinates(self.city)
         if self.geolocation_api_error:
             return None
         self.df_with_cities = self.df_with_cities.dropna(subset=['City'])
-
-        def distance_to_query(city):
-            city_coords = self.get_coordinates(city)
-            if city_coords:
-                try:
-                    res = geodesic(query_coords, city_coords).kilometers
-                    return res
-                except Exception as e:
-                    self.geolocation_api_error = True
-                    return None
-            else:
-                return None
 
         self.df_with_cities['Distance'] = self.df_with_cities['City'].apply(distance_to_query)
         self.df_with_distances = self.df_with_cities
