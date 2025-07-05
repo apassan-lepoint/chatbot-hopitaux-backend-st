@@ -304,7 +304,7 @@ class StreamlitChatbot:
                     # Single specialty detected or no specialty
                     # Handle the case where specialty might be empty or "no specialty match"
                     if not specialty or specialty in ["no specialty match", "aucune correspondance", ""]:
-                        specialty = "aucune correspondance"
+                        specialty = "no specialty match"
                     self.append_answer(prompt, specialty)
                     
             except Exception as e:

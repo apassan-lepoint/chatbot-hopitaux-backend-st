@@ -471,7 +471,14 @@ class Processing:
             logger.debug("No specialty match found, loading general rankings")
             self.generate_response_links()
             institution_type_french = self.normalize_institution_type(self.institution_type)
-            self.specialty_df = self.load_and_transform_for_no_specialty(category=institution_type_french)
+            
+            # Fix: When institution type is "no match", load both public and private rankings
+            if institution_type_french == "no match":
+                category_for_loading = "no specialty match"
+            else:
+                category_for_loading = institution_type_french
+                
+            self.specialty_df = self.load_and_transform_for_no_specialty(category=category_for_loading)
             return self.specialty_df
         
         # If no public/private criterion, load by specialty only
