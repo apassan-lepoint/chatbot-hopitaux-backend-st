@@ -85,7 +85,7 @@ class StreamlitChatbot:
         if detected_specialty and not detected_specialty.startswith(("multiple matches:", "plusieurs correspondances:")):
             return detected_specialty
         
-        return ""
+        return None
 
     def _normalize_specialty_format(self, specialty: str) -> str:
         """Normalize specialty format to use consistent prefix."""
@@ -191,6 +191,7 @@ class StreamlitChatbot:
             "multiple_specialties": None,
             "city": None,
             "slider_value": None,
+            "original_prompt": "",
         }
         reset_session_state(reset_values)
     
@@ -246,6 +247,36 @@ class StreamlitChatbot:
                 return  # Exit early if sanity checks fail
             
         prompt = get_session_state_value("prompt", "")
+        
+        # Check if we're in the middle of specialty selection (even without prompt)
+        multiple_specialties = get_session_state_value("multiple_specialties", None)
+        if multiple_specialties is not None:
+            # Show radio button for specialty selection
+            selected_specialty = st.radio(
+                "Précisez le domaine médical concerné :", 
+                multiple_specialties, 
+                index=None,
+                key="specialty_radio"
+            )
+            
+            if selected_specialty:
+                # Validate that the selected specialty is valid
+                if selected_specialty in multiple_specialties:
+                    st.session_state.selected_specialty = selected_specialty
+                    st.session_state.specialty_context = {
+                        'original_query': prompt,
+                        'selected_specialty': selected_specialty,
+                        'timestamp': datetime.now().isoformat()
+                    }
+                    st.session_state.multiple_specialties = None
+                    logger.info(f"User selected valid specialty: {selected_specialty}")
+                    # Use the original prompt from when multiple specialties were detected
+                    original_prompt = get_session_state_value("original_prompt", prompt)
+                    self.append_answer(original_prompt, selected_specialty)
+                else:
+                    st.error("Sélection invalide. Veuillez choisir une option dans la liste.")
+            return
+        
         if prompt:
             try:
                 # Check if user has already selected a specialty from multiple options
@@ -254,33 +285,6 @@ class StreamlitChatbot:
                     selected_specialty = st.session_state.selected_specialty
                     logger.info(f"Using previously selected specialty: {selected_specialty}")
                     self.append_answer(prompt, selected_specialty)
-                    return
-                
-                # Check if we're in the middle of specialty selection
-                multiple_specialties = get_session_state_value("multiple_specialties", None)
-                if multiple_specialties is not None:
-                    # Show radio button for specialty selection
-                    selected_specialty = st.radio(
-                        "Précisez le domaine médical concerné :", 
-                        multiple_specialties, 
-                        index=None,
-                        key="specialty_radio"
-                    )
-                    
-                    if selected_specialty:
-                        # Validate that the selected specialty is valid
-                        if selected_specialty in multiple_specialties:
-                            st.session_state.selected_specialty = selected_specialty
-                            st.session_state.specialty_context = {
-                                'original_query': prompt,
-                                'selected_specialty': selected_specialty,
-                                'timestamp': datetime.now().isoformat()
-                            }
-                            st.session_state.multiple_specialties = None
-                            logger.info(f"User selected valid specialty: {selected_specialty}")
-                            self.append_answer(prompt, selected_specialty)
-                        else:
-                            st.error("Sélection invalide. Veuillez choisir une option dans la liste.")
                     return
                 
                 # Detect medical specialty if not already set
@@ -296,6 +300,7 @@ class StreamlitChatbot:
                     options = self._extract_specialty_options(specialty)
                     if options:
                         st.session_state.multiple_specialties = options
+                        st.session_state.original_prompt = prompt  # Store the original prompt
                         st.rerun()
                     else:
                         # Fallback to no specialty if extraction fails
@@ -513,6 +518,7 @@ class StreamlitChatbot:
             "selected_specialty": None,
             "specialty_context": None,
             "multiple_specialties": None,
+            "original_prompt": "",
         }
         initialize_session_state(default_values)
         

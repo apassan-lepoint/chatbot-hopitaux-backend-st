@@ -83,31 +83,35 @@ class QueryExtractionService:
     def detect_specialty_full(self, prompt: str, conv_history: str = "") -> str:
         """
         Full specialty detection logic:
-        1. Try LLM with keyword mapping approach.
-        2. If ambiguous (multiple matches), clarify using specialty_categories_dict and extract_specialty_keywords.
+        1. First try our enhanced keyword matching approach.
+        2. If no match, try LLM with keyword mapping approach.
         Always returns a string (never empty).
         """
-        # Step 1: LLM with keyword mapping approach
+        # Step 1: Try our enhanced keyword matching first
+        keyword_result = extract_specialty_keywords(prompt, specialty_categories_dict)
+        if keyword_result:
+            if keyword_result.startswith(("multiple matches:", "plusieurs correspondances:")):
+                logger.info("Multiple specialties detected via keyword matching")
+                return keyword_result
+            else:
+                logger.info(f"Specific specialty detected via keyword matching: {keyword_result}")
+                return keyword_result
+
+        # Step 2: Fallback to LLM with keyword mapping approach
         specialty = self.detect_specialty(prompt, conv_history=conv_history)
 
-        # Step 2: Normalize format - convert French to English format
+        # Step 3: Normalize format - convert French to English format
         if specialty.startswith("plusieurs correspondances:"):
             specialty = specialty.replace("plusieurs correspondances:", "multiple matches:")
 
-        # Step 3: If ambiguous (multiple matches), clarify using specialty_categories_dict
+        # Step 4: If ambiguous (multiple matches), return as is
         if ',' in specialty and not specialty.startswith('multiple matches:'):
             specialty = 'multiple matches: ' + specialty
 
-        if specialty.startswith("multiple matches:"):
-            logger.info("Multiple specialties detected, clarifying with specialty_categories_dict")
-            matches = extract_specialty_keywords(specialty, specialty_categories_dict)
-            specialty = format_correspondance_list(matches)
-            if not specialty or specialty.strip() == "":
-                specialty = "no specialty match"
-            return specialty
-
-        # Step 4: If no match, we already used the keyword mapping approach in detect_specialty
-        # No need for additional retry since detect_specialty now uses the keyword mapping
+        if not specialty or specialty.strip() == "":
+            specialty = "no specialty match"
+            
+        return specialty
         if not specialty or specialty.strip() == "":
             specialty = "no specialty match"
             
