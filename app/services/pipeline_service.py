@@ -343,8 +343,13 @@ class Pipeline:
         # Extract query parameters to get the specialty
         extracted_specialty = self.extract_query_parameters(prompt)
         
-        # Handle multiple matches case - ask user to choose
-        if extracted_specialty and extracted_specialty.startswith(("multiple matches:", "plusieurs correspondances:")):
+        # If we have a detected_specialty that's not "no specialty match", use it instead of extracted_specialty
+        if detected_specialty and detected_specialty != "no specialty match":
+            logger.info(f"Using provided detected_specialty: {detected_specialty}")
+            extracted_specialty = detected_specialty
+        
+        # Handle multiple matches case - ask user to choose (only if no specific specialty was provided)
+        if extracted_specialty and extracted_specialty.startswith(("multiple matches:", "plusieurs correspondances:")) and not detected_specialty:
             logger.info("Multiple specialty matches detected, asking user to choose")
             
             # Extract the list of specialties
@@ -363,7 +368,7 @@ class Pipeline:
                 response += "\nPouvez-vous me dire quelle spécialité vous intéresse précisément ?"
                 
                 logger.debug(f"Multiple matches response: {response}")
-                return response
+                return response, None  # Return tuple with None for links
         
         # Retrieve the DataFrame with ranking and (if applicable) distances
         logger.debug("Retrieving ranking DataFrame with distances")
