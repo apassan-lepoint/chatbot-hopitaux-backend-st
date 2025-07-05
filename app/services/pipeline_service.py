@@ -337,7 +337,7 @@ class Pipeline:
         extracted_specialty = self.extract_query_parameters(prompt)
         
         # Check if multiple specialties were detected and return early for UI handling
-        if extracted_specialty and extracted_specialty.startswith("multiple matches:") and not (detected_specialty and detected_specialty != "no specialty match"):
+        if extracted_specialty and extracted_specialty.startswith("multiple matches:") and (not detected_specialty or detected_specialty == "no specialty match"):
             logger.info("Multiple specialty matches detected, returning for UI selection")
             specialty_list = extracted_specialty.replace("multiple matches:", "").strip()
             formatted_response = f"Plusieurs spécialités cardiaques sont disponibles. Veuillez préciser laquelle vous intéresse:\n{specialty_list.replace(',', '\n- ')}"
@@ -348,6 +348,8 @@ class Pipeline:
         if detected_specialty and detected_specialty != "no specialty match":
             logger.info(f"Using provided detected_specialty: {detected_specialty}")
             extracted_specialty = detected_specialty
+            # Also set it in the answer object to ensure consistency
+            self.answer.specialty = detected_specialty
         
         # Retrieve the DataFrame with ranking and (if applicable) distances
         logger.debug("Retrieving ranking DataFrame with distances")
