@@ -61,16 +61,9 @@ class Pipeline:
         if specialty.lower() in ["no specialty match", "aucune correspondance", "no match", ""]:
             return "aucune correspondance"
             
-        # Handle multiple matches format
+        # Handle multiple matches format - DON'T normalize these, return as-is
         if specialty.startswith(("multiple matches:", "plusieurs correspondances:")):
-            if specialty.startswith("multiple matches:"):
-                specialty_list = specialty.replace("multiple matches:", "").strip()
-            else:
-                specialty_list = specialty.replace("plusieurs correspondances:", "").strip()
-            
-            # For display, show the first specialty
-            first_specialty = specialty_list.split(',')[0].strip()
-            return first_specialty
+            return specialty  # Return the full multiple matches string
             
         return specialty
 
