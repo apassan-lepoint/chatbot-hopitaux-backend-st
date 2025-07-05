@@ -349,7 +349,7 @@ class Pipeline:
             extracted_specialty = detected_specialty
         
         # Handle multiple matches case - ask user to choose (only if no specific specialty was provided)
-        if extracted_specialty and extracted_specialty.startswith(("multiple matches:", "plusieurs correspondances:")) and not detected_specialty:
+        if extracted_specialty and extracted_specialty.startswith(("multiple matches:", "plusieurs correspondances:")) and (not detected_specialty or detected_specialty == "no specialty match"):
             logger.info("Multiple specialty matches detected, asking user to choose")
             
             # Extract the list of specialties
