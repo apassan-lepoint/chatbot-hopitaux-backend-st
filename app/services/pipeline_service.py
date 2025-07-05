@@ -333,23 +333,23 @@ class Pipeline:
             logger.debug("Set specialty to None")
         relevant_file=self.ranking_file_path
         
-        # Extract query parameters to get the specialty
-        extracted_specialty = self.extract_query_parameters(prompt)
-        
-        # Check if multiple specialties were detected and return early for UI handling
-        if extracted_specialty and extracted_specialty.startswith("multiple matches:") and (not detected_specialty or detected_specialty == "no specialty match"):
-            logger.info("Multiple specialty matches detected, returning for UI selection")
-            specialty_list = extracted_specialty.replace("multiple matches:", "").strip()
-            formatted_response = f"Plusieurs spécialités cardiaques sont disponibles. Veuillez préciser laquelle vous intéresse:\n{specialty_list.replace(',', '\n- ')}"
-            logger.debug(f"Returning multiple matches response: {formatted_response}")
-            return formatted_response, None
-        
-        # If we have a detected_specialty that's not "no specialty match", use it instead of extracted_specialty
+        # If we have a detected_specialty that's not "no specialty match", use it directly
         if detected_specialty and detected_specialty != "no specialty match":
             logger.info(f"Using provided detected_specialty: {detected_specialty}")
             extracted_specialty = detected_specialty
             # Also set it in the answer object to ensure consistency
             self.answer.specialty = detected_specialty
+        else:
+            # Extract query parameters to get the specialty only if we don't have a detected one
+            extracted_specialty = self.extract_query_parameters(prompt)
+            
+            # Check if multiple specialties were detected and return early for UI handling
+            if extracted_specialty and extracted_specialty.startswith("multiple matches:"):
+                logger.info("Multiple specialty matches detected, returning for UI selection")
+                specialty_list = extracted_specialty.replace("multiple matches:", "").strip()
+                formatted_response = f"Plusieurs spécialités cardiaques sont disponibles. Veuillez préciser laquelle vous intéresse:\n{specialty_list.replace(',', '\n- ')}"
+                logger.debug(f"Returning multiple matches response: {formatted_response}")
+                return formatted_response, None
         
         # Retrieve the DataFrame with ranking and (if applicable) distances
         logger.debug("Retrieving ranking DataFrame with distances")
@@ -359,7 +359,7 @@ class Pipeline:
         # Handle geolocation API errors
         if self.answer.geolocation_api_error:
             logger.error("Geopy API error encountered, cannot calculate distances")
-            return "Dû à une surutilisation de l'API de Geopy, le service de calcul des distances est indisponible pour le moment, merci de réessayer plus tard ou de recommencer avec une question sans localisation spécifique "
+            return "Dû à une surutilisation de l'API de Geopy, le service de calcul des distances est indisponible pour le moment, merci de réessayer plus tard ou de recommencer avec une question sans localisation spécifique", None
 
         self.link=self.answer.web_ranking_link
 
