@@ -343,12 +343,7 @@ class Pipeline:
         # Extract query parameters to get the specialty
         extracted_specialty = self.extract_query_parameters(prompt)
         
-        # If we have a detected_specialty that's not "no specialty match", use it instead of extracted_specialty
-        if detected_specialty and detected_specialty != "no specialty match":
-            logger.info(f"Using provided detected_specialty: {detected_specialty}")
-            extracted_specialty = detected_specialty
-        
-        # Handle multiple matches case - ask user to choose (only if no specific specialty was provided)
+        # Handle multiple matches case FIRST - before any processing (only if no specific specialty was provided)
         if extracted_specialty and extracted_specialty.startswith(("multiple matches:", "plusieurs correspondances:")) and (not detected_specialty or detected_specialty == "no specialty match"):
             logger.info("Multiple specialty matches detected, asking user to choose")
             
@@ -358,17 +353,21 @@ class Pipeline:
             else:
                 specialty_list = extracted_specialty.replace("plusieurs correspondances:", "").strip()
             
-            # Format the specialties as a numbered list
+            # Format the specialties as clickable options
             specialties = [s.strip() for s in specialty_list.split(',') if s.strip()]
             
             if specialties:
-                response = "Je trouve plusieurs spécialités correspondant à votre demande. Veuillez préciser laquelle vous intéresse :\n\n"
-                for i, specialty in enumerate(specialties, 1):
-                    response += f"{i}. {specialty}\n"
-                response += "\nPouvez-vous me dire quelle spécialité vous intéresse précisément ?"
+                # For UI compatibility, return the raw format that Streamlit expects
+                # This allows the Streamlit app to extract the options and show them as radio buttons
+                response = f"multiple matches: {', '.join(specialties)}"
                 
                 logger.debug(f"Multiple matches response: {response}")
                 return response, None  # Return tuple with None for links
+        
+        # If we have a detected_specialty that's not "no specialty match", use it instead of extracted_specialty
+        if detected_specialty and detected_specialty != "no specialty match":
+            logger.info(f"Using provided detected_specialty: {detected_specialty}")
+            extracted_specialty = detected_specialty
         
         # Retrieve the DataFrame with ranking and (if applicable) distances
         logger.debug("Retrieving ranking DataFrame with distances")
