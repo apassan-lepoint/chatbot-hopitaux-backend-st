@@ -9,6 +9,7 @@ import os
 import pandas as pd
 import csv
 from datetime import datetime
+import unicodedata
 
 from app.utils.query_detection.institutions import institution_coordinates_df
 from app.utils.config import PATHS
@@ -103,81 +104,81 @@ class Processing:
         web_link = web_link.lower()
         return remove_accents(web_link)
 
+    def _normalize_str(self, s: str) -> str:
+        if not isinstance(s, str):
+            return ""
+        s = s.strip().lower()
+        s = unicodedata.normalize('NFKD', s)
+        s = ''.join(c for c in s if not unicodedata.combining(c))
+        return s
+    
+    
     def _filter_ranking_by_criteria(self, specialty: str, institution_type: str = None) -> pd.DataFrame:
         """
         Helper method to filter ranking DataFrame by specialty and optionally by institution type.
-        
-        Args:
-            specialty: Medical specialty to filter by (can be a single specialty or comma-separated list)
-            institution_type: Institution type to filter by (optional)
-            
-        Returns:
-            pd.DataFrame: Filtered DataFrame
+        Normalizes both specialty and data for robust matching.
         """
         logger.debug(f"Filtering ranking data - specialty: '{specialty}', institution_type: '{institution_type}'")
         logger.debug(f"Available specialties in ranking data: {self.ranking_df['Spécialité'].unique()}")
-        
-        # Handle cases where specialty is not provided or is "no match"
+
         if not specialty or specialty == "no match" or specialty.strip() == "":
             logger.debug("No specialty provided or specialty is 'no match', returning empty DataFrame")
             return pd.DataFrame()
-        
-        # Handle multiple specialties (comma-separated or special format)
+
+        # Normalize the Spécialité column once
+        self.ranking_df['Spécialité_norm'] = self.ranking_df['Spécialité'].apply(self._normalize_str)
+
+        matching_rows = pd.DataFrame()
+
+        # Handle multiple specialties
         if specialty and (',' in specialty or specialty.startswith(('plusieurs correspondances:', 'multiple matches:'))):
-            # Extract individual specialties
             if specialty.startswith('plusieurs correspondances:'):
-                # Remove the prefix and get the specialty list
                 specialty_list = specialty.replace('plusieurs correspondances:', '').strip()
             elif specialty.startswith('multiple matches:'):
-                # Remove the prefix and get the specialty list
                 specialty_list = specialty.replace('multiple matches:', '').strip()
             else:
                 specialty_list = specialty
-            
-            # Split by comma and clean each specialty
+
             individual_specialties = [s.strip() for s in specialty_list.split(',') if s.strip()]
             logger.debug(f"Processing multiple specialties: {individual_specialties}")
-            
-            # Find matching rows for any of the specialties
-            matching_rows = pd.DataFrame()
+
             for individual_specialty in individual_specialties:
-                if individual_specialty and individual_specialty != "no match":  # Skip empty strings and "no match"
+                if individual_specialty and individual_specialty != "no match":
                     try:
-                        specialty_matches = self.ranking_df[
-                            self.ranking_df["Spécialité"].str.contains(individual_specialty, case=False, na=False)
-                        ]
+                        norm_spec = self._normalize_str(individual_specialty)
+                        specialty_matches = self.ranking_df[self.ranking_df['Spécialité_norm'] == norm_spec]
                         if len(specialty_matches) > 0:
                             matching_rows = pd.concat([matching_rows, specialty_matches], ignore_index=True)
                     except Exception as e:
                         logger.warning(f"Error filtering by specialty '{individual_specialty}': {e}")
                         continue
-            
-            # Remove duplicates
+
             matching_rows = matching_rows.drop_duplicates()
             logger.debug(f"Found {len(matching_rows)} rows matching multiple specialties")
             logger.debug(f"Specialties found after specialty filtering: {matching_rows['Spécialité'].unique()}")
         else:
-            # Single specialty matching
+            # Single specialty matching with normalization
             try:
-                matching_rows = self.ranking_df[self.ranking_df["Spécialité"].str.contains(specialty, case=False, na=False)]
-                logger.debug(f"Found {len(matching_rows)} rows matching single specialty '{specialty}'")
+                specialty_norm = self._normalize_str(specialty)
+                matching_rows = self.ranking_df[self.ranking_df['Spécialité_norm'] == specialty_norm]
+                logger.debug(f"Found {len(matching_rows)} rows matching single specialty '{specialty}' (normalized: '{specialty_norm}')")
                 logger.debug(f"Specialties found after specialty filtering: {matching_rows['Spécialité'].unique()}")
             except Exception as e:
                 logger.warning(f"Error filtering by specialty '{specialty}': {e}")
                 return pd.DataFrame()
-        
+
         if institution_type:
             institution_type_french = self.normalize_institution_type(institution_type)
             logger.debug(f"Filtering by institution type: '{institution_type}' -> '{institution_type_french}'")
             logger.debug(f"Available categories in ranking data: {self.ranking_df['Catégorie'].unique()}")
-            
+
             if institution_type_french != "no match":
                 try:
                     matching_rows = matching_rows[matching_rows["Catégorie"].str.contains(institution_type_french, case=False, na=False)]
                     logger.debug(f"Found {len(matching_rows)} rows after filtering by institution type")
                 except Exception as e:
                     logger.warning(f"Error filtering by institution type '{institution_type_french}': {e}")
-        
+
         return matching_rows
 
     def normalize_institution_type(self, institution_type: str) -> str:
@@ -383,27 +384,29 @@ class Processing:
             matching_rows (pd.DataFrame): Rows from the ranking sheet that match the query.
 
         Returns:
-            pd.DataFrame or list: Concatenated DataFrame of results, or a message if not found.
+            pd.DataFrame: Concatenated DataFrame of results, or an empty DataFrame if not found.
         """
-        
         logger.info(f"Loading Excel sheets for {len(matching_rows)} matched specialties/categories")
-        
+
         if len(matching_rows) == 0:
             logger.warning("No matching rows provided to load_excel_sheets")
             self.specialty_ranking_unavailable = True
             return pd.DataFrame()
-        
+
         dfs = []
-        
-        # Load each sheet for the matched specialty/category
+        excel_path = self.paths["ranking_file_path"]
+
+        # Make sure we always use the column name "Sheet" for the sheet name
         for index, row in matching_rows.iterrows():
-            sheet_name = row.iloc[2]  # Assuming sheet name is in the 3rd column
-            category = row["Catégorie"]
+            # Use the "Sheet" column explicitly
+            sheet_name = row["Sheet"]
+            category = row["Catégorie"] if "Catégorie" in row else None
             logger.debug(f"Loading sheet: '{sheet_name}' for category: '{category}'")
-            
+
             try:
-                df_sheet = pd.read_excel(self.paths["ranking_file_path"], sheet_name=sheet_name)
-                df_sheet["Catégorie"] = category
+                df_sheet = pd.read_excel(excel_path, sheet_name=sheet_name)
+                if category is not None:
+                    df_sheet["Catégorie"] = category
                 dfs.append(df_sheet)
                 logger.debug(f"Sheet '{sheet_name}' loaded successfully with {len(df_sheet)} rows")
             except Exception as e:
