@@ -158,17 +158,18 @@ class Pipeline:
             setattr(self, attr, None)
 
     
-    def extract_query_parameters(self, prompt: str)->str:
+    def extract_query_parameters(self, prompt: str, detected_specialty: str = None)->str:
         """
         Retrieves key aspects of the user query: city, institution type, and specialty.
         Updates instance variables accordingly.
         Args:
             prompt (str): The user's question.
+            detected_specialty (str, optional): Pre-detected specialty to preserve user's selection.
         Returns:
             str: The detected specialty.
         """
         logger.info(f"Getting infos from pipeline for prompt: {prompt}")
-        self.answer.get_infos(prompt)
+        self.answer.get_infos(prompt, detected_specialty)
         for attr in ["specialty", "city", "institution_type", "institution_mentioned", "institution_name"]:
             setattr(self, attr, getattr(self.answer, attr))
         logger.debug(f"Pipeline infos - specialty: {self.specialty}, city: {self.city}, institution_type: {self.institution_type}, institution: {self.institution_name}")
@@ -189,7 +190,20 @@ class Pipeline:
         
         # Find the relevant Excel sheet and extract info
         self.df_gen = self.answer.find_excel_sheet_with_privacy(prompt, detected_specialty)
-        self.extract_query_parameters(prompt)
+        
+        # Only extract query parameters if we don't have a detected specialty
+        # This prevents overriding user's specialty selection
+        if not detected_specialty or detected_specialty == "no specialty match":
+            self.extract_query_parameters(prompt)
+        else:
+            # If we have a detected specialty, we still need to extract other parameters (city, institution_type, etc.)
+            # but we must preserve the specialty
+            original_specialty = self.specialty
+            self.extract_query_parameters(prompt, detected_specialty)
+            # Restore the detected specialty
+            self.specialty = detected_specialty
+            self.answer.specialty = detected_specialty
+            
         if self.answer.specialty_ranking_unavailable:
             logger.warning("Ranking not found for requested specialty/type")
             return self.df_gen
@@ -339,6 +353,12 @@ class Pipeline:
             extracted_specialty = detected_specialty
             # Also set it in the answer object to ensure consistency
             self.answer.specialty = detected_specialty
+            # When we have a detected specialty, we still need to extract other parameters (city, institution_type, etc.)
+            # but NOT the specialty itself, so we call extract_query_parameters to get other info
+            self.extract_query_parameters(prompt, detected_specialty)
+            # But then reset the specialty to the provided one to avoid overwriting
+            self.specialty = detected_specialty
+            self.answer.specialty = detected_specialty
         else:
             # Extract query parameters to get the specialty only if we don't have a detected one
             extracted_specialty = self.extract_query_parameters(prompt)
@@ -393,7 +413,8 @@ class Pipeline:
         else:
             logger.info("No city found, returning general ranking")
             # If no city was found, return the top_k institutions from the general ranking 
-            self.extract_query_parameters(prompt)
+            # Note: Don't call extract_query_parameters again here as it would override user's specialty selection
+            # All parameters should have been extracted earlier in the pipeline
             res_tab = self.df_gen.nlargest(top_k, "Note / 20")
             res_str = tableau_en_texte(res_tab, self.city_not_specified)
             
