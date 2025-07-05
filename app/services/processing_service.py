@@ -39,23 +39,6 @@ class Processing:
         df_with_cities (pd.DataFrame | None): Rankings merged with location data.
         institution_mentioned (str | None): Institution name mentioned in query.
         paths (dict): Configuration dictionary containing file paths.
-        
-    Methods:
-        __init__: Initializes the Processing class, sets up file paths, loads LLM service, and prepares variables for query processing.
-        _load_ranking_dataframe: Loads and prepares ranking DataFrame with category.
-        _generate_web_link: Generates a single web ranking link based on specialty and institution type.
-        _filter_ranking_by_criteria: Filters ranking DataFrame by specialty and optionally by institution type.
-        normalize_institution_type: Normalizes institution type to French format used in data.
-        get_institution_type_for_url: Converts institution type to format expected by web URLs.
-        get_infos: Extracts key aspects from the user's question: city, institution type (public/private), and medical specialty.
-        generate_response_links: Generates web links to the relevant ranking pages based on specialty and institution type.
-        load_and_transform_for_no_specialty: Loads and merges general rankings (public/private) for queries that do not mention a specific specialty.
-        load_excel_sheets: Loads the Excel sheets corresponding to the matched specialties and categories.
-        find_excel_sheet_with_specialty: Finds and loads ranking data based only on the specialty if no public/private criterion is provided.
-        find_excel_sheet_with_privacy: Finds and loads ranking data based on both specialty and institution type.
-        extract_local_hospitals: Merges ranking data with hospital location data to associate each institution with its city and coordinates.
-        get_df_with_distances: Calculates the distances between hospitals and the city specified in the user's query.
-        create_csv: Saves the user's query and the system's response to a CSV file for history tracking.
           """
     
     def __init__(self):
@@ -172,11 +155,13 @@ class Processing:
             # Remove duplicates
             matching_rows = matching_rows.drop_duplicates()
             logger.debug(f"Found {len(matching_rows)} rows matching multiple specialties")
+            logger.debug(f"Specialties found after specialty filtering: {matching_rows['Spécialité'].unique()}")
         else:
             # Single specialty matching
             try:
                 matching_rows = self.ranking_df[self.ranking_df["Spécialité"].str.contains(specialty, case=False, na=False)]
                 logger.debug(f"Found {len(matching_rows)} rows matching single specialty '{specialty}'")
+                logger.debug(f"Specialties found after specialty filtering: {matching_rows['Spécialité'].unique()}")
             except Exception as e:
                 logger.warning(f"Error filtering by specialty '{specialty}': {e}")
                 return pd.DataFrame()
@@ -405,11 +390,8 @@ class Processing:
         
         if len(matching_rows) == 0:
             logger.warning("No matching rows provided to load_excel_sheets")
-            if self.specialty != 'no match' and self.institution_type != 'no match':
-                res = []
-                res.append("Nous n'avons pas d'établissement de ce type pour cette pathologie")
-                self.specialty_ranking_unavailable = True
-                return res
+            self.specialty_ranking_unavailable = True
+            return pd.DataFrame()
         
         dfs = []
         
@@ -434,11 +416,8 @@ class Processing:
             return concatenated_df
         else:
             logger.warning("No matching sheets found for specialties/categories")
-            if self.specialty != 'no match' and self.institution_type != 'no match':
-                res = []
-                res.append("Nous n'avons pas d'établissement de ce type pour cette pathologie")
-                self.specialty_ranking_unavailable = True
-                return res
+            self.specialty_ranking_unavailable = True
+            return pd.DataFrame()
 
 
     def find_excel_sheet_with_specialty(self, prompt: str) -> pd.DataFrame:
