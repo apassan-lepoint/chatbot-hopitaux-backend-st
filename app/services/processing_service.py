@@ -135,9 +135,9 @@ class Processing:
         self.specialty_df = self.load_excel_sheets(matching_rows)
         return self.specialty_df
 
-    def find_excel_sheet_with_privacy(self, prompt: str) -> pd.DataFrame:
+    def find_excel_sheet_with_privacy(self, prompt: str, detected_specialty) -> pd.DataFrame:
         self.get_infos(prompt)
-        specialty = self.specialty
+        specialty = detected_specialty
         if specialty == 'aucune correspondance':
             self._generate_lien_classement()
             self.specialty_df = self._load_and_transform_for_no_specialty(category=self.institution_type)
