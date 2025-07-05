@@ -119,6 +119,7 @@ class Processing:
         Normalizes both specialty and data for robust matching.
         """
         logger.debug(f"Filtering ranking data - specialty: '{specialty}', institution_type: '{institution_type}'")
+        logger.debug(f"Specialty type: {type(specialty)}, length: {len(specialty) if specialty else 'None'}")
         logger.debug(f"Available specialties in ranking data: {self.ranking_df['Spécialité'].unique()}")
 
         if not specialty or specialty == "no match" or specialty.strip() == "":
