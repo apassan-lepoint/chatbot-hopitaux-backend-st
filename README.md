@@ -58,10 +58,9 @@ You should as well get an API Key from Open AI and paste it in the '.env' file  
 Here are the commands to launch the Streamlit app from the terminal anaconda for example: 
 - input "conda activate chop_venv"
 Copy the path of the Front folder
-- input "cd 'paste the path here'"
+- input "cd app/ui/streamlit_app.py"
 - input "streamlit run app/ui/streamlit_app.py"
-
-Then you could ask your question.
+- ask your question
 
 # Code organization
 UPDATE!!!! - give high level overview of how code works
@@ -77,3 +76,60 @@ Benjamin L'Hyver - blhyver@eulidia.com
 Defines reusable dependencies for FastAPI routes.
 This file contains functions and classes that provide shared logic or resources
 to be injected into API endpoints, such as authentication, database sessions, or configuration.
+
+
+
+Modularisation du code basé sur les retours de Benjamin 
+
+
+backend_chatbot_hopitaux
+├── README.md
+├── Dockerfile.yaml
+├── requirements.txt
+├── .env
+├── .gitignore
+├── main.py
+├── config
+│   ├── features_config.py
+│   └── file_paths_config.py
+├── app
+│   ├── api
+│   │   └── routes.py
+│   ├── snowflake_db
+│   │   ├── snowflake_connect.py
+│   │   └── snowflake_query.py
+│   ├── pydantic_models
+│   │   ├── query_model.py
+│   │   └── response_model.py
+│   ├── services
+│   │   ├── llm_handler_service.py
+│   │   ├── data_processing_service.py
+│   │   └── pipeline_orchestrator_service.py
+│   ├── utility
+│   │   ├── fast_api_utility.py
+│   │   ├── geo_utility.py
+│   │   ├── formatting_utility.py
+│   │   ├── logging_utility.py
+│   │   └── prompt_utility.py
+│   └── features
+│       ├── conversation
+│       │   ├── conversation_manager.py
+│       │   └── multi_turn.py
+│       ├── checks
+│       │   ├── checks_manager.py
+│       │   ├── message_length_check.py
+│       │   ├── conversation_limit_check.py
+│       │   └── relevance_check.py
+│       └── prompt_detection
+│           ├── prompt_detection_manager.py
+│           ├── specialty_detection.py
+│           ├── city_detection.py
+│           ├── kpop_detection.py
+│           ├── institution_type_detection.py
+│           └── institution_name_detection.py
+├── streamlit
+│   ├── streamlit_ui.py
+│   └── streamlit_utility.py
+├── tests
+├── data
+└── history
