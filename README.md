@@ -1,16 +1,20 @@
 README
 
+# Description
+The hospital ranking assistant allows interaction with Le Point's hospital rankings and exploration of its content. It enables users to ask questions to query one of the rankings and continue the conversation based on the results of the initial question. It is currently accessible through a simple Streamlit application, serving as a user interface for testing and in production mode via FastAPI (in development).
+
 # Project Structure
 
 BackendChatbotHopitaux/
+├── .env
 ├── .gitignore
 ├── Dockerfile
 ├── README.md
 ├── requirements.txt
+├── main.py
 ├── app/
-│   ├── main.py
 │   ├── api/
-│   │   ├── dependencies.py
+│   │   ├── dependencies.py 
 │   │   └── routes.py
 │   ├── db/
 │   │   ├── query.py
@@ -19,51 +23,113 @@ BackendChatbotHopitaux/
 │   │   ├── query_model.py
 │   │   └── response_model.py
 │   ├── services/
+│   │   ├── query_extraction_service.py
+│   │   ├── conversation_service.py
 │   │   ├── llm_service.py
 │   │   ├── pipeline_service.py
 │   │   └── processing_service.py
+│   └── ui/
+│       ├── streamlit_app.py
 │   └── utils/
+│       ├── query_detection/
+│       │   ├── institutions.py
+│       │   ├── prompt_formatting.py
+│       │   ├── PROMPT_INSTRUCTIONS.py
+│       │   └── specialties.py
+│       ├── sanity_checks/
+│       │   ├── core_logic_sanity_checks.py
+│       │   ├── fast_api_sanity_checks.py
+│       │   └── streamlit_sanity_checks.py
+│       ├── config.py
 │       ├── distance.py
 │       ├── formatting.py
 │       └── logging.py
+├── data/
+├── history/
 ├── tests/
 
 
-# Chatbot Le Point
 
-## Name
-Assistant Hôpitaux
-
-## Description
-The hospital ranking assistant allows interaction with Le Point's hospital rankings and exploration of its content. It enables users to ask questions to query one of the rankings and continue the conversation based on the results of the initial question. It is currently accessible through a simple Streamlit application, serving as a user interface for this initial POC phase.
-
-
-## Installation
-If you want to launch the Streamlit app, you should create a python environnement named 'chatbot_env_2' with the package from the "requirement.txt" file. 
+# Installation
+If you want to launch the Streamlit app, you should create a python environnement named 'chop_venv' with the package from the "requirement.txt" file. 
 You should as well get an API Key from Open AI and paste it in the '.env' file  to use our model: "gpt-4o-mini".
-You get get it at:
-https://platform.openai.com/docs/overview
 
-## Usage
+# Usage - EDIT 
 Here are the commands to launch the Streamlit app from the terminal anaconda for example: 
-- input "conda activate chatbot_env_2"
+- input "conda activate chop_venv"
 Copy the path of the Front folder
-- input "cd 'paste the path here'"
-- input "streamlit run app.py"
+- input "cd app/ui/streamlit_app.py"
+- input "streamlit run app/ui/streamlit_app.py"
+- ask your question
 
-Then you could ask your question.
+# Code organization
+UPDATE!!!! - give high level overview of how code works
 
-## Code organization
-The folder contains a file for the Streamlit frontend that sets up the entire visual aspect, including sanity checks, conversation history management to send multiple messages in a row, and the logic for selecting the pathology when multiple options might be applicable.
-
-The code for the backend is structured into 4 classes:
-A class Appels_LLM used for all LLM calls: sanity checks, information extraction, and conversational aspects.
-A class Processing_class that manages the processing of information retrieved from the question and the exploitation of rankings.
-A class Pipeline_class that orchestrates the entire flow and functions of the other classes to take a user question and provide the final answer.
-
+# Contact
+Anuradha (Annie) Passan - apassan@ext.lepoint.fr, apassan@eulidia.com
+Maxime Kermagoet - mkermagoret@ext.lepoint.fr, mkermagoret@eulidia.com
+Benjamin L'Hyver - blhyver@eulidia.com
 
 
-## Support
-You can contact Alexis CALVEZ from the company Eulidia at the following email address: acalvez@eulidia.com .
+## Files to maybe add
+**app/api/dependencies.py**
+Defines reusable dependencies for FastAPI routes.
+This file contains functions and classes that provide shared logic or resources
+to be injected into API endpoints, such as authentication, database sessions, or configuration.
 
 
+
+Modularisation du code basé sur les retours de Benjamin 
+
+
+backend_chatbot_hopitaux
+├── README.md
+├── Dockerfile.yaml
+├── requirements.txt
+├── .env
+├── .gitignore
+├── main.py
+├── config
+│   ├── features_config.py
+│   └── file_paths_config.py
+├── app
+│   ├── api
+│   │   └── routes.py
+│   ├── snowflake_db
+│   │   ├── snowflake_connect.py
+│   │   └── snowflake_query.py
+│   ├── pydantic_models
+│   │   ├── query_model.py
+│   │   └── response_model.py
+│   ├── services
+│   │   ├── llm_handler_service.py
+│   │   ├── data_processing_service.py
+│   │   └── pipeline_orchestrator_service.py
+│   ├── utility
+│   │   ├── fast_api_utility.py
+│   │   ├── geo_utility.py
+│   │   ├── formatting_utility.py
+│   │   ├── logging_utility.py
+│   │   └── prompt_utility.py
+│   └── features
+│       ├── conversation
+│       │   ├── conversation_manager.py
+│       │   └── multi_turn.py
+│       ├── checks
+│       │   ├── checks_manager.py
+│       │   ├── message_length_check.py
+│       │   ├── conversation_limit_check.py
+│       │   └── relevance_check.py
+│       └── prompt_detection
+│           ├── prompt_detection_manager.py
+│           ├── specialty_detection.py
+│           ├── city_detection.py
+│           ├── kpop_detection.py
+│           ├── institution_type_detection.py
+│           └── institution_name_detection.py
+├── streamlit
+│   ├── streamlit_ui.py
+│   └── streamlit_utility.py
+├── tests
+├── data
+└── history

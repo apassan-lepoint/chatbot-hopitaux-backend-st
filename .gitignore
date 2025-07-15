@@ -1,0 +1,3 @@
+.envchop_venv /
+.env*.pyc
+__pycache__/
