@@ -1,22 +1,40 @@
 """
 Main pipeline orchestration for chatbot query processing.
 
-This file defines the Pipeline class, which coordinates the extraction, filtering,
+This file defines the PipelineOrchestrator class, which coordinates the extraction, filtering,
     ranking, and formatting of hospital data in response to user queries.
 """
 
 import pandas as pd
-from app.services.processing_service import Processing
-from app.utils.formatting import tableau_en_texte
-from app.utils.config import PATHS
-from app.utils.logging import get_logger
+from app.services.data_processing_service import DataProcessor
+from app.features.prompt_detection.prompt_detection_manager import PromptDetectionManager
+from app.utility.formatting_helpers import tableau_en_texte
+from config import PATHS
+from app.utility.logging import get_logger
 logger = get_logger(__name__)
 
-class Pipeline:
+class PipelineOrchestrator:
+    def extract_all_prompt_info(self, model, prompt: str, conv_history: str = "", institution_list=None, k=3):
+        """
+        Extracts all relevant information from a prompt using PromptDetectionManager.
+        Returns a consolidated dictionary with city, specialty, top_k, institution name, and institution type.
+        """
+        prompt_manager = PromptDetectionManager(model)
+        results = prompt_manager.run_all_detections(prompt, conv_history, institution_list)
+        specialty_top_k = None
+        if hasattr(prompt_manager.specialty_detector, 'detect_specialty'):
+            specialty_result = prompt_manager.specialty_detector.detect_specialty(prompt, conv_history)
+            if hasattr(specialty_result, 'specialty_list'):
+                specialty_top_k = specialty_result.specialty_list[:k]
+            else:
+                specialty_top_k = [specialty_result]
+        results['specialty_top_k'] = specialty_top_k
+        return results
     """
     Orchestrates the processing of user queries to extract hospital rankings.
     This class handles the extraction of specialties, cities, and institution types,
     retrieves relevant data from Excel files, calculates distances, and formats the final response.
+    Uses the centralized TopKDetector for all top-k related operations.
 
     Attributes:
         ranking_file_path (str): Path to the Excel file containing hospital rankings.
@@ -27,11 +45,12 @@ class Pipeline:
         df_gen (pd.DataFrame): DataFrame containing general hospital rankings.
         institution_mentioned (bool): Flag indicating if a specific institution was mentioned in the query.
         institution_name (str): Name of the institution mentioned in the query.
-        answer (Processing): Instance of Processing class for data extraction and transformation.
+        answer (DataProcessor): Instance of DataProcessor class for data extraction and transformation.
+                                Contains TopKDetector for centralized top-k detection.
       """
     def __init__(self):
         """
-        Initializes the Pipeline class, sets up file paths, and prepares variables for query processing.
+        Initializes the PipelineOrchestrator class, sets up file paths, and prepares variables for query processing.
         """
         self.ranking_file_path= PATHS["ranking_file_path"]
         self.specialty= None
@@ -41,7 +60,7 @@ class Pipeline:
         self.df_gen = None # DF for results 
         self.institution_mentioned=None
         self.institution_name=None
-        self.answer=Processing() # Instance of Processing for data extraction and transformation
+        self.answer=DataProcessor() # Instance of DataProcessor for data extraction and transformation
 
     def _normalize_specialty_for_display(self, specialty: str) -> str:
         """
@@ -158,21 +177,26 @@ class Pipeline:
             setattr(self, attr, None)
 
     
-    def extract_query_parameters(self, prompt: str, detected_specialty: str = None)->str:
+    def extract_query_parameters(self, prompt: str, detected_specialty: str = None, conv_history: list = None) -> str:
         """
         Retrieves key aspects of the user query: city, institution type, and specialty.
         Updates instance variables accordingly.
         Args:
             prompt (str): The user's question.
             detected_specialty (str, optional): Pre-detected specialty to preserve user's selection.
+            conv_history (list, optional): Conversation history for multi-turn context.
         Returns:
             str: The detected specialty.
         """
         logger.info(f"Getting infos from pipeline for prompt: {prompt}")
-        self.answer.get_infos(prompt, detected_specialty)
-        for attr in ["specialty", "city", "institution_type", "institution_mentioned", "institution_name"]:
-            setattr(self, attr, getattr(self.answer, attr))
-        logger.debug(f"Pipeline infos - specialty: {self.specialty}, city: {self.city}, institution_type: {self.institution_type}, institution: {self.institution_name}")
+        self.answer.get_infos(prompt, detected_specialty, conv_history)
+        # Assign all relevant attributes from DataProcessor (which uses unified prompt info)
+        self.specialty = self.answer.specialty
+        self.city = self.answer.city
+        self.institution_type = self.answer.institution_type
+        self.institution_name = self.answer.institution_name
+        self.institution_mentioned = self.answer.institution_mentioned
+        logger.debug(f"PipelineOrchestrator infos - specialty: {self.specialty}, city: {self.city}, institution_type: {self.institution_type}, institution: {self.institution_name}, institution_mentioned: {self.institution_mentioned}")
         return self.specialty
 
     
@@ -247,8 +271,9 @@ class Pipeline:
             if validity == False:
                 logger.warning(f"Institution {self.institution_name} not found in DataFrame")
                 display_specialty = self._normalize_specialty_for_display(self.specialty)
+                max_establishments = self.answer.topk_detector._max_topk
                 if self._is_no_specialty_match(self.specialty):
-                    return f"Cet établissement ne fait pas partie des 50 meilleurs établissements du palmarès global"
+                    return f"Cet établissement ne fait pas partie des {max_establishments} meilleurs établissements du palmarès global"
                 else: 
                     return f"Cet établissement n'est pas présent pour la pathologie {display_specialty}, vous pouvez cependant consulter le classement suivant:"
             
@@ -306,13 +331,13 @@ class Pipeline:
 
     
     def generate_response(self, 
-        prompt: str, top_k: int = 3, max_radius_km: int = 50, detected_specialty: str=None) -> str:
+        prompt: str, top_k: int = None, max_radius_km: int = 50, detected_specialty: str=None) -> str:
         """
         Main entry point: processes the user question and returns a formatted answer with ranking and links.
 
         Args:
             prompt (str): The user's question.
-            top_k (int, optional): Number of top hospitals to return. Defaults to 3.
+            top_k (int, optional): Number of top hospitals to return. Defaults to TopKDetector default.
             max_radius_km (int, optional): Search radius in kilometers. Defaults to 50.
             detected_specialty (str, optional): Specialty to use if already known.
 
@@ -322,6 +347,10 @@ class Pipeline:
 
         logger.info(f"Starting pipeline processing - prompt: {prompt[:50]}..., top_k: {top_k}, max_radius_km: {max_radius_km}, detected_specialty: {detected_specialty}")
         
+        # Use default top_k if not provided
+        if top_k is None:
+            top_k = self.answer.topk_detector._default_topk
+        
         # Reset relevant attributes for a new query
         self.reset_attributes()
         self.specialty= detected_specialty
@@ -329,10 +358,17 @@ class Pipeline:
 
         # Check if the user specified a different top_k in their prompt
         logger.debug("Detecting top_k from prompt")
-        detected_topk = self.answer.llm_service.detect_topk(prompt)
-        if detected_topk!='non mentionné':
-            top_k=detected_topk
-            logger.debug(f"Top_k updated from prompt: {top_k}")
+        detected_topk = self.answer.topk_detector.detect_topk_with_string_fallback(prompt)
+        if detected_topk != 'non mentionné':
+            try:
+                topk_value = int(detected_topk)
+                if self.answer.topk_detector.validate_topk(topk_value):
+                    top_k = topk_value
+                    logger.debug(f"Top_k updated from prompt: {top_k}")
+                else:
+                    logger.debug(f"Invalid top_k detected ({topk_value}), using default")
+            except ValueError:
+                logger.debug(f"Non-numeric top_k detected ({detected_topk}), using default")
 
         # Defensive insertion: ensure detected_specialty is never empty or None
         if not detected_specialty or (isinstance(detected_specialty, str) and detected_specialty.strip() == ""):

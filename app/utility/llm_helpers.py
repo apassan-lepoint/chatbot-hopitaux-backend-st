@@ -5,8 +5,8 @@ This module provides helper functions for LLM invocation, response processing,
 and error handling that are used across multiple service files.
 """
 
-from app.utils.logging import get_logger
-from app.utils.query_detection.response_parser import parse_boolean_response
+from app.utility.logging import get_logger
+from app.utility.response_parser import parse_llm_response
 
 logger = get_logger(__name__)
 
@@ -65,7 +65,7 @@ def invoke_llm_and_parse_boolean(model, formatted_prompt, operation_name: str) -
     try:
         response = model.invoke(formatted_prompt)
         raw_response = extract_response_content(response)
-        return parse_boolean_response(raw_response)
+        return parse_llm_response(raw_response, "boolean")
     except Exception as e:
         logger.error(f"LLM invocation failed in {operation_name}: {e}")
         raise

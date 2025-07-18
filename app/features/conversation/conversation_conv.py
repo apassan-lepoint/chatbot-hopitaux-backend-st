@@ -2,20 +2,13 @@
 This module provides a service for managing conversations with an LLM.
 """
 
-from app.utils.query_detection.prompt_formatting import (
-    format_detect_modification_prompt,
-    format_rewrite_query_prompt,
-    format_continue_conversation_prompt,
-    format_merge_query_rewrite_prompt,
-    format_add_query_rewrite_prompt
-)
-from app.utils.query_detection.response_parser import parse_modification_response, ModificationResponse
-from app.utils.logging import get_logger
-from app.utils.llm_helpers import invoke_llm_with_error_handling
+from app.utility.wrappers import prompt_formatting, parse_llm_response
+from app.utility.logging import get_logger
+from app.utility.llm_helpers import invoke_llm_with_error_handling
 
 logger = get_logger(__name__) 
 
-class ConversationService:
+class Conversation:
     """
     Service for managing conversations with a language model (LLM).
     This service handles conversation continuation, modification detection,
@@ -26,7 +19,7 @@ class ConversationService:
     """
     def __init__(self, model):
         """
-        Initializes the ConversationService with a language model instance.
+        Initializes the Conversation with a language model instance.
         """
         self.model = model
 
@@ -37,12 +30,16 @@ class ConversationService:
         Args:
             prompt (str): The user's input message to continue the conversation.
             conv_history (list): The conversation history, typically a list of tuples
-                                 where each tuple contains a user query and the corresponding response.
+            where each tuple contains a user query and the corresponding response.
         
         Returns:
             str: The model's response to the continued conversation.
         """
-        formatted_prompt = format_continue_conversation_prompt(prompt, conv_history)
+        formatted_prompt = prompt_formatting(
+            "continue_conversation_prompt",
+            prompt=prompt,
+            conv_history=conv_history
+        )
         response_content = invoke_llm_with_error_handling(self.model, formatted_prompt, "continue_conversation")
         logger.debug(f"LLM response: {response_content}")
         return response_content
@@ -52,9 +49,13 @@ class ConversationService:
         Detects if the user's prompt is a modification of a previous question or a new question.
         Returns numeric code: 0=new_question, 1=modification, 2=ambiguous.
         """
-        formatted_prompt = format_detect_modification_prompt(prompt, conv_history)
+        formatted_prompt = prompt_formatting(
+            "detect_modification_prompt",
+            prompt=prompt,
+            conv_history=conv_history
+        )
         raw_response = invoke_llm_with_error_handling(self.model, formatted_prompt, "detect_modification")
-        return parse_modification_response(raw_response)
+        return parse_llm_response(raw_response, "modification")
 
     def rewrite_modified_query(self, last_query, modification):
         """
@@ -70,7 +71,11 @@ class ConversationService:
         Raises:
             Exception: If the LLM invocation fails.
         """
-        formatted_prompt = format_rewrite_query_prompt(last_query, modification)
+        formatted_prompt = prompt_formatting(
+            "rewrite_query_prompt",
+            last_query=last_query,
+            modification=modification
+        )
         return invoke_llm_with_error_handling(self.model, formatted_prompt, "rewrite_query")
 
     def rewrite_query_merge(self, prompt: str, conv_history: str) -> str:
@@ -84,7 +89,11 @@ class ConversationService:
         Returns:
             str: The rewritten query with merged filters
         """
-        formatted_prompt = format_merge_query_rewrite_prompt(prompt, conv_history)
+        formatted_prompt = prompt_formatting(
+            "merge_query_rewrite_prompt",
+            prompt=prompt,
+            conv_history=conv_history
+        )
         return invoke_llm_with_error_handling(self.model, formatted_prompt, "rewrite_query_merge")
 
     def rewrite_query_add(self, prompt: str, conv_history: str) -> str:
@@ -98,5 +107,9 @@ class ConversationService:
         Returns:
             str: The rewritten query with added filters
         """
-        formatted_prompt = format_add_query_rewrite_prompt(prompt, conv_history)
+        formatted_prompt = prompt_formatting(
+            "add_query_rewrite_prompt",
+            prompt=prompt,
+            conv_history=conv_history
+        )
         return invoke_llm_with_error_handling(self.model, formatted_prompt, "rewrite_query_add")

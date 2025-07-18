@@ -8,7 +8,7 @@ This file creates and configures the FastAPI app, sets up CORS middleware,
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import router
-from app.utils.logging import get_logger
+from app.utility.logging import get_logger
 logger = get_logger(__name__)
 
 def create_app() -> FastAPI:

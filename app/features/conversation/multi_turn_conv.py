@@ -2,19 +2,13 @@
 Service for handling multi-turn conversation logic with 6-case approach.
 """
 from typing import Dict, Any
-from app.utils.logging import get_logger
-from app.utils.query_detection.prompt_formatting import (
-    format_sanity_check_chatbot_pertinence_prompt,
-    format_continuity_check_prompt,
-    format_search_needed_check_prompt,
-    format_merge_query_check_prompt
-)
-from app.utils.query_detection.response_parser import parse_boolean_response
-from app.utils.llm_helpers import invoke_llm_and_parse_boolean
+from app.utility.logging import get_logger
+from app.utility.wrappers import prompt_formatting
+from app.utility.llm_helpers import invoke_llm_and_parse_boolean
 
 logger = get_logger(__name__)
 
-class MultiTurnService:
+class MultiTurn:
     """
     Service for handling multi-turn conversation logic.
     Implements 4-check system to determine conversation handling approach.
@@ -75,22 +69,38 @@ class MultiTurnService:
     
     def _check_pertinence(self, prompt: str, conv_history: str = "") -> bool:
         """Check if message is pertinent to chatbot."""
-        formatted_prompt = format_sanity_check_chatbot_pertinence_prompt(prompt, conv_history)
+        formatted_prompt = prompt_formatting(
+            "sanity_check_chatbot_pertinence_prompt",
+            prompt=prompt,
+            conv_history=conv_history
+        )
         return invoke_llm_and_parse_boolean(self.model, formatted_prompt, "check_pertinence")
     
     def _check_continuity(self, prompt: str, conv_history: str) -> bool:
         """Check if message is continuation of conversation."""
-        formatted_prompt = format_continuity_check_prompt(prompt, conv_history)
+        formatted_prompt = prompt_formatting(
+            "continuity_check_prompt",
+            prompt=prompt,
+            conv_history=conv_history
+        )
         return invoke_llm_and_parse_boolean(self.model, formatted_prompt, "check_continuity")
     
     def _check_search_needed(self, prompt: str, conv_history: str = "") -> bool:
         """Check if message requires search in ranking data."""
-        formatted_prompt = format_search_needed_check_prompt(prompt, conv_history)
+        formatted_prompt = prompt_formatting(
+            "search_needed_check_prompt",
+            prompt=prompt,
+            conv_history=conv_history
+        )
         return invoke_llm_and_parse_boolean(self.model, formatted_prompt, "check_search_needed")
     
     def _check_merge_query(self, prompt: str, conv_history: str) -> bool:
         """Check how to merge queries (TRUE=merge, FALSE=add)."""
-        formatted_prompt = format_merge_query_check_prompt(prompt, conv_history)
+        formatted_prompt = prompt_formatting(
+            "merge_query_check_prompt",
+            prompt=prompt,
+            conv_history=conv_history
+        )
         return invoke_llm_and_parse_boolean(self.model, formatted_prompt, "check_merge_query")
     
     def determine_case(self, analysis: Dict[str, Any]) -> str:

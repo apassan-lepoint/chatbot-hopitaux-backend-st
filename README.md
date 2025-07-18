@@ -25,9 +25,9 @@ BackendChatbotHopitaux/
 │   ├── services/
 │   │   ├── query_extraction_service.py
 │   │   ├── conversation_service.py
-│   │   ├── llm_service.py
+│   │   ├── llm_handler_service.py
 │   │   ├── pipeline_service.py
-│   │   └── processing_service.py
+│   │   └── data_processing_service.py
 │   └── ui/
 │       ├── streamlit_app.py
 │   └── utils/
@@ -126,7 +126,7 @@ backend_chatbot_hopitaux
 │           ├── city_detection.py
 │           ├── kpop_detection.py
 │           ├── institution_type_detection.py
-│           └── institution_name_detection.py
+│           └── institution_type_detection.py
 ├── streamlit
 │   ├── streamlit_ui.py
 │   └── streamlit_utility.py

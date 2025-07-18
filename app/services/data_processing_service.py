@@ -1,32 +1,39 @@
 """
 Service for processing and transforming hospital ranking data.
 
-This file defines the Processing class, which loads, merges, and filters ranking and
+This file defines the DataProcessor class, which loads, merges, and filters ranking and
     location data, and prepares results for the chatbot pipeline.
 """
 
 import os
+from click import prompt
 import pandas as pd
 import csv
 from datetime import datetime
 import unicodedata
 
-from app.utils.query_detection.institutions import institution_coordinates_df
-from app.utils.config import PATHS
-from app.services.llm_service import LLMService
-from app.utils.formatting import remove_accents
-from app.utils.distance import exget_coordinates, get_coordinates, distance_to_query
-from app.utils.logging import get_logger
+## Removed import of institution_coordinates_df from institutions.py; DataProcessor loads Excel directly
+from config import PATHS
+from app.services.llm_handler_service import LLMHandler
+from app.utility.formatting_helpers import remove_accents
+from app.utility.distance_calc_helpers import exget_coordinates, get_coordinates, distance_to_query
+from app.utility.logging import get_logger
+
+from app.features.prompt_detection.topk_detection import TopKDetector
+from app.features.prompt_detection.institution_type_detection import normalize_institution_type_standalone
+
+
 logger = get_logger(__name__)
 
-class Processing:
+class DataProcessor:
     """
     Processes hospital ranking data based on user queries. Extracts query information using LLM services, 
     loads and filters ranking data by specialty and institution type, and calculates distances to provide relevant results.
     
     Attributes:
         ranking_df (pd.DataFrame | None): Main DataFrame containing hospital rankings from Excel.
-        llm_service (LLMService): Service instance for extracting information from user queries.
+        llm_handler_service (LLMHandler): Service instance for extracting information from user queries.
+        topk_detector (TopKDetector): Service for detecting the number of establishments requested.
         specialty_df (pd.DataFrame | None): Filtered DataFrame for specific medical specialties.
         institution_name (str | None): Name of specific institution mentioned in query.
         specialty_ranking_unavailable (bool): Flag indicating if requested ranking data was not found.
@@ -37,6 +44,7 @@ class Processing:
         specialty (str | None): Medical specialty extracted from user query.
         institution_type (str | None): Institution category ('Public'/'Privé') from query.
         city (str | None): City or department name extracted from user query.
+        topk (int | None): Number of establishments requested by user.
         df_with_cities (pd.DataFrame | None): Rankings merged with location data.
         institution_mentioned (str | None): Institution name mentioned in query.
         paths (dict): Configuration dictionary containing file paths.
@@ -44,17 +52,24 @@ class Processing:
     
     def __init__(self):
         """
-        Initializes the Processing class, sets up file paths, loads the LLM service, and prepares variables 
+        Initializes the DataProcessor class, sets up file paths, loads the LLM service, and prepares variables 
         for query processing.
         """
         self.ranking_df = None
-        self.llm_service = LLMService()
+        self.llm_handler_service = LLMHandler()
         self.specialty_df = None
         self.institution_name = None
         self.specialty_ranking_unavailable = False
         self.web_ranking_link = None
         self.geolocation_api_error = False
-        self.institution_coordinates_df = institution_coordinates_df
+        try:
+            self.institution_coordinates_df = pd.read_excel(self.paths["hospital_coordinates_path"])
+        except Exception as e:
+            logger.error(f"Failed to load hospital coordinates Excel: {e}")
+            raise
+        
+        # Initialize TopKDetector for reuse
+        self.topk_detector = TopKDetector(self.llm_handler_service.model)
         
         # Predefined links for public/private rankings
         self.weblinks={
@@ -67,6 +82,7 @@ class Processing:
         self.city = None
         self.df_with_cities = None
         self.institution_mentioned = None
+        self.topk = None
         
         self.paths= PATHS
     
@@ -112,7 +128,19 @@ class Processing:
         s = ''.join(c for c in s if not unicodedata.combining(c))
         return s
     
-    
+    def _get_institution_list(self):
+        """
+        Returns a formatted, deduplicated list of institutions present in the rankings.
+        Cleans names to avoid duplicates or matching errors.
+        """
+        column_1 = self.institution_coordinates_df.iloc[:, 0]
+        institution_list = [element.split(",")[0] for element in column_1]
+        institution_list = list(set(institution_list))
+        institution_list = [element for element in institution_list if element not in ("CHU", "CH")]
+        institution_list = ", ".join(map(str, institution_list))
+        logger.debug(f"Institution list: {institution_list}")
+        return institution_list
+
     def _filter_ranking_by_criteria(self, specialty: str, institution_type: str = None) -> pd.DataFrame:
         """
         Helper method to filter ranking DataFrame by specialty and optionally by institution type.
@@ -169,7 +197,7 @@ class Processing:
                 return pd.DataFrame()
 
         if institution_type and institution_type not in ['no match', 'aucune correspondance']:
-            institution_type_french = self.normalize_institution_type(institution_type)
+            institution_type_french = normalize_institution_type_standalone(institution_type)
             logger.debug(f"Filtering by institution type: '{institution_type}' -> '{institution_type_french}'")
             logger.debug(f"Available categories in ranking data: {self.ranking_df['Catégorie'].unique()}")
 
@@ -182,44 +210,9 @@ class Processing:
 
         return matching_rows
 
-    def normalize_institution_type(self, institution_type: str) -> str:
-        """
-        Automatically normalize institution type to French format used in data.
-        Handles both English and French input, returns standardized French format.
-        """
-        if not institution_type or institution_type in ["no match", "aucune correspondance"]:
-            return "aucune correspondance"
-            
-        # Convert to lowercase for comparison
-        type_lower = institution_type.lower().strip()
-        logger.debug(f"Normalizing institution type: '{institution_type}' -> '{type_lower}'")
-        
-        # Mapping of all possible variations to standardized French
-        type_mapping = {
-            # No match cases
-            "aucune correspondance": "aucune correspondance",
-            "no match": "aucune correspondance",
-            
-            # English variations
-            "public": "Public",
-            "private": "Privé",
-            
-            # French variations (ensure consistency)
-            "privé": "Privé",    # lowercase French with accent
-            "prive": "Privé",    # lowercase French without accent
-            
-            # Handle common variations
-            "publique": "Public",
-            "privée": "Privé"
-        }
-        
-        normalized = type_mapping.get(type_lower, "aucune correspondance")  # Default to no match for unrecognized types
-        logger.debug(f"Normalized institution type: '{institution_type}' -> '{normalized}'")
-        return normalized
-    
     def get_institution_type_for_url(self, institution_type: str) -> str:
         """Convert institution type to format expected by web URLs."""
-        normalized = self.normalize_institution_type(institution_type)
+        normalized = normalize_institution_type_standalone(institution_type)
         
         url_mapping = {
             "Public": "public",
@@ -230,54 +223,66 @@ class Processing:
         return url_mapping.get(normalized, normalized.lower())
     
     
-    def get_infos(self, prompt: str, detected_specialty: str = None) -> None:
+    def get_infos(self, prompt: str, detected_specialty: str = None, conv_history: list = None) -> dict:
         """
-        Extracts key aspects from the user's question: city, institution type (public/private), and medical specialty. 
-        
-        Updates instance variables accordingly.
-
+        Extracts key aspects from the user's question: city, institution type (public/private), and medical specialty.
+        Optionally uses consolidated conversation results if provided.
         Args:
             prompt (str): The user's question.
             detected_specialty (str, optional): Pre-detected specialty from conversation context.
+            conv_history (list, optional): Conversation history for multi-turn context.
+        Returns:
+            dict: Dictionary of extracted info (city, specialty, institution type, etc.)
         """
         logger.info(f"Extracting infos from prompt: {prompt}")
-        
+        if conv_history is not None:
+            # Use consolidated results from ConversationManager via LLMHandler
+            conv_results = self.llm_handler_service.run_conversation_checks(prompt, conv_history)
+            prompt_info = conv_results.get('multi_turn_result', {})
+            # Fallback to continued_response or modification_result if needed
+            prompt_info.update({
+                'continued_response': conv_results.get('continued_response'),
+                'modification_result': conv_results.get('modification_result')
+            })
+        else:
+            prompt_info = self.llm_handler_service.extract_prompt_info(prompt)
         # Use provided specialty or detect it
         if detected_specialty:
             logger.info(f"Using provided specialty from context: {detected_specialty}")
             self.specialty = detected_specialty
         else:
-            self.specialty = self.llm_service.detect_specialty(prompt)
-        
-        self.city = self.llm_service.detect_city(prompt)
-        self.institution_type = self.llm_service.detect_institution_type(prompt)
-        self.topk = self.llm_service.detect_topk(prompt)
-        
+            self.specialty = prompt_info.get('specialty')
+        self.city = prompt_info.get('city')
+        self.institution_type = prompt_info.get('institution_type')
+        self.topk = prompt_info.get('top_k')
+        self.institution_name = prompt_info.get('institution_name')
+        self.institution_mentioned = prompt_info.get('institution_mentioned')
+        try:
+            self.institution_coordinates_df = pd.read_excel(self.paths["hospital_coordinates_path"])
+        except Exception as e:
+            logger.error(f"Failed to load hospital coordinates Excel: {e}")
+            raise
+        self.institution_list = self._get_institution_list()
         # Load ranking data
         try:
             ranking_file_path = self.paths["ranking_file_path"]
             logger.debug(f"Loading ranking data from: {ranking_file_path}")
-            
+
             # Check if file exists
             if not os.path.exists(ranking_file_path):
                 logger.error(f"Ranking file not found: {ranking_file_path}")
                 raise FileNotFoundError(f"Ranking file not found: {ranking_file_path}")
-            
+
             self.ranking_df = pd.read_excel(ranking_file_path, sheet_name="Palmarès")
             logger.debug(f"Loaded ranking DataFrame with {len(self.ranking_df)} rows")
-            
+
             # Log column names for debugging
             logger.debug(f"Ranking DataFrame columns: {list(self.ranking_df.columns)}")
-            
+
         except Exception as e:
-            logger.error(f"Failed to load ranking data: {e}")
+            logger.error(f"Failed to load ranking file: {e}")
             raise
-        
-        self.institution_mentioned = self.llm_service.institution_mentioned 
-        self.institution_name = self.llm_service.institution_name  
-        logger.debug(f"Extracted specialty: '{self.specialty}', city: '{self.city}', type: '{self.institution_type}'")
-    
-        return None
+        return prompt_info
 
 
     def generate_response_links(self, matching_rows: pd.DataFrame = None) -> list:
@@ -296,7 +301,7 @@ class Processing:
         # If no specialty, suggest general ranking links
         if self.specialty in ['no match', 'no specialty match', 'aucune correspondance'] or not self.specialty:
             logger.debug("No specialty detected, generating general ranking links")
-            institution_type_french = self.normalize_institution_type(self.institution_type)
+            institution_type_french = normalize_institution_type_standalone(self.institution_type)
             if institution_type_french == 'Public':
                 self.web_ranking_link = [self.weblinks["public"]]
             elif institution_type_french == 'Privé':
@@ -308,7 +313,7 @@ class Processing:
         # If ranking not found, suggest the opposite type
         if self.specialty_ranking_unavailable:
             logger.debug("Specialty ranking unavailable, generating opposite type links")
-            institution_type_french = self.normalize_institution_type(self.institution_type)
+            institution_type_french = normalize_institution_type_standalone(self.institution_type)
             opposite_type = 'prive' if institution_type_french == 'Public' else 'public'
             
             # Handle multiple specialties for opposite type links
@@ -474,7 +479,7 @@ class Processing:
         if specialty in ['aucune correspondance', 'no specialty match']:
             logger.debug("No specialty match found, loading general rankings")
             self.generate_response_links()
-            institution_type_french = self.normalize_institution_type(self.institution_type)
+            institution_type_french = normalize_institution_type_standalone(self.institution_type)
             
             # When institution type is "aucune correspondance", load both public and private rankings
             if institution_type_french == "aucune correspondance":
