@@ -1,4 +1,4 @@
-from app.configfeatures_config import MAX_MESSAGES
+from app.config.features_config import MAX_MESSAGES
 
 class ConversationLimitCheckException(Exception):
     pass

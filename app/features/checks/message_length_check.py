@@ -1,4 +1,4 @@
-from app.configfeatures_config import MAX_LENGTH
+from app.config.features_config import MAX_LENGTH
 
 class MessageLengthCheckException(Exception):
     pass
