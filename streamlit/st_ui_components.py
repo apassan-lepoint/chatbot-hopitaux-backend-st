@@ -6,7 +6,7 @@ import streamlit as st
 
 from app.utility.logging import get_logger
 
-from streamlit.streamlit_config import (
+from st_config import (
     UI_TITLE,
     UI_SUBTITLE,
     UI_EXAMPLES_HEADER,

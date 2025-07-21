@@ -9,7 +9,7 @@ from app.services.llm_handler_service import LLMHandler
 
 from app.utility.logging import get_logger
 
-from streamlit.streamlit_config import (
+from st_config import (
     SESSION_STATE_KEYS,
     UI_SPECIALTY_SELECTION_PROMPT,
     UI_INVALID_SELECTION_ERROR
