@@ -1,5 +1,5 @@
 
-from config.features_config import CityResponse
+from app.config.features_config import CityResponse
 from app.features.prompt_detection.city_detection import validate_french_city
 
 class NonFrenchCitiesCheckException(Exception):

@@ -1,4 +1,4 @@
-from config.features_config import MAX_MESSAGES, MAX_LENGTH
+from app.config.features_config import MAX_MESSAGES, MAX_LENGTH
 from app.features.checks.conversation_limit_check import ConversationLimitChecker, ConversationLimitCheckException
 from app.features.checks.message_length_check import MessageLengthChecker, MessageLengthCheckException
 from app.features.checks.message_pertinence_check import MessagePertinenceChecker, MessagePertinenceCheckException

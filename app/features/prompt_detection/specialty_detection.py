@@ -2,7 +2,7 @@
 Module for detecting medical specialties mentioned in user queries.
 """
 import pandas as pd
-from config.file_paths_config import PATHS
+from app.config.file_paths_config import PATHS
 from typing import Optional, List, Dict, Union
 from enum import Enum
 from app.utility.logging import get_logger

@@ -10,7 +10,7 @@ from typing import Dict, Any
 from langchain_openai import ChatOpenAI
 from dotenv import load_dotenv
 
-from config.file_paths_config import PATHS
+from app.config.file_paths_config import PATHS
 from app.utility.formatting_helpers import format_mapping_words_csv
 from app.utility.logging import get_logger
 from app.utility.llm_helpers import invoke_llm_and_parse_boolean

@@ -11,7 +11,7 @@ from app.utility.logging import get_logger
 
 logger = get_logger(__name__)
 
-from config.features_config import CityResponse, ModificationResponse, SpecialtyResponse
+from app.config.features_config import CityResponse, ModificationResponse, SpecialtyResponse
 # # Streamlit generic wrapper
 # def streamlit_check_wrapper(check_func, *args, reset_callback=None, **kwargs):
 #     try:
