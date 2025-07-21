@@ -6,7 +6,7 @@ and error handling that are used across multiple service files.
 """
 
 from app.utility.logging import get_logger
-from app.utility.response_parser import parse_llm_response
+from app.utility.wrappers import parse_llm_response
 
 logger = get_logger(__name__)
 
