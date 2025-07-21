@@ -1,9 +1,12 @@
 """
 Main Streamlit-based user interface for the hospital ranking chatbot.
 """
+import sys
+import os
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import streamlit as st
-
 from app.services.llm_handler_service import LLMHandler
 from app.utility.logging import get_logger
 from app.features.checks.checks_manager import ChecksManager
