@@ -14,7 +14,7 @@ from config.streamlit_config import (
     UI_SPECIALTY_SELECTION_PROMPT,
     UI_INVALID_SELECTION_ERROR
 )
-from streamlit.st_utility import get_session_state_value
+from st_utility import get_session_state_value
 
 
 

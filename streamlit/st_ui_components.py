@@ -15,7 +15,7 @@ from config.streamlit_config import (
     BUTTON_CSS
 )
 
-from streamlit.st_utility import create_example_button, initialize_session_state
+from st_utility import create_example_button, initialize_session_state
 
 
 

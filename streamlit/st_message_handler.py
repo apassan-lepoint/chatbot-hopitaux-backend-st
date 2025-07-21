@@ -17,12 +17,12 @@ from config.streamlit_config import (
     ERROR_MESSAGES
 )
 
-from streamlit.st_utility import (
+from st_utility import (
     execute_with_spinner, 
     append_to_conversation, 
     get_conversation_list
 )
-from streamlit.st_specialty_handler import SpecialtyHandler
+from st_specialty_handler import SpecialtyHandler
 
 
 # Initialize logger for this module
