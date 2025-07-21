@@ -13,7 +13,7 @@ from datetime import datetime
 import unicodedata
 
 ## Removed import of institution_coordinates_df from institutions.py; DataProcessor loads Excel directly
-from config import PATHS
+from config.file_paths_config import PATHS
 from app.services.llm_handler_service import LLMHandler
 from app.utility.formatting_helpers import remove_accents
 from app.utility.distance_calc_helpers import exget_coordinates, get_coordinates, distance_to_query

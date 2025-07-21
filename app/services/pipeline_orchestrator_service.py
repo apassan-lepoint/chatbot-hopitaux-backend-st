@@ -9,7 +9,7 @@ import pandas as pd
 from app.services.data_processing_service import DataProcessor
 from app.features.prompt_detection.prompt_detection_manager import PromptDetectionManager
 from app.utility.formatting_helpers import tableau_en_texte
-from config import PATHS
+from config.file_paths_config import PATHS
 from app.utility.logging import get_logger
 logger = get_logger(__name__)
 
