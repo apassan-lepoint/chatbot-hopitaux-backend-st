@@ -40,10 +40,19 @@ class LLMHandler:
         logger.info("Initializing LLMHandler")
         load_dotenv(override=False) 
         self.model = self.init_model()
-        
+
         self.paths = PATHS
+
+        # Debug: log the mapping_word_path and list files in the data directory
+        logger.info(f"Trying to load mapping_word_path: {self.paths['mapping_word_path']}")
+        data_dir = os.path.dirname(self.paths["mapping_word_path"])
+        if os.path.exists(data_dir):
+            logger.info(f"Files in data directory ({data_dir}): {os.listdir(data_dir)}")
+        else:
+            logger.warning(f"Data directory does not exist: {data_dir}")
+
         self.key_words = format_mapping_words_csv(self.paths["mapping_word_path"])
-        
+
         self.prompt_manager = PromptDetectionManager(self.model)
         self.topk_detector = TopKDetector(self.model)
         # Use ConversationManager for all conversation/multi-turn logic
