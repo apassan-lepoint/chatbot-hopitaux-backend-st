@@ -2,19 +2,9 @@
 Main Streamlit-based user interface for the hospital ranking chatbot.
 """
 
-import sys
-import os
 import streamlit as st
 
-# Add repo root to path
-current_dir = os.path.dirname(__file__)
-repo_root = os.path.abspath(os.path.join(current_dir, "../../"))
-if repo_root not in sys.path:
-    sys.path.insert(0, repo_root)
-
-
 from app.services.llm_handler_service import LLMHandler
-
 from app.utility.logging import get_logger
 from app.features.checks.checks_manager import ChecksManager
 
