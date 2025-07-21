@@ -18,7 +18,7 @@ from config.streamlit_config import (
     ERROR_MESSAGES
 )
 
-from streamlit.st_utility import (
+from st_utility import (
     reset_session_state,
     append_to_conversation,
     display_conversation_history,
@@ -27,9 +27,9 @@ from streamlit.st_utility import (
     get_session_state_value,
     execute_with_spinner
 )
-from streamlit.st_specialty_handler import SpecialtyHandler
-from streamlit.st_message_handler import MessageHandler
-from streamlit.st_ui_components import UIComponents
+from st_specialty_handler import SpecialtyHandler
+from st_message_handler import MessageHandler
+from st_ui_components import UIComponents
 
 logger = get_logger(__name__)
 
