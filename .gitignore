@@ -1,3 +1,4 @@
-.envchop_venv /
-.env*.pyc
+.env
+chop_venv/
 __pycache__/
+.DS_Store

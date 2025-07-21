@@ -11,7 +11,7 @@ from app.services.llm_handler_service import LLMHandler
 from app.utility.logging import get_logger
 from app.features.checks.checks_manager import ChecksManager
 
-from config.streamlit_config import (
+from streamlit.streamlit_config import (
     SESSION_STATE_KEYS,
     MAX_MESSAGES,
     UI_CHAT_INPUT_PLACEHOLDER,
@@ -135,7 +135,7 @@ class StreamlitChatbot:
         try:
             from app.services.pipeline_orchestrator_service import PipelineOrchestrator
             from app.utility.formatting_helpers import format_links
-            from config.streamlit_config import SPINNER_MESSAGES
+            from streamlit.streamlit_config import SPINNER_MESSAGES
             current_conversation = get_conversation_list()
             def generate_response():
                 result, links = PipelineOrchestrator().generate_response(

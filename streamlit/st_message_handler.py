@@ -10,7 +10,7 @@ from app.services.pipeline_orchestrator_service import PipelineOrchestrator
 from app.utility.formatting_helpers import format_links
 from app.utility.logging import get_logger
 
-from config.streamlit_config import (
+from streamlit.streamlit_config import (
     CASE_MESSAGES, 
     SPINNER_MESSAGES, 
     OFF_TOPIC_RESPONSE, 
