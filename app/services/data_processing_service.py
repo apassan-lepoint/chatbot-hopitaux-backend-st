@@ -128,7 +128,7 @@ class DataProcessor:
         s = ''.join(c for c in s if not unicodedata.combining(c))
         return s
     
-    def _get_institution_list(self):
+    def get_institution_list(self):
         """
         Returns a formatted, deduplicated list of institutions present in the rankings.
         Cleans names to avoid duplicates or matching errors.

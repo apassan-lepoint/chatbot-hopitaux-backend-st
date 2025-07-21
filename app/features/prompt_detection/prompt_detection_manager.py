@@ -1,14 +1,15 @@
 from .city_detection import CityDetector
 from .institution_name_detection import InstitutionNameDetector
 from .institution_type_detection import InstitutionTypeDetector
+from app.services.data_processing_service import DataProcessor
 from .specialty_detection import SpecialtyDetector
 
 class PromptDetectionManager:
     def __init__(self, model=None):
         self.model = model
         self.city_detector = CityDetector(model)
-        self.institution_name_detector = InstitutionNameDetector(model)
-        self.institution_type_detector = InstitutionTypeDetector(model)
+        self.institution_name_detector = InstitutionNameDetector(model, institution_list=DataProcessor().get_institution_list())
+        self.institution_type_detector = InstitutionTypeDetector(model, institution_list=DataProcessor().get_institution_list())
         self.specialty_detector = SpecialtyDetector(model)
         from .topk_detection import TopKDetector
         self.topk_detector = TopKDetector(model)
