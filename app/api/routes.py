@@ -5,30 +5,24 @@ This file registers the main routes for user queries, health checks, and other
 API functionalities, and organizes them using FastAPI's router system.
 """
 
-import re
 from fastapi import APIRouter, HTTPException
+
 from app.services.pipeline_orchestrator_service import PipelineOrchestrator
 from app.services.llm_handler_service import LLMHandler
 from app.pydantic_models.query_model import UserQuery, ChatRequest
 from app.pydantic_models.response_model import AskResponse, ChatResponse
 from app.utility.formatting_helpers import format_links
-from app.features.checks.checks_manager import ChecksManager
+from app.features.checks.sanity_sanity_checks_manager import SanityChecksManager
 from app.features.conversation.conversation_manager import ConversationManager
 from app.utility.logging import get_logger
+from app.config.features_config import MAX_MESSAGES,CHECKS_TO_RUN_Q1, CHECKS_TO_RUN_MULTI_TURN
 
 logger = get_logger(__name__)
-
-# Configuration constants
-MAX_MESSAGES = 5  # Maximum number of messages allowed in a conversation
-
-# French response messages (could be moved to a constants file for i18n)
-AMBIGUOUS_RESPONSE = "Je ne suis pas sûr si votre message est une nouvelle question ou une modification de la précédente. Veuillez préciser."
 
 # Initialize the API router instance to define and group related endpoints
 router = APIRouter()
 
 # Initialize services once at module level for performance optimization
-# These instances will be reused across all requests to avoid initialization overhead
 logger.info("Initializing core services...")
 pipeline = PipelineOrchestrator()
 llm_handler_service = LLMHandler()
@@ -47,8 +41,8 @@ def perform_sanity_checks(prompt: str, conversation: list = None, checks_to_run=
     else:
         logger.debug("Checking pertinence without conversation context")
 
-    checks_manager = ChecksManager(llm_handler_service, max_messages=MAX_MESSAGES)
-    results = checks_manager.run_checks(prompt, conversation, conv_history, checks_to_run=checks_to_run)
+    sanity_checks_manager = SanityChecksManager(llm_handler_service, max_messages=MAX_MESSAGES)
+    results = sanity_checks_manager.run_checks(prompt, conversation, conv_history, checks_to_run=checks_to_run)
     for check, result in results.items():
         if not result["passed"]:
             raise HTTPException(status_code=400, detail=result["error"])
@@ -58,7 +52,6 @@ def perform_sanity_checks(prompt: str, conversation: list = None, checks_to_run=
 def ask_question(query: UserQuery) -> AskResponse:
     """
     Handles POST requests to the /ask endpoint for single-turn conversations.
-    
     Args:
         query: The user's query containing the prompt and optional specialty
     Returns:
@@ -67,17 +60,11 @@ def ask_question(query: UserQuery) -> AskResponse:
         HTTPException: 
             - 400: Bad request (failed sanity checks)
             - 500: Internal server error (processing failures)
-    
-    Example:
-        POST /ask
-        {"prompt": "Meilleurs hôpitaux pour cardiologie à Paris", "detected_specialty": "cardiologie"}
     """
     logger.info(f"Received /ask request with prompt length: {len(query.prompt)} chars, specialty: {query.detected_specialty}")
     try:
-        perform_sanity_checks(query.prompt, checks_to_run=["message_length", "message_pertinence", "non_french_cities"])
+        perform_sanity_checks(query.prompt, checks_to_run=CHECKS_TO_RUN_Q1)
         logger.debug("Sanity checks completed for /ask request")
-        # Use ConversationManager for consolidated conversation logic
-        conv_results = conv_manager.run_all_conversation_checks(query.prompt, [])
         # For consistency, pass conv_history (empty for single-turn) to pipeline
         result, links = pipeline.generate_response(prompt=query.prompt, detected_specialty=query.detected_specialty)
         logger.info(f"Response generated for /ask endpoint - Links found: {len(links) if links else 0}")
@@ -117,7 +104,7 @@ def chat(request: ChatRequest) -> ChatResponse:
     logger.info(f"Received /chat request - Prompt length: {len(request.prompt)} chars, "
                 f"Conversation history: {len(request.conversation) if request.conversation else 0} turns")
     try:
-        perform_sanity_checks(request.prompt, request.conversation, checks_to_run=["message_length", "message_pertinence", "non_french_cities", "conversation_limit"])
+        perform_sanity_checks(request.prompt, request.conversation, checks_to_run=CHECKS_TO_RUN_MULTI_TURN)
         logger.debug("Sanity checks completed for /chat request")
         conv_history = request.conversation if request.conversation else []
         # Use ConversationManager for consolidated conversation logic

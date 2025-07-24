@@ -2,40 +2,35 @@
 MAX_MESSAGES = 5
 MAX_LENGTH = 200
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 # Response constants for better code readability
-from enum import Enum
 
-class CityResponse:
-    NO_CITY_MENTIONED = 0
-    FOREIGN = 1
-    AMBIGUOUS = 2
-    CITY_MENTIONED = 3
+# City response constants
+CITY_NO_CITY_MENTIONED = 0
+CITY_FOREIGN = 1
+CITY_AMBIGUOUS = 2
+CITY_MENTIONED = 3
 
-class ModificationResponse:
-    NEW_QUESTION = 0
-    MODIFICATION = 1
-    AMBIGUOUS = 2
+# Modification response constants
+MODIFICATION_NEW_QUESTION = 0
+MODIFICATION_MODIFICATION = 1
+MODIFICATION_AMBIGUOUS = 2
 
-class SpecialtyResponse(Enum):
-    NO_SPECIALTY_MENTIONED = 0
-    SINGLE_SPECIALTY = 1
-    MULTIPLE_SPECIALTIES = 2
+# Specialty response constants
+SPECIALTY_NO_SPECIALTY_MENTIONED = 0
+SPECIALTY_SINGLE_SPECIALTY = 1
+SPECIALTY_MULTIPLE_SPECIALTIES = 2
+
+AMBIGUOUS_RESPONSE = "Je ne suis pas sûr si votre message est une nouvelle question ou une modification de la précédente. Veuillez préciser."
+
+# Checks to run for sanity checks
+CHECKS_TO_RUN_Q1 = ["message_length", "message_pertinence", "non_french_cities"]
+CHECKS_TO_RUN_MULTI_TURN = ["message_length", "message_pertinence", "non_french_cities", "conversation_limit"]
+
+
+# Warning messages for different checks
+WARNING_MESSAGES = {
+    "message_length": "Votre message est trop long. Merci de le raccourcir.",
+    "message_pertinence":"Cet assistant a pour but de fournir des informations sur les classements des établissements de soins de cette année. Merci de reformuler.",
+    "non_french_cities": "Je ne peux pas traiter les demandes concernant des villes étrangères. Merci de reformuler votre question en mentionnant une ville française.",
+    "conversation_limit": "La conversation est trop longue. Merci de commencer une nouvelle conversation."
+}   

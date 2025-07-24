@@ -70,26 +70,3 @@ def invoke_llm_and_parse_boolean(model, formatted_prompt, operation_name: str) -
         logger.error(f"LLM invocation failed in {operation_name}: {e}")
         raise
 
-
-def log_operation_start(operation_name: str, prompt: str, max_prompt_length: int = 50):
-    """
-    Standard logging for operation start with truncated prompt.
-    
-    Args:
-        operation_name: Name of the operation
-        prompt: User's prompt
-        max_prompt_length: Maximum length to show from prompt
-    """
-    truncated_prompt = prompt[:max_prompt_length] + "..." if len(prompt) > max_prompt_length else prompt
-    logger.info(f"{operation_name} for prompt: {truncated_prompt}")
-
-
-def log_operation_result(operation_name: str, result):
-    """
-    Standard logging for operation results.
-    
-    Args:
-        operation_name: Name of the operation
-        result: The operation result
-    """
-    logger.debug(f"{operation_name} result: {result}")

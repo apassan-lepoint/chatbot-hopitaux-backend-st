@@ -116,7 +116,7 @@ backend_chatbot_hopitaux
 │       │   ├── conversation_manager.py
 │       │   └── multi_turn.py
 │       ├── checks
-│       │   ├── checks_manager.py
+│       │   ├── sanity_checks_manager.py
 │       │   ├── message_length_check.py
 │       │   ├── conversation_limit_check.py
 │       │   └── relevance_check.py

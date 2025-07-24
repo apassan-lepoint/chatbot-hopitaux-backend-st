@@ -317,16 +317,6 @@ Répondez UNIQUEMENT avec:
 - 1 pour modification de la question précédente
 - 2 pour ambiguous
 """,
-        
-    "rewrite_query_prompt": """
-Voici la question initiale de l'utilisateur :
-{last_query}
-
-Voici la modification ou précision apportée par l'utilisateur :
-{modification}
-
-Reformule une nouvelle question complète et précise qui prend en compte la modification.
-""",
 
     "continuity_check_prompt": """
 Analysez si ce nouveau message est une continuation de la conversation précédente:

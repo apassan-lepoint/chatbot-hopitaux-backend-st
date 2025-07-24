@@ -1,13 +1,13 @@
 """
 Manager to consolidate results from Conversation and MultiTurn classes.
 """
-from app.features.conversation.conversation_conv import Conversation
-from app.features.conversation.multi_turn_conv import MultiTurn
+from app.features.conversation.llm_responder import LLMResponder
+from app.features.conversation.multi_turn import MultiTurn
 
 class ConversationManager:
     def __init__(self, model):
         self.model = model
-        self.conversation = Conversation(model)
+        self.conversation = LLMResponder(model)
         self.multi_turn = MultiTurn(model)
 
     def run_all_conversation_checks(self, prompt: str, conv_history: list) -> dict:

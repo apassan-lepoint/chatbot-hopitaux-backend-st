@@ -9,29 +9,6 @@ import streamlit as st
 from typing import Dict, Any, Optional, Callable
 
 
-def initialize_session_state(default_values: Dict[str, Any]) -> None:
-    """
-    Initialize session state variables with default values if not already present.
-    
-    Args:
-        default_values: Dictionary of key-value pairs to initialize
-    """
-    for key, value in default_values.items():
-        if key not in st.session_state:
-            st.session_state[key] = value
-
-
-def reset_session_state(reset_values: Dict[str, Any]) -> None:
-    """
-    Reset session state variables to specified values.
-    
-    Args:
-        reset_values: Dictionary of key-value pairs to reset
-    """
-    for key, value in reset_values.items():
-        st.session_state[key] = value
-
-
 def append_to_conversation(user_input: str, bot_response: str) -> None:
     """
     Append a user-bot interaction to the conversation history.
@@ -46,7 +23,7 @@ def append_to_conversation(user_input: str, bot_response: str) -> None:
 
 
 def create_example_button(question: str, button_key: str, 
-                         help_text: str = "Cliquez pour poser cette question") -> bool:
+                        help_text: str = "Cliquez pour poser cette question") -> bool:
     """
     Create an example question button that updates session state when clicked.
     

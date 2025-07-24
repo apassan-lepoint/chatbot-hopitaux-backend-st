@@ -1,3 +1,4 @@
+
 """
 Config file for Streamlit application.
 """
@@ -46,6 +47,13 @@ CASE_MESSAGES = {
     "case5": "Nouvelle question avec recherche détectée.",
     "case6": "Nouvelle question LLM détectée."
 }
+
+DEFAULT_CHECKS_TO_RUN = [
+    "message_length",
+    "message_pertinence",
+    "non_french_cities",
+    "conversation_limit"
+]
 
 # Error Messages
 ERROR_MESSAGES = {

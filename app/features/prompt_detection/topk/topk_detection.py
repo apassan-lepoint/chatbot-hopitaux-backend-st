@@ -27,44 +27,18 @@ class TopKDetector:
             model: The language model used for detection
         """
         self.model = model
-        self._default_topk = 3
-        self._max_topk = 50
-        self._min_topk = 1
-        # TODO make these constants in config file 
     
     
     def detect_topk(self, prompt: str, conv_history: str = "") -> int:
         """
         Detects the top-k results from the given prompt using the LLM.
         Returns integer for top-k or 0 if not mentioned.
-        
-        Args:
-            prompt: The message to analyze
-            conv_history: Optional conversation history for context
-            
-        Returns:
-            int: Number of establishments requested (1-50) or 0 if not mentioned
         """
-        try:
-            logger.debug(f"Detecting top-k from prompt: {prompt[:50]}...")
-            
-            formatted_prompt = prompt_formatting("detect_topk_prompt", prompt, conv_history)
-            raw_response = invoke_llm_with_error_handling(self.model, formatted_prompt, "detect_topk")
-            topk = parse_llm_response(raw_response, "numeric", 0)
-            
-            # Validate range
-            if self._min_topk <= topk <= self._max_topk:
-                logger.debug(f"Valid top-k detected: {topk}")
-                return topk
-            else:
-                logger.debug(f"Top-k out of range or not mentioned: {topk}")
-                return 0
-                
-        except Exception as e:
-            logger.error(f"Error detecting top-k: {e}")
-            return 0
-    
-
+        logger.debug(f"Detecting top-k from prompt: {prompt[:50]}...")
+        formatted_prompt = prompt_formatting("detect_topk_prompt", prompt=prompt, conv_history=conv_history)
+        raw_response = invoke_llm_with_error_handling(self.model, formatted_prompt, "detect_topk")
+        topk = parse_llm_response(raw_response, "numeric", 0)
+        return topk
     def detect_topk_with_fallback(self, prompt: str, conv_history: str = "", as_string: bool = False) -> int | str:
         """
         Detects top-k with fallback to default value or string.
@@ -73,7 +47,7 @@ class TopKDetector:
         detected_topk = self.detect_topk(prompt, conv_history)
         if as_string:
             return str(detected_topk) if detected_topk > 0 else 'non mentionné'
-        return detected_topk if detected_topk > 0 else self._default_topk
+        return detected_topk if detected_topk > 0 else self.default_topk
 
     def validate_topk(self, topk: int) -> bool:
         return self._min_topk <= topk <= self._max_topk
@@ -84,15 +58,4 @@ class TopKDetector:
             return detected_topk
         if self.validate_topk(user_topk):
             return user_topk
-        return self._default_topk
-
-
-
-# Utility functions for backward compatibility (optional, can be removed if not used)
-def detect_topk_from_prompt(model, prompt: str, conv_history: str = "") -> int:
-    return TopKDetector(model).detect_topk(prompt, conv_history)
-
-def get_topk_with_default(model, prompt: str, conv_history: str = "", default: int = 3) -> int:
-    detector = TopKDetector(model)
-    detector._default_topk = default
-    return detector.detect_topk_with_fallback(prompt, conv_history)
+        return self.default_topk

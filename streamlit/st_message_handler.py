@@ -3,56 +3,32 @@ Defines the MessageHandler class for processing messages in the Streamlit UI.
 """
 
 import streamlit as st
-
-from app.services.llm_handler_service import LLMHandler
-from app.services.pipeline_orchestrator_service import PipelineOrchestrator
-
 from app.utility.formatting_helpers import format_links
 from app.utility.logging import get_logger
-
-from st_config import (
+from streamlit.st_config import (
     CASE_MESSAGES, 
     SPINNER_MESSAGES, 
     OFF_TOPIC_RESPONSE, 
     ERROR_MESSAGES
 )
-
-from st_utility import (
+from streamlit.st_utility import (
     execute_with_spinner, 
     append_to_conversation, 
     get_conversation_list
 )
-from st_specialty_handler import SpecialtyHandler
+from streamlit.st_specialty_handler import SpecialtyHandler
 
 
 # Initialize logger for this module
 logger = get_logger(__name__)
 
-
-
 class MessageHandler:
     """
     MessageHandler class processes messages based on predefined cases, such as query rewriting,
     conversational cases, off-topic messages, and new search questions in the Streamlit UI.
-    
-    Attributes:
-        llm_handler (LLMHandler): Instance of LLMHandler for language model interactions.
-        specialty_handler (SpecialtyHandler): Instance of SpecialtyHandler for managing specialties.
-        
-    Methods:
-        handle_case_with_rewrite(case_name, user_input, conv_history, rewrite_method):
-            Handles cases that require query rewriting.
-        handle_conversational_case(case_name, user_input):
-            Handles conversational cases where the user continues a conversation.
-        handle_off_topic_case(user_input):
-            Handles off-topic messages that do not match any predefined cases.
-        handle_new_search_case(user_input):
-            Handles new search questions that require a fresh query.
-        analyze_and_handle_message(user_input, conv_history):
-            Analyzes the user's input message and determines the appropriate case to handle it. 
     """
     
-    def __init__(self, llm_handler: LLMHandler, specialty_handler: SpecialtyHandler):
+    def __init__(self, llm_handler, specialty_handler: 'SpecialtyHandler'):
         self.llm_handler = llm_handler
         self.specialty_handler = specialty_handler
     
@@ -85,12 +61,11 @@ class MessageHandler:
                 conv_history
             )
             logger.debug(f"Rewritten query ({case_name.lower()}): {rewritten_query}")
-            
-            # Get current specialty context
             current_specialty = self.specialty_handler.get_current_specialty_context()
             
             # Generate response using pipeline with specialty context
             def generate_response():
+                from app.services.pipeline_orchestrator_service import PipelineOrchestrator # Import here to avoid circular import
                 result, links = PipelineOrchestrator().generate_response(
                     prompt=rewritten_query, 
                     detected_specialty=current_specialty
@@ -199,6 +174,7 @@ class MessageHandler:
             
             # Generate response using pipeline with specialty context
             def generate_response():
+                from app.services.pipeline_orchestrator_service import PipelineOrchestrator # Import here to avoid circular import
                 result, links = PipelineOrchestrator().generate_response(
                     prompt=user_input, 
                     detected_specialty=current_specialty
@@ -215,17 +191,7 @@ class MessageHandler:
     
     def analyze_and_handle_message(self, user_input: str, conv_history: str):
         """
-        Analyze subsequent message and handle based on determined case.
-        
-        Args:
-            user_input: The user's input message
-            conv_history: Formatted conversation history for LLM
-        
-        Raises:
-            Exception: If an error occurs during processing.
-            
-        Returns:
-            None: The method handles the case and updates the conversation state.
+        Analyze the message and handle it according to the determined case.
         """
         try:
             # Analyze subsequent message using 4-check system

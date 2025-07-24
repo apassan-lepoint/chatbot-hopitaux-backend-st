@@ -13,14 +13,7 @@ from dotenv import load_dotenv
 from app.config.file_paths_config import PATHS
 from app.utility.formatting_helpers import format_mapping_words_csv
 from app.utility.logging import get_logger
-from app.utility.llm_helpers import invoke_llm_and_parse_boolean
-from app.utility.wrappers import prompt_formatting
-
-
-from app.features.prompt_detection.prompt_detection_manager import PromptDetectionManager
 from app.features.conversation.conversation_manager import ConversationManager
-
-from app.features.prompt_detection.topk_detection import TopKDetector
 
 
 logger = get_logger(__name__)
@@ -53,26 +46,23 @@ class LLMHandler:
 
         self.key_words = format_mapping_words_csv(self.paths["mapping_word_path"])
 
+        from app.features.prompt_detection.prompt_detection_manager import PromptDetectionManager # Import PromptDetectionManager locally to avoid circular import
         self.prompt_manager = PromptDetectionManager(self.model)
-        self.topk_detector = TopKDetector(self.model)
         # Use ConversationManager for all conversation/multi-turn logic
         self.conversation_manager = ConversationManager(self.model)
-     
+
     
-    def extract_prompt_info(self, prompt: str, conv_history: str = "", institution_list=None, k=3) -> Dict[str, Any]:
+    def extract_prompt_info(self, prompt: str, conv_history: str = "", institution_list=None) -> Dict[str, Any]:
         """
         Extracts all relevant information from a prompt using PromptDetectionManager.
         Returns a consolidated dictionary with city, specialty, top_k, institution name, and institution type.
         """
+        # Ensure prompt_manager is available
+        if not hasattr(self, 'prompt_manager') or self.prompt_manager is None:
+            from app.features.prompt_detection.prompt_detection_manager import PromptDetectionManager # Import PromptDetectionManager locally to avoid circular import
+            self.prompt_manager = PromptDetectionManager(self.model)
         results = self.prompt_manager.run_all_detections(prompt, conv_history, institution_list)
-        specialty_top_k = None
-        if hasattr(self.prompt_manager.specialty_detector, 'detect_specialty'):
-            specialty_result = self.prompt_manager.specialty_detector.detect_specialty(prompt, conv_history)
-            if hasattr(specialty_result, 'specialty_list'):
-                specialty_top_k = specialty_result.specialty_list[:k]
-            else:
-                specialty_top_k = [specialty_result]
-        results['specialty_top_k'] = specialty_top_k
+        # All top-k logic should be handled by PromptDetectionManager and included in its output
         return results
     
     def init_model(self) -> ChatOpenAI:
@@ -89,78 +79,7 @@ class LLMHandler:
         )
         logger.info("ChatOpenAI model initialized")
         return self.model
-        
     
-    def _execute_with_logging(self, operation_name: str, prompt: str, operation_func, *args, **kwargs):
-        """
-        Generic method to execute operations with consistent logging and error handling.
-        
-        Args:
-            operation_name (str): Name of the operation for logging
-            prompt (str): The user's prompt
-            operation_func: The function to execute
-            *args: Additional arguments for the operation function
-            **kwargs: Additional keyword arguments for the operation function
-        
-        Returns:
-            The result of the operation function
-        
-        Raises:
-            Exception: If the operation fails, an error is logged and raised.
-        """
-        logger.info(f"{operation_name} for prompt: {prompt[:50]}...")
-        try:
-            result = operation_func(prompt, *args, **kwargs)
-            logger.debug(f"{operation_name} result: {result}")
-            return result
-        except Exception as e:
-            logger.error(f"{operation_name} failed: {e}")
-            raise
-
-    def sanity_check_medical_pertinence(self, prompt: str, conv_history: str = "") -> str:
-        """
-        Checks the medical pertinence of the given prompt using the LLM.
-        Returns True if medically pertinent, False otherwise.
-        Args:
-            prompt: The message to check
-            conv_history: Optional conversation history for context
-        """
-        formatted_prompt = prompt_formatting(
-            "sanity_check_medical_pertinence_prompt",
-            prompt=prompt,
-            conv_history=conv_history
-        )
-        return invoke_llm_and_parse_boolean(self.model, formatted_prompt, "sanity_check_medical_pertinence")
-
-    def sanity_check_chatbot_pertinence(self, prompt: str, conv_history: str = "") -> str:
-        """
-        Checks the pertinence of the given prompt for the chatbot using the LLM.
-        Returns True if relevant to chatbot, False otherwise.
-        Args:
-            prompt: The message to check
-            conv_history: Optional conversation history for context
-        """
-        from app.utility.wrappers import prompt_formatting
-        formatted_prompt = prompt_formatting(
-            "sanity_check_chatbot_pertinence_prompt",
-            prompt=prompt,
-            conv_history=conv_history
-        )
-        return invoke_llm_and_parse_boolean(self.model, formatted_prompt, "sanity_check_chatbot_pertinence")
-
-
-    def rewrite_query(self, last_query: str, modification: str) -> str:
-        """
-        Rewrites the last query based on the detected modification.
-        
-        Args:
-            last_query (str): The last query made by the user.
-            modification (str): The detected modification to the last query.
-        
-        Returns:
-            str: The rewritten query based on the modification.
-        """
-        return self.conversation_manager.conversation.rewrite_modified_query(last_query, modification)
 
     def run_conversation_checks(self, prompt: str, conv_history: list) -> dict:
         """

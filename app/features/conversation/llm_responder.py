@@ -8,7 +8,7 @@ from app.utility.llm_helpers import invoke_llm_with_error_handling
 
 logger = get_logger(__name__) 
 
-class Conversation:
+class LLMResponder:
     """
     Service for managing conversations with a language model (LLM).
     This service handles conversation continuation, modification detection,
@@ -19,7 +19,7 @@ class Conversation:
     """
     def __init__(self, model):
         """
-        Initializes the Conversation with a language model instance.
+        Initializes the LLMResponder with a language model instance.
         """
         self.model = model
 
@@ -56,27 +56,6 @@ class Conversation:
         )
         raw_response = invoke_llm_with_error_handling(self.model, formatted_prompt, "detect_modification")
         return parse_llm_response(raw_response, "modification")
-
-    def rewrite_modified_query(self, last_query, modification):
-        """
-        Rewrites the last query based on the detected modification.
-
-        Args:
-            last_query (str): The last query made by the user.
-            modification (str): The detected modification to the last query, typically a clarification or adjustment.
-        
-        Returns:
-            str: The rewritten query based on the modification.
-        
-        Raises:
-            Exception: If the LLM invocation fails.
-        """
-        formatted_prompt = prompt_formatting(
-            "rewrite_query_prompt",
-            last_query=last_query,
-            modification=modification
-        )
-        return invoke_llm_with_error_handling(self.model, formatted_prompt, "rewrite_query")
 
     def rewrite_query_merge(self, prompt: str, conv_history: str) -> str:
         """

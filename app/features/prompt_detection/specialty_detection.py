@@ -3,13 +3,14 @@ Module for detecting medical specialties mentioned in user queries.
 """
 import pandas as pd
 from app.config.file_paths_config import PATHS
-from typing import Optional, List, Dict, Union
-from enum import Enum
+from typing import Optional, List
 from app.utility.logging import get_logger
 from app.utility.llm_helpers import invoke_llm_with_error_handling
-from app.utility.wrappers import parse_llm_response, SpecialtyResponse
+from app.utility.wrappers import parse_llm_response
 from app.utility.wrappers import prompt_formatting
 from app.utility.specialty_dicts_lists import specialty_categories_dict, category_variations, general_cancer_terms
+from app.config.features_config import SPECIALTY_NO_SPECIALTY_MENTIONED, SPECIALTY_SINGLE_SPECIALTY, SPECIALTY_MULTIPLE_SPECIALTIES
+from app.services.data_processing_service import DataProcessor
 
 
 logger = get_logger(__name__)
@@ -218,7 +219,7 @@ class SpecialtyDetector:
         """LLM-only specialty detection."""
         return self._detect_specialty_llm(prompt, conv_history)
     
-    def detect_specialty_status(self, prompt: str, conv_history: str = "") -> SpecialtyResponse:
+    def detect_specialty_status(self, prompt: str, conv_history: str = ""):
         """
         Detect the status of specialty mention in the query.
         
@@ -227,7 +228,7 @@ class SpecialtyDetector:
             conv_history (str, optional): Conversation history for context
             
         Returns:
-            SpecialtyResponse: Status of specialty detection
+            Status of specialty detection
         """
         # Use a simple LLM call to determine status
         formatted_prompt = self._format_specialty_status_prompt(prompt, conv_history)
@@ -350,7 +351,11 @@ MESSAGE À ANALYSER: '{prompt}'
     
     def detect_general_cancer_query(self, prompt: str) -> bool:
         """Check if the query is about cancer in general."""
-        return self.detect_general_cancer_query(prompt)
+        msg = prompt.lower().strip()
+        if any(term in msg for term in self.general_cancer_terms):
+            if not any(s.lower() in msg for s in self.get_all_cancer_specialties()):
+                return True
+        return False
     
     def get_cancer_specialties_for_query(self, prompt: str) -> List[str]:
         """Get cancer specialties relevant to the query."""

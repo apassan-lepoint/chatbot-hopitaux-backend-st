@@ -122,7 +122,7 @@ class MultiTurn:
         
         # Create key for lookup
         key = (on_topic, continuity if on_topic else None, 
-               search_needed if on_topic else None, 
-               merge_query if (on_topic and continuity and search_needed) else None)
+            search_needed if on_topic else None, 
+            merge_query if (on_topic and continuity and search_needed) else None)
         
         return case_mapping.get(key, "case6")  # default to case6
