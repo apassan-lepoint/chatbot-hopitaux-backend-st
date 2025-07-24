@@ -9,12 +9,12 @@ detection with frontend user interaction, updating session state and handling UI
 import streamlit as st
 from datetime import datetime
 from app.utility.logging import get_logger
-from streamlit.st_config import (
+from st_config import (
     SESSION_STATE_KEYS,
     UI_SPECIALTY_SELECTION_PROMPT,
     UI_INVALID_SELECTION_ERROR
 )
-from streamlit.st_utility import get_session_state_value
+from st_utility import get_session_state_value
 
 logger = get_logger(__name__)
 
