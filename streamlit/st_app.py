@@ -119,6 +119,8 @@ class StreamlitChatbot:
         """
         # Get user input
         user_input = st.chat_input(UI_CHAT_INPUT_PLACEHOLDER)
+        if not user_input and st.session_state.prompt:
+            user_input = st.session_state.prompt
         if not user_input:
             return  # No input, nothing to do
         logger.info(f"First message user_input: '{user_input}'")
