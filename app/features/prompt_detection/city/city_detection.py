@@ -123,7 +123,15 @@ class CityDetector:
             logger.debug("City mentioned detected, extracting city name")
             city_name = self._detect_city_name(prompt, conv_history)
             logger.info(f"City detected: {city_name}")
-            return city_name
+            # Defensive: ensure city_name is valid
+            if not city_name or not isinstance(city_name, str) or city_name.strip() == "":
+                logger.warning("City name extraction failed, returning CITY_NO_CITY_MENTIONED status code")
+                return CITY_NO_CITY_MENTIONED
+            return city_name.strip()
+        # Defensive: always return a proper status code, never a string error
+        if not isinstance(city_status, int) or city_status not in [CITY_NO_CITY_MENTIONED, CITY_FOREIGN, CITY_AMBIGUOUS, CITY_MENTIONED]:
+            logger.warning(f"Invalid city status detected: {city_status}, returning CITY_NO_CITY_MENTIONED")
+            return CITY_NO_CITY_MENTIONED
         logger.info(f"City detection status: {self._get_city_response_description(city_status)}")
         return city_status
     
