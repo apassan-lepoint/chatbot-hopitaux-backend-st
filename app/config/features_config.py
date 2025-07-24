@@ -34,3 +34,8 @@ WARNING_MESSAGES = {
     "non_french_cities": "Je ne peux pas traiter les demandes concernant des villes étrangères. Merci de reformuler votre question en mentionnant une ville française.",
     "conversation_limit": "La conversation est trop longue. Merci de commencer une nouvelle conversation."
 }   
+
+# TopK response constants
+TOPK_DEFAULT = 3
+TOPK_MIN = 1
+TOPK_MAX = 10

@@ -126,6 +126,7 @@ class PipelineOrchestrator:
         self.institution_type = detections.get('institution_type')
         self.institution_name = detections.get('institution_name')
         self.institution_mentioned = detections.get('institution_mentioned')
+        self.topk = detections.get('topk')
         logger.debug(f"PipelineOrchestrator infos - specialty: {self.specialty}, city: {self.city}, institution_type: {self.institution_type}, institution: {self.institution_name}, institution_mentioned: {self.institution_mentioned}")
         return self.specialty
 
@@ -159,7 +160,7 @@ class PipelineOrchestrator:
         self.data_processor.extract_local_hospitals()
         return self.data_processor.get_df_with_distances()
 
-    def _institution_ranking_response(self, df: pd.DataFrame) -> str:
+    def _institution_ranking_response(self, df: pd.DataFrame, topk: int) -> str:
         logger.info(f"Generating institution ranking response for institution: {self.institution_name}")
         """Helper for institution ranking response."""
         logger.info(f"Institution mentioned in query: {self.institution_name}")
@@ -167,9 +168,8 @@ class PipelineOrchestrator:
         if not df['Etablissement'].str.contains(self.institution_name).any():
             logger.warning(f"Institution {self.institution_name} not found in DataFrame")
             display_specialty, is_no_match = self._normalize_specialty_for_display(self.specialty)
-            max_establishments = self.data_processor.topk_detector._max_topk
             if is_no_match:
-                return f"Cet établissement ne fait pas partie des {max_establishments} meilleurs établissements du palmarès global"
+                return f"Cet établissement ne fait pas partie des {topk} meilleurs établissements du palmarès global"
             else:
                 return f"Cet établissement n'est pas présent pour la pathologie {display_specialty}, vous pouvez cependant consulter le classement suivant:"
         # Find institution's position in sorted DataFrame
@@ -193,7 +193,7 @@ class PipelineOrchestrator:
         logger.info(f"Filtering and sorting DataFrame with max_radius_km={max_radius_km}, top_k={top_k}, prompt={prompt}")
         # If institution is mentioned, return its ranking response
         if self.institution_mentioned:
-            return self._institution_ranking_response(df)
+            return self._institution_ranking_response(df, top_k)
         # Filter hospitals by distance
         filtered_df = df[df["Distance"] <= max_radius_km]
         # Sort by score and select top_k
@@ -225,25 +225,12 @@ class PipelineOrchestrator:
         """
         Main entry point: processes the user question and returns a formatted answer with ranking and links.
         """
-        logger.info(f"generate_response called: prompt='{prompt[:50]}...', top_k={top_k}, max_radius_km={max_radius_km}, detected_specialty={detected_specialty}")
-        logger.info(f"Starting pipeline processing - prompt: {prompt[:50]}..., top_k: {top_k}, max_radius_km: {max_radius_km}, detected_specialty: {detected_specialty}")
-        # Use default top_k if not provided
-        if top_k is None:
-            top_k = self.data_processor.topk_detector.default_topk
+        logger.info(f"generate_response called: prompt='{prompt}',  detected_specialty={detected_specialty}")
+        logger.info(f"Starting pipeline processing - prompt: {prompt}, detected_specialty: {detected_specialty}")
         # Reset attributes for new query
         self.reset_attributes()
         self.specialty = detected_specialty
         logger.debug("Reset pipeline attributes for new query")
-        # Detect top_k from prompt if specified
-        detected_topk = self.data_processor.topk_detector.detect_topk_with_fallback(prompt)
-        if detected_topk != 'non mentionné':
-            try:
-                topk_value = int(detected_topk)
-                if self.data_processor.topk_detector.validate_topk(topk_value):
-                    top_k = topk_value
-                    logger.debug(f"Top_k updated from prompt: {top_k}")
-            except ValueError:
-                logger.debug(f"Non-numeric top_k detected ({detected_topk}), using default")
         # Defensive: ensure specialty is never empty or None
         if not detected_specialty or not str(detected_specialty).strip():
             detected_specialty = "no specialty match"

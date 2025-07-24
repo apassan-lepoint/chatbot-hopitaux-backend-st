@@ -8,6 +8,7 @@ to see, with support for conversation history context.
 from app.utility.logging import get_logger
 from app.utility.llm_helpers import invoke_llm_with_error_handling
 from app.utility.wrappers import prompt_formatting, parse_llm_response
+from config.features_config import TOPK_DEFAULT, TOPK_MIN, TOPK_MAX
 
 logger = get_logger(__name__)
 
@@ -27,8 +28,11 @@ class TopKDetector:
             model: The language model used for detection
         """
         self.model = model
-    
-    
+        self.default_topk = TOPK_DEFAULT
+        self.min_topk = TOPK_MIN
+        self.max_topk = TOPK_MAX
+
+
     def detect_topk(self, prompt: str, conv_history: str = "") -> int:
         """
         Detects the top-k results from the given prompt using the LLM.
@@ -50,7 +54,7 @@ class TopKDetector:
         return detected_topk if detected_topk > 0 else self.default_topk
 
     def validate_topk(self, topk: int) -> bool:
-        return self._min_topk <= topk <= self._max_topk
+        return self.min_topk <= topk <= self.max_topk
 
     def normalize_topk_for_query(self, user_topk: int, detected_topk: int) -> int:
         """Normalizes top-k value by choosing the most appropriate one."""

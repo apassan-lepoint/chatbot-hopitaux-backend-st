@@ -3,14 +3,15 @@ Module for validating the number of establishments (top-k) detected from user qu
 
 This module provides validation logic for top-k values, ensuring they are within acceptable bounds.
 """
+from config.features_config import TOPK_MIN, TOPK_MAX
 
 class TopKValidation:
     """
     Class for validating top-k values.
     """
-    def __init__(self, min_topk=1, max_topk=50):
-        self.min_topk = min_topk
-        self.max_topk = max_topk
+    def __init__(self):
+        self.min_topk = TOPK_MIN
+        self.max_topk = TOPK_MAX
 
     def validate_topk(self, topk: int) -> bool:
         """
