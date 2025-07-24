@@ -51,7 +51,6 @@ CASE_MESSAGES = {
 DEFAULT_CHECKS_TO_RUN = [
     "message_length",
     "message_pertinence",
-    "non_french_cities",
     "conversation_limit"
 ]
 
