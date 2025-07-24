@@ -24,7 +24,7 @@ class MessagePertinenceChecker:
             conv_history=conv_history
         )
         from app.utility.llm_helpers import invoke_llm_and_parse_boolean ## Import invoke_llm_and_parse_boolean locally to avoid circular import
-        return invoke_llm_and_parse_boolean(self.llm_handler_service, formatted_prompt, "sanity_check_medical_pertinence")
+        return invoke_llm_and_parse_boolean(self.llm_handler_service.model, formatted_prompt, "sanity_check_medical_pertinence")
 
     def sanity_check_chatbot_pertinence(self, prompt: str, conv_history: str = "") -> str:
         """
@@ -38,7 +38,7 @@ class MessagePertinenceChecker:
             conv_history=conv_history
         )
         from app.utility.llm_helpers import invoke_llm_and_parse_boolean
-        return invoke_llm_and_parse_boolean(self.llm_handler_service, formatted_prompt, "sanity_check_chatbot_pertinence")
+        return invoke_llm_and_parse_boolean(self.llm_handler_service.model, formatted_prompt, "sanity_check_chatbot_pertinence")
     
     def check(self, user_input, conv_history=""):
         """

@@ -48,12 +48,13 @@ def create_example_button(question: str, button_key: str,
 
 
 def display_conversation_history() -> None:
-    logger.debug("Displaying conversation history")
+    logger.debug(f"Displaying conversation history: {st.session_state.get('conversation', [])}")
     """
     Display the conversation history with chat-like styling.
     """
     if "conversation" in st.session_state:
         for user, bot in st.session_state.conversation:
+            logger.debug(f"Rendering user: '{user}', bot: '{bot[:50]}...'")
             st.chat_message("user").write(user)
             st.chat_message("assistant").write(bot, unsafe_allow_html=True)
 
