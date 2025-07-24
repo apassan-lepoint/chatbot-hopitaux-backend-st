@@ -8,7 +8,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 import streamlit as st
 
-from app.features.checks.sanity_sanity_checks_manager import SanityChecksManager
+from app.features.sanity_checks.sanity_checks_manager import SanityChecksManager
 
 from app.utility.logging import get_logger
 from app.utility.formatting_helpers import format_links
