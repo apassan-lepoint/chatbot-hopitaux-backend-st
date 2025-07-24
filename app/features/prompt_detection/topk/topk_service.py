@@ -9,10 +9,12 @@ class TopKService:
     """
     Service to detect and validate the number of establishments (top-k) requested by users.
     """
-    def __init__(self, model=None, min_topk=TOPK_MIN, max_topk=TOPK_MAX, default_topk=TOPK_DEFAULT):
+    def __init__(self, model=None):
         self.detector = TopKDetector(model)
-        self.validator = TopKValidation(min_topk, max_topk)
-        self.default_topk = default_topk
+        self.validator = TopKValidation(self.detector)
+        self.default_topk = TOPK_DEFAULT
+        self.min_topk = TOPK_MIN
+        self.max_topk = TOPK_MAX
 
     def process_topk(self, prompt: str, conv_history: str = "", user_topk: int = None) -> int:
         """
