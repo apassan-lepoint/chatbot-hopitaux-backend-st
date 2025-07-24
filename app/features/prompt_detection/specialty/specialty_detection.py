@@ -92,22 +92,6 @@ class SpecialtyDetector:
     - Multi-specialty detection and normalization
     - Cancer specialty handling (general vs specific)
     - Specialty validation and formatting
-    
-    Attributes:
-        model: The language model used for detection
-        specialty_list: List of valid specialty names
-        specialty_categories_dict: Dictionary mapping categories to specialties
-        key_words: Keyword mappings for specialty detection
-        
-    Methods:
-        detect_specialty: Main method for detecting specialties
-        detect_specialty_with_context: Detect specialty with conversation history
-        detect_specialty_keyword_only: Keyword-based detection only
-        detect_specialty_llm_only: LLM-based detection only
-        detect_specialty_status: Detect specialty presence status
-        validate_specialty: Validate if specialty exists in system
-        normalize_specialty_format: Normalize specialty format
-        get_specialty_category: Get category for a specific specialty
     """
     
     def __init__(self, model, key_words=None):

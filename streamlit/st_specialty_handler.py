@@ -15,6 +15,8 @@ from st_config import (
     UI_INVALID_SELECTION_ERROR
 )
 from st_utility import get_session_state_value
+from app.features.prompt_detection.specialty.specialty_detection import SpecialtyDetector
+
 
 logger = get_logger(__name__)
 
@@ -34,6 +36,8 @@ class SpecialtyHandler:
             llm_handler (LLMHandler): Backend service for specialty detection.
         """
         self.llm_handler = llm_handler
+        # Use SpecialtyDetector for specialty detection
+        self.specialty_detector = SpecialtyDetector(llm_handler.model)
 
     def get_current_specialty_context(self) -> str:
         logger.debug("Getting current specialty context")
@@ -159,9 +163,10 @@ class SpecialtyHandler:
         # Get current specialty from session state
         specialty = get_session_state_value(SESSION_STATE_KEYS["specialty"], "")
 
-        # If no specialty detected yet, use LLMHandler to detect
+        # If no specialty detected yet, use SpecialtyDetector to detect
         if specialty == "":
-            detected_specialty = self.llm_handler.detect_specialty(prompt)
+            detected_specialty_result = self.specialty_detector.detect_specialty(prompt)
+            detected_specialty = detected_specialty_result.specialty
             specialty = self.normalize_specialty_format(detected_specialty)
             st.session_state.specialty = specialty
 
