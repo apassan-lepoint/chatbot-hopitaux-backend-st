@@ -74,7 +74,7 @@ class CityDetector:
         Returns:
             str: The detected city name
         """
-        formatted_prompt = prompt_formatting("second_detect_city_prompt", prompt, conv_history)
+        formatted_prompt = prompt_formatting("second_detect_city_prompt", prompt=prompt, conv_history=conv_history)
         city_name = invoke_llm_with_error_handling(
             self.model, 
             formatted_prompt, 
