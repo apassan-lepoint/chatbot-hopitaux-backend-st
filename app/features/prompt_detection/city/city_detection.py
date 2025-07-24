@@ -13,7 +13,6 @@ from app.config.features_config import CITY_MENTIONED, CITY_FOREIGN, CITY_AMBIGU
 
 logger = get_logger(__name__)
 
-
 class CityDetector:
     """
     Service for detecting cities mentioned in user queries.
@@ -30,9 +29,11 @@ class CityDetector:
         Args:
             model: The language model used for detection
         """
+        logger.info("Initializing CityDetector")
         self.model = model
     
     def _detect_city_status(self, prompt: str, conv_history: str = "") -> int:
+        logger.debug(f"_detect_city_status called: prompt={prompt}, conv_history={conv_history}")
         """
         Detects the city status from the given prompt.
         
@@ -59,6 +60,7 @@ class CityDetector:
         return city_status
     
     def _detect_city_name(self, prompt: str, conv_history: str = "") -> str:
+        logger.debug(f"_detect_city_name called: prompt={prompt}, conv_history={conv_history}")
         """
         Extracts the actual city name from the prompt.
         
@@ -102,6 +104,7 @@ class CityDetector:
         return status_descriptions.get(city_status, f"Unknown status: {city_status}")
 
     def detect_city(self, prompt: str, conv_history: str = ""):
+        logger.debug(f"detect_city called: prompt={prompt}, conv_history={conv_history}")
         """
         Detects the city from the given prompt using the LLM.
         

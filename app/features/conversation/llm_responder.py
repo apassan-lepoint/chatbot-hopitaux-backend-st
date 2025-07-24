@@ -21,6 +21,7 @@ class LLMResponder:
         """
         Initializes the LLMResponder with a language model instance.
         """
+        logger.info("Initializing LLMResponder")    
         self.model = model
 
     def continue_conversation(self, prompt: str, conv_history: list) -> str:
@@ -35,6 +36,7 @@ class LLMResponder:
         Returns:
             str: The model's response to the continued conversation.
         """
+        logger.debug(f"continue_conversation called: prompt={prompt}, conv_history={conv_history}")
         formatted_prompt = prompt_formatting(
             "continue_conversation_prompt",
             prompt=prompt,
@@ -49,6 +51,7 @@ class LLMResponder:
         Detects if the user's prompt is a modification of a previous question or a new question.
         Returns numeric code: 0=new_question, 1=modification, 2=ambiguous.
         """
+        logger.debug(f"detect_query_modification called: prompt={prompt}, conv_history={conv_history}")
         formatted_prompt = prompt_formatting(
             "detect_modification_prompt",
             prompt=prompt,
@@ -68,6 +71,7 @@ class LLMResponder:
         Returns:
             str: The rewritten query with merged filters
         """
+        logger.debug(f"rewrite_query_merge called: prompt={prompt}, conv_history={conv_history}")
         formatted_prompt = prompt_formatting(
             "merge_query_rewrite_prompt",
             prompt=prompt,
@@ -86,6 +90,7 @@ class LLMResponder:
         Returns:
             str: The rewritten query with added filters
         """
+        logger.debug(f"rewrite_query_add called: prompt={prompt}, conv_history={conv_history}")
         formatted_prompt = prompt_formatting(
             "add_query_rewrite_prompt",
             prompt=prompt,

@@ -2,14 +2,20 @@ from app.config.features_config import MAX_MESSAGES, MAX_LENGTH
 from app.features.sanity_checks.conversation_limit_check import ConversationLimitChecker, ConversationLimitCheckException
 from app.features.sanity_checks.message_length_check import MessageLengthChecker, MessageLengthCheckException
 from app.features.sanity_checks.message_pertinence_check import MessagePertinenceChecker, MessagePertinenceCheckException
+from app.utility.logging import get_logger
+
+logger = get_logger(__name__)
+
 
 class SanityChecksManager:
     def __init__(self, llm_handler_service, max_messages=MAX_MESSAGES, max_length=MAX_LENGTH, pertinent_chatbot_use_case=False):
+        logger.info("Initializing SanityChecksManager")
         self.conversation_checker = ConversationLimitChecker(max_messages)
         self.length_checker = MessageLengthChecker(max_length)
         self.pertinence_checker = MessagePertinenceChecker(llm_handler_service, pertinent_chatbot_use_case)
 
     def run_checks(self, user_input, conversation, conv_history="", checks_to_run=None):
+        logger.debug(f"run_checks called: user_input={user_input}, conversation={conversation}, conv_history={conv_history}, checks_to_run={checks_to_run}")
         """
         Run selected checks and return their results.
         checks_to_run: list of check names to run (default: all)

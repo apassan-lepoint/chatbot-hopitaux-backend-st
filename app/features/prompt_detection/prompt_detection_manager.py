@@ -4,9 +4,13 @@ from .institution_name.institution_name_service import InstitutionNameService
 from .institution_type.institution_type_service import InstitutionTypeService
 from .topk.topk_service import TopKService
 from .specialty.specialty_detection import SpecialtyDetector
+from app.utility.logging import get_logger
+
+logger = get_logger(__name__)
 
 class PromptDetectionManager:
     def __init__(self, model=None, institution_list=None, llm_handler_service=None):
+        logger.info("Initializing PromptDetectionManager")
         self.model = model
         self.city_service = CityService(llm_handler_service, model)
         self.institution_name_service = InstitutionNameService(model, institution_list or "")
@@ -15,6 +19,7 @@ class PromptDetectionManager:
         self.topk_service = TopKService(model)
 
     def run_all_detections(self, text, conv_history="", institution_list=None):
+        logger.debug(f"run_all_detections called: text={text}, conv_history={conv_history}, institution_list={institution_list}")
         """
         Consolidate results from all prompt detection classes into a dictionary.
         Returns:

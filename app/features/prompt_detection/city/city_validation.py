@@ -1,3 +1,7 @@
+from app.utility.logging import get_logger
+
+logger = get_logger(__name__)
+
 class CityCheckException(Exception):
     pass
 
@@ -6,10 +10,12 @@ class CityChecker:
     Class for city validation and non-French city checks.
     """
     def __init__(self, detector, llm_handler_service=None):
+        logger.info("Initializing CityChecker")
         self.llm_handler_service = llm_handler_service
         self.detector = detector
 
     def validate_french_city(self, city_status) -> bool:
+        logger.debug(f"validate_french_city called: city_status={city_status}")
         """
         Validate if a city is French.
         Args:
@@ -20,6 +26,7 @@ class CityChecker:
         return self.detector.is_french_city(city_status)
 
     def is_city_detection_valid(self, city_status) -> bool:
+        logger.debug(f"is_city_detection_valid called: city_status={city_status}")
         """
         Check if city detection is valid (not ambiguous or foreign).
         Args:
@@ -30,6 +37,7 @@ class CityChecker:
         return self.detector.is_valid_city(city_status)
 
     def check(self, user_input, conv_history=""):
+        logger.debug(f"check called: user_input={user_input}, conv_history={conv_history}")
         """
         Checks for non-French cities in user input.
         Args:

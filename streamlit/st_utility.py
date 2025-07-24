@@ -7,9 +7,13 @@ used in the chatbot UI.
 
 import streamlit as st
 from typing import Dict, Any, Optional, Callable
+from app.utility.logging import get_logger
+
+logger = get_logger(__name__)
 
 
 def append_to_conversation(user_input: str, bot_response: str) -> None:
+    logger.debug(f"Appending to conversation: user_input='{user_input}', bot_response='{bot_response[:50]}...")
     """
     Append a user-bot interaction to the conversation history.
     
@@ -44,6 +48,7 @@ def create_example_button(question: str, button_key: str,
 
 
 def display_conversation_history() -> None:
+    logger.debug("Displaying conversation history")
     """
     Display the conversation history with chat-like styling.
     """
@@ -69,6 +74,7 @@ def format_conversation_history_for_llm() -> str:
 
 
 def execute_with_spinner(spinner_text: str, func: Callable, *args, **kwargs) -> Any:
+    logger.debug(f"Executing with spinner: '{spinner_text}'")
     """
     Execute a function with a loading spinner.
     

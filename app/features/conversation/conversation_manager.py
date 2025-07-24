@@ -3,14 +3,19 @@ Manager to consolidate results from Conversation and MultiTurn classes.
 """
 from app.features.conversation.llm_responder import LLMResponder
 from app.features.conversation.multi_turn import MultiTurn
+from app.utility.logging import get_logger
+
+logger = get_logger(__name__)
 
 class ConversationManager:
     def __init__(self, model):
+        logger.info("Initializing ConversationManager")
         self.model = model
         self.conversation = LLMResponder(model)
         self.multi_turn = MultiTurn(model)
 
     def run_all_conversation_checks(self, prompt: str, conv_history: list) -> dict:
+        logger.debug(f"Running all conversation checks: prompt={prompt}, conv_history={conv_history}")
         """
         Runs all conversation-related checks and consolidates results into a dictionary.
         Args:

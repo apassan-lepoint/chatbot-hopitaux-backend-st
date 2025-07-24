@@ -12,14 +12,11 @@ import csv
 from datetime import datetime
 import unicodedata
 
-## Removed import of institution_coordinates_df from institutions.py; DataProcessor loads Excel directly
 from app.config.file_paths_config import PATHS
 from app.services.llm_handler_service import LLMHandler
 from app.utility.formatting_helpers import remove_accents
-from app.utility.distance_calc_helpers import exget_coordinates, get_coordinates, distance_to_query
+from app.utility.distance_calc_helpers import exget_coordinates, distance_to_query
 from app.utility.logging import get_logger
-
-
 
 
 logger = get_logger(__name__)
@@ -31,6 +28,7 @@ class DataProcessor:
         """
     
     def __init__(self):
+        logger.info("Initializing DataProcessor")
         """
         Initializes the DataProcessor class, sets up file paths, loads the LLM service, and prepares variables 
         for query processing.
@@ -62,6 +60,7 @@ class DataProcessor:
     
     
     def _load_ranking_dataframe(self, file_path: str, category: str) -> pd.DataFrame:
+        logger.debug(f"Loading ranking dataframe from {file_path} for category {category}")
         """
         Helper method to load and prepare ranking DataFrame with category.
         
@@ -79,6 +78,7 @@ class DataProcessor:
         return df
 
     def _generate_web_link(self, specialty: str, institution_type: str) -> str:
+        logger.debug(f"Generating web link for specialty '{specialty}' and institution_type '{institution_type}'")
         """
         Helper method to generate a single web ranking link.
         
@@ -95,6 +95,7 @@ class DataProcessor:
         return remove_accents(web_link)
 
     def _normalize_str(self, s: str) -> str:
+        logger.debug(f"Normalizing string: {s}")
         """Utility to normalize strings for matching."""
         if not isinstance(s, str):
             return ""
@@ -104,10 +105,12 @@ class DataProcessor:
         return s
 
     def _is_no_specialty(self, specialty: str) -> bool:
+        logger.debug(f"Checking if specialty is 'no match': {specialty}")
         """Utility to check if specialty is empty or no match."""
         return not specialty or specialty in ["no match", "no specialty match", "aucune correspondance"] or specialty.strip() == ""
 
     def _parse_specialty_list(self, specialty: str) -> list:
+        logger.debug(f"Parsing specialty list from: {specialty}")
         """Utility to parse multiple specialties from a string."""
         if specialty.startswith('plusieurs correspondances:'):
             specialty_list = specialty.replace('plusieurs correspondances:', '').strip()
@@ -118,6 +121,7 @@ class DataProcessor:
         return [s.strip() for s in specialty_list.split(',') if s.strip()]
     
     def _get_institution_list(self):
+        logger.info("Getting institution list from coordinates DataFrame")
         """
         Returns a formatted, deduplicated list of institutions present in the rankings.
         Cleans names to avoid duplicates or matching errors.
@@ -131,6 +135,7 @@ class DataProcessor:
         return institution_list
 
     def _filter_ranking_by_criteria(self, specialty: str, institution_type: str = None) -> pd.DataFrame:
+        logger.info(f"Filtering ranking by criteria: specialty='{specialty}', institution_type='{institution_type}'")
         """
         Helper method to filter ranking DataFrame by specialty and optionally by institution type.
         Normalizes both specialty and data for robust matching.
@@ -187,6 +192,7 @@ class DataProcessor:
         return matching_rows
 
     def get_institution_type_for_url(self, institution_type: str) -> str:
+        logger.debug(f"Mapping institution type for URL: {institution_type}")
         """Convert institution type to format expected by web URLs. Assumes input is already normalized."""
         url_mapping = {
             "Public": "public",
@@ -197,6 +203,7 @@ class DataProcessor:
     
     
     def get_infos(self, prompt: str, detected_specialty: str = None, conv_history: list = None) -> dict:
+        logger.info(f"get_infos called with prompt: {prompt}, detected_specialty: {detected_specialty}, conv_history: {conv_history}")
         """
         Extracts key aspects from the user's question using PromptDetectionManager.
         Args:
@@ -254,6 +261,7 @@ class DataProcessor:
 
 
     def generate_response_links(self, matching_rows: pd.DataFrame = None) -> list:
+        logger.info(f"generate_response_links called with matching_rows: {type(matching_rows)}")
         """
         Generates web links to the relevant ranking pages based on specialty and institution type.
 
@@ -300,12 +308,14 @@ class DataProcessor:
 
 
     def _concat_dataframes(self, dfs: list) -> pd.DataFrame:
+        logger.debug(f"Concatenating {len(dfs)} dataframes")
         """Utility to concatenate DataFrames."""
         if not dfs:
             return pd.DataFrame()
         return pd.concat(dfs, join="inner", ignore_index=True)
 
     def load_and_transform_for_no_specialty(self, category: str) -> pd.DataFrame:
+        logger.info(f"load_and_transform_for_no_specialty called with category: {category}")
         """
         Loads and merges the general tables (tableau d'honneur) (public and/or private) for queries
             that do not mention a specific specialty.
@@ -342,6 +352,7 @@ class DataProcessor:
 
 
     def load_excel_sheets(self, matching_rows: pd.DataFrame) -> pd.DataFrame:
+        logger.info(f"load_excel_sheets called with matching_rows of length: {len(matching_rows) if matching_rows is not None else 'None'}")
         """
         Loads the Excel sheets corresponding to the matched specialties and categories.
 
@@ -383,6 +394,7 @@ class DataProcessor:
 
 
     def find_excel_sheet_with_specialty(self, prompt: str) -> pd.DataFrame:
+        logger.info(f"find_excel_sheet_with_specialty called with prompt: {prompt}")
         """
         Finds and loads ranking data based only on the specialty if no public/private criterion is provided.
 
@@ -403,6 +415,7 @@ class DataProcessor:
         return self.specialty_df
 
     def find_excel_sheet_with_privacy(self, prompt: str, detected_specialty: str = None) -> pd.DataFrame:
+        logger.info(f"find_excel_sheet_with_privacy called with prompt: {prompt}, detected_specialty: {detected_specialty}")
         """
         Finds and loads ranking data based on both specialty and institution type.
 
@@ -452,6 +465,7 @@ class DataProcessor:
 
 
     def extract_local_hospitals(self, df: pd.DataFrame = None) -> pd.DataFrame:
+        logger.info(f"extract_local_hospitals called with df: {type(df)}")
         """
         Merges ranking data with hospital location data to associate each institution with its city and coordinates.
 
@@ -471,6 +485,7 @@ class DataProcessor:
     
     
     def get_df_with_distances(self) -> pd.DataFrame:
+        logger.info("get_df_with_distances called")
         """
         Calculates the distances between hospitals and the city specified in the user's query.
 
@@ -514,6 +529,7 @@ class DataProcessor:
 
 
     def create_csv(self, question:str, reponse: str):
+        logger.info(f"create_csv called with question: {question}")
         """
         Saves the user's query and the system's response to a CSV file for history tracking.
 

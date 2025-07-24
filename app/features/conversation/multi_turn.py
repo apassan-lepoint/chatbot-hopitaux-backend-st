@@ -19,12 +19,14 @@ class MultiTurn:
     """
     
     def __init__(self, model):
+        logger.info("Initializing MultiTurn")
         self.model = model
         self.case_responses = {
             "case1": "Je n'ai pas bien saisi la nature de votre demande. Merci de reformuler une question relative aux classements des hôpitaux."
         }
     
     def analyze_subsequent_message(self, prompt: str, conv_history: str) -> Dict[str, Any]:
+        logger.debug(f"analyze_subsequent_message called: prompt={prompt}, conv_history={conv_history}")
         """
         Analyzes subsequent message and returns case dictionary.
         
@@ -104,6 +106,7 @@ class MultiTurn:
         return invoke_llm_and_parse_boolean(self.model, formatted_prompt, "check_merge_query")
     
     def determine_case(self, analysis: Dict[str, Any]) -> str:
+        logger.debug(f"determine_case called: analysis={analysis}")
         """Determine which case applies based on analysis."""
         # Extract boolean values for easier comparison
         on_topic = analysis.get("on_topic") == "TRUE"

@@ -29,11 +29,13 @@ class MessageHandler:
     """
     
     def __init__(self, llm_handler, specialty_handler: 'SpecialtyHandler'):
+        logger.info("Initializing MessageHandler")
         self.llm_handler = llm_handler
         self.specialty_handler = specialty_handler
     
     
     def handle_case_with_rewrite(self, case_name: str, user_input: str, conv_history: str, rewrite_method):
+        logger.info(f"Handling case with rewrite: {case_name}")
         """
         Handle cases that require query rewriting.
         

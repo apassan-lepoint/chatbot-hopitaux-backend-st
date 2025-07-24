@@ -32,6 +32,7 @@ class UIComponents:
         setup_session_state: Initializes session state with default values. 
     """
     def __init__(self, reset_callback):
+        logger.info("Initializing UIComponents")
         """
         Initialize UI components.
         
@@ -42,6 +43,7 @@ class UIComponents:
     
     
     def _setup_example_questions(self):
+        logger.debug("Setting up example questions in UI")
         """
         Setup the example questions section.
         """
@@ -55,6 +57,7 @@ class UIComponents:
     
     
     def _setup_sidebar(self):
+        logger.debug("Setting up sidebar UI")
         """
         Setup sidebar controls.
         """
@@ -65,6 +68,7 @@ class UIComponents:
     
     
     def setup_ui(self):
+        logger.debug("Setting up main UI components")
         """
         Setup the main Streamlit UI components.
         """
@@ -83,6 +87,7 @@ class UIComponents:
         
         
     def setup_session_state(self, default_values: dict):
+        logger.debug(f"Setting up session state with defaults: {default_values}")
         """
         Initialize session state with default values.
         

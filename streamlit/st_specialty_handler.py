@@ -27,6 +27,7 @@ class SpecialtyHandler:
     """
 
     def __init__(self, llm_handler):
+        logger.info("Initializing SpecialtyHandler")
         """
         Initialize the SpecialtyHandler with a backend LLMHandler instance.
         Args:
@@ -35,6 +36,7 @@ class SpecialtyHandler:
         self.llm_handler = llm_handler
 
     def get_current_specialty_context(self) -> str:
+        logger.debug("Getting current specialty context")
         """
         Retrieves the current specialty context from session state.
         Checks for selected specialty in session state, then specialty context,
@@ -63,6 +65,7 @@ class SpecialtyHandler:
     
     
     def normalize_specialty_format(self, specialty: str) -> str:
+        logger.debug(f"Normalizing specialty format: {specialty}")
         """
         Normalize specialty format to use consistent prefix for multiple matches.
 
@@ -78,6 +81,7 @@ class SpecialtyHandler:
     
     
     def extract_specialty_options(self, specialty: str) -> list:
+        logger.debug(f"Extracting specialty options from: {specialty}")
         """
         Extract specialty options from a formatted string containing multiple matches.
         Removes duplicates and trims whitespace.

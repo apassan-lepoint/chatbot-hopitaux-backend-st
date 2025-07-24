@@ -11,6 +11,7 @@ from app.features.prompt_detection.prompt_detection_manager import PromptDetecti
 from app.utility.formatting_helpers import format_response
 from app.config.file_paths_config import PATHS
 from app.utility.logging import get_logger
+
 logger = get_logger(__name__)
 
 class PipelineOrchestrator:
@@ -21,6 +22,7 @@ class PipelineOrchestrator:
     Uses the centralized TopKDetector for all top-k related operations.
     """
     def __init__(self):
+        logger.info("Initializing PipelineOrchestrator")
         """
         Initializes the PipelineOrchestrator class, sets up file paths, and prepares variables for query processing.
         """
@@ -35,6 +37,7 @@ class PipelineOrchestrator:
         self.data_processor=DataProcessor() # Instance of DataProcessor for data extraction and transformation
 
     def _normalize_specialty_for_display(self, specialty: str) -> str:
+        logger.debug(f"Normalizing specialty for display: {specialty}")
         """
         Normalize specialty format for display purposes and check for no match.
         Returns tuple: (normalized string, is_no_match)
@@ -49,6 +52,7 @@ class PipelineOrchestrator:
         return specialty, False
 
     def _format_response_with_specialty(self, base_message: str, count: int, radius_km: int = None, city: str = None) -> str:
+        logger.debug(f"Formatting response with specialty: base_message='{base_message}', count={count}, radius_km={radius_km}, city={city}")
         """
         Helper method to format response messages with specialty context.
         """
@@ -67,6 +71,7 @@ class PipelineOrchestrator:
         return base_message.format(count=count, specialty=specialty_part, location=location_part)
 
     def _create_response_and_log(self, message: str, table_str: str, prompt: str) -> str:
+        logger.info(f"Creating response and logging for prompt: {prompt}")
         """
         Helper method to create final response, log it, and save to CSV.
         """
@@ -78,6 +83,7 @@ class PipelineOrchestrator:
         return response
 
     def _try_radius_search(self, df: pd.DataFrame, radius: int, top_k: int, prompt: str) -> str:
+        logger.info(f"Trying radius search: radius={radius}, top_k={top_k}, prompt={prompt}")
         """
         Try to find results within a specific radius.
         """
@@ -85,6 +91,7 @@ class PipelineOrchestrator:
         return self.get_filtered_and_sorted_df(df, radius, top_k, prompt)
 
     def reset_attributes(self):
+        logger.info("Resetting PipelineOrchestrator attributes for new query")
         """
         Resets pipeline attributes for a new user query.
         """
@@ -97,6 +104,7 @@ class PipelineOrchestrator:
             setattr(self, attr, None)
 
     def extract_query_parameters(self, prompt: str, detected_specialty: str = None, conv_history: list = None) -> str:
+        logger.info(f"Extracting query parameters: prompt='{prompt}', detected_specialty='{detected_specialty}', conv_history='{conv_history}'")
         """
         Retrieves key aspects of the user query: city, institution type, and specialty using PromptDetectionManager.
         Updates instance variables accordingly.
@@ -122,6 +130,7 @@ class PipelineOrchestrator:
         return self.specialty
 
     def build_ranking_dataframe_with_distances(self, prompt: str, excel_path: str, detected_specialty: str = None) -> pd.DataFrame:
+        logger.info(f"Building ranking DataFrame with distances: prompt='{prompt}', excel_path='{excel_path}', detected_specialty='{detected_specialty}'")
         """
         Retrieves the ranking DataFrame based on the user query, including distance calculations if a city is specified.
         """
@@ -151,6 +160,7 @@ class PipelineOrchestrator:
         return self.data_processor.get_df_with_distances()
 
     def _institution_ranking_response(self, df: pd.DataFrame) -> str:
+        logger.info(f"Generating institution ranking response for institution: {self.institution_name}")
         """Helper for institution ranking response."""
         logger.info(f"Institution mentioned in query: {self.institution_name}")
         # Check if institution is present in DataFrame
@@ -176,6 +186,7 @@ class PipelineOrchestrator:
         return response
 
     def get_filtered_and_sorted_df(self, df: pd.DataFrame, max_radius_km: int, top_k: int, prompt:str) -> str:
+        logger.info(f"Filtering and sorting DataFrame: max_radius_km={max_radius_km}, top_k={top_k}, prompt={prompt}")
         """
         Filters and sorts the ranking DataFrame by distance and score, and formats the response.
         """
@@ -214,6 +225,7 @@ class PipelineOrchestrator:
         """
         Main entry point: processes the user question and returns a formatted answer with ranking and links.
         """
+        logger.info(f"generate_response called: prompt='{prompt[:50]}...', top_k={top_k}, max_radius_km={max_radius_km}, detected_specialty={detected_specialty}")
         logger.info(f"Starting pipeline processing - prompt: {prompt[:50]}..., top_k: {top_k}, max_radius_km: {max_radius_km}, detected_specialty: {detected_specialty}")
         # Use default top_k if not provided
         if top_k is None:
