@@ -91,6 +91,7 @@ class StreamlitChatbot:
         results = sanity_checks_manager.run_checks(prompt, conversation, conv_history, checks_to_run=checks_to_run)
         for check, result in results.items():
             if not result["passed"]:
+                append_to_conversation(prompt, "")  # Show user input with empty response
                 self._reset_session_state()
                 st.warning(result["error"])
                 st.stop()
@@ -120,7 +121,7 @@ class StreamlitChatbot:
         user_input = st.chat_input(UI_CHAT_INPUT_PLACEHOLDER)
         if not user_input:
             return  # No input, nothing to do
-    
+        logger.info(f"First message user_input: '{user_input}'")
         logger.info(f"Received first message - Prompt length: {len(user_input)} chars")
         st.session_state.prompt = user_input
         
@@ -189,21 +190,18 @@ class StreamlitChatbot:
         
         user_input = st.chat_input(UI_CHAT_INPUT_PLACEHOLDER)
         if user_input:
+            logger.info(f"Subsequent message user_input: '{user_input}'")
             logger.info(f"Received subsequent message - Prompt length: {len(user_input)} chars, "
-                    f"Conversation history: {get_conversation_length()} turns")
-            
+                        f"Conversation history: {get_conversation_length()} turns")
             st.session_state.prompt = user_input
-            
             try:
                 # Perform sanity checks
                 current_conversation = get_conversation_list()
                 self._perform_sanity_checks(user_input, current_conversation)
                 logger.debug("Sanity checks completed for subsequent message")
-                
                 # Prepare conversation history
                 # Pass conversation history to backend for multi-turn support
                 self.message_handler.analyze_and_handle_message(user_input, current_conversation)
-                
             except Exception as e:
                 logger.error(f"Error processing subsequent message: {str(e)}")
                 st.error(ERROR_MESSAGES["general_processing"])
