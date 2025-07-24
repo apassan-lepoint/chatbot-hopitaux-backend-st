@@ -11,7 +11,7 @@ class TopKService:
     """
     def __init__(self, model=None):
         self.detector = TopKDetector(model)
-        self.validator = TopKValidation(self.detector)
+        self.validator = TopKValidation()
         self.default_topk = TOPK_DEFAULT
         self.min_topk = TOPK_MIN
         self.max_topk = TOPK_MAX
