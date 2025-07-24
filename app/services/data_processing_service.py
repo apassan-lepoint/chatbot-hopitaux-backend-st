@@ -13,6 +13,7 @@ from datetime import datetime
 import unicodedata
 
 from app.config.file_paths_config import PATHS
+from app.config.features_config import CITY_NO_CITY_MENTIONED
 from app.services.llm_handler_service import LLMHandler
 from app.utility.formatting_helpers import remove_accents
 from app.utility.distance_calc_helpers import exget_coordinates, distance_to_query
@@ -228,6 +229,9 @@ class DataProcessor:
         else:
             self.specialty = detections.get('specialty')
         self.city = detections.get('city')
+        # Defensive: ensure city is never an error string
+        if isinstance(self.city, str) and self.city in ["llm_handler_service is required for city checking.", "no match", "aucune correspondance", ""]:
+            self.city = CITY_NO_CITY_MENTIONED
         self.institution_type = detections.get('institution_type')
         self.topk = detections.get('top_k')
         self.institution_name = detections.get('institution_name')
