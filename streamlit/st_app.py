@@ -80,8 +80,12 @@ class StreamlitChatbot:
         Perform selected sanity checks on user input using SanityChecksManager.
         """
         logger.debug("Starting sanity checks for user input")
+
+        # Ensure conversation is always a list, never None
+        if conversation is None:
+            conversation = []
         conv_history = ""
-        if conversation is not None and len(conversation) > 0:
+        if len(conversation) > 0:
             conv_history = "\n".join([f"Utilisateur: {q}\nAssistant: {r}" for q, r in conversation])
 
         sanity_checks_manager = SanityChecksManager(self.llm_handler, max_messages=self.MAX_MESSAGES)
