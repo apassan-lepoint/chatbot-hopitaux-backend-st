@@ -53,13 +53,3 @@ class TopKDetector:
             return str(detected_topk) if detected_topk > 0 else 'non mentionné'
         return detected_topk if detected_topk > 0 else self.default_topk
 
-    def validate_topk(self, topk: int) -> bool:
-        return self.min_topk <= topk <= self.max_topk
-
-    def normalize_topk_for_query(self, user_topk: int, detected_topk: int) -> int:
-        """Normalizes top-k value by choosing the most appropriate one."""
-        if detected_topk > 0 and self.validate_topk(detected_topk):
-            return detected_topk
-        if self.validate_topk(user_topk):
-            return user_topk
-        return self.default_topk

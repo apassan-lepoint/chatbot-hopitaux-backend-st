@@ -34,53 +34,28 @@ class CityDetector:
     
     def _detect_city_status(self, prompt: str, conv_history: str = "") -> int:
         logger.debug(f"_detect_city_status called: prompt={prompt}, conv_history={conv_history}")
-        """
-        Detects the city status from the given prompt.
-        
-        Args:
-            prompt (str): The message to analyze
-            conv_history (str, optional): Conversation history for context
-            
-        Returns:
-            int: Numeric code for city status
-                - 0: no city mentioned
-                - 1: foreign city
-                - 2: ambiguous city
-                - 3: clear city mentioned
-        """
         formatted_prompt = prompt_formatting("detect_city_prompt", prompt=prompt, conv_history=conv_history)
+        logger.info(f"Formatted city status prompt: {formatted_prompt}")
         raw_response = invoke_llm_with_error_handling(
             self.model, 
             formatted_prompt, 
             "detect_city_status"
         )
+        logger.info(f"Raw LLM response for city status: {raw_response}")
         city_status = parse_llm_response(raw_response, "city")
-        
-        logger.debug(f"City status detection result: {city_status}")
+        logger.info(f"Parsed city status: {city_status}")
         return city_status
     
     def _detect_city_name(self, prompt: str, conv_history: str = "") -> str:
         logger.debug(f"_detect_city_name called: prompt={prompt}, conv_history={conv_history}")
-        """
-        Extracts the actual city name from the prompt.
-        
-        This method should only be called when city status indicates
-        that a city is clearly mentioned.
-        
-        Args:
-            prompt (str): The message to analyze
-            conv_history (str, optional): Conversation history for context
-            
-        Returns:
-            str: The detected city name
-        """
         formatted_prompt = prompt_formatting("second_detect_city_prompt", prompt=prompt, conv_history=conv_history)
+        logger.info(f"Formatted city name prompt: {formatted_prompt}")
         city_name = invoke_llm_with_error_handling(
             self.model, 
             formatted_prompt, 
             "detect_city_name"
         )
-        
+        logger.info(f"Raw LLM response for city name: {city_name}")
         logger.debug(f"City name extracted: {city_name}")
         return city_name.strip()
     
