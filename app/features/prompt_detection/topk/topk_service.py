@@ -3,7 +3,7 @@ Service for orchestrating top-k detection and validation.
 """
 from .topk_detection import TopKDetector
 from .topk_validation import TopKValidation
-from config.features_config import TOPK_DEFAULT, TOPK_MIN, TOPK_MAX
+from app.config.features_config import TOPK_DEFAULT, TOPK_MIN, TOPK_MAX
 
 class TopKService:
     """

@@ -3,7 +3,7 @@ Module for validating the number of establishments (top-k) detected from user qu
 
 This module provides validation logic for top-k values, ensuring they are within acceptable bounds.
 """
-from config.features_config import TOPK_MIN, TOPK_MAX
+from app.config.features_config import TOPK_MIN, TOPK_MAX
 
 class TopKValidation:
     """
