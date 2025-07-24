@@ -1,7 +1,7 @@
 from app.config.features_config import MAX_MESSAGES, MAX_LENGTH
-from app.features.checks.conversation_limit_check import ConversationLimitChecker, ConversationLimitCheckException
-from app.features.checks.message_length_check import MessageLengthChecker, MessageLengthCheckException
-from app.features.checks.message_pertinence_check import MessagePertinenceChecker, MessagePertinenceCheckException
+from app.features.sanity_checks.conversation_limit_check import ConversationLimitChecker, ConversationLimitCheckException
+from app.features.sanity_checks.message_length_check import MessageLengthChecker, MessageLengthCheckException
+from app.features.sanity_checks.message_pertinence_check import MessagePertinenceChecker, MessagePertinenceCheckException
 
 class SanityChecksManager:
     def __init__(self, llm_handler_service, max_messages=MAX_MESSAGES, max_length=MAX_LENGTH, pertinent_chatbot_use_case=False):

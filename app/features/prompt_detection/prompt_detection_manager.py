@@ -3,7 +3,7 @@ from .city.city_validation import CityCheckException
 from .institution_name.institution_name_service import InstitutionNameService
 from .institution_type.institution_type_service import InstitutionTypeService
 from .topk.topk_service import TopKService
-from .specialty_detection import SpecialtyDetector
+from .specialty.specialty_detection import SpecialtyDetector
 
 class PromptDetectionManager:
     def __init__(self, model=None, institution_list=None, llm_handler_service=None):

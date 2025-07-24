@@ -12,7 +12,7 @@ from app.services.llm_handler_service import LLMHandler
 from app.pydantic_models.query_model import UserQuery, ChatRequest
 from app.pydantic_models.response_model import AskResponse, ChatResponse
 from app.utility.formatting_helpers import format_links
-from app.features.checks.sanity_sanity_checks_manager import SanityChecksManager
+from app.features.sanity_checks.sanity_checks_manager import SanityChecksManager
 from app.features.conversation.conversation_manager import ConversationManager
 from app.utility.logging import get_logger
 from app.config.features_config import MAX_MESSAGES,CHECKS_TO_RUN_Q1, CHECKS_TO_RUN_MULTI_TURN
