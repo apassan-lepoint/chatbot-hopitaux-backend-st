@@ -23,8 +23,8 @@ SPECIALTY_MULTIPLE_SPECIALTIES = 2
 AMBIGUOUS_RESPONSE = "Je ne suis pas sûr si votre message est une nouvelle question ou une modification de la précédente. Veuillez préciser."
 
 # Checks to run for sanity checks
-CHECKS_TO_RUN_Q1 = ["message_length", "message_pertinence", "non_french_cities"]
-CHECKS_TO_RUN_MULTI_TURN = ["message_length", "message_pertinence", "non_french_cities", "conversation_limit"]
+CHECKS_TO_RUN_Q1 = ["message_length", "message_pertinence"]
+CHECKS_TO_RUN_MULTI_TURN = ["message_length", "message_pertinence", "conversation_limit"]
 
 
 # Warning messages for different checks
