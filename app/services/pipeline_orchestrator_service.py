@@ -284,6 +284,10 @@ class PipelineOrchestrator:
             return formatted_response, None
         # Build DataFrame with ranking and distances
         df = self.build_ranking_dataframe_with_distances(prompt, relevant_file, detected_specialty)
+        # Check if DataFrame is None and return error message if so
+        if df is None:
+            logger.error("build_ranking_dataframe_with_distances returned None. Aborting response generation.")
+            return "Erreur: Impossible de générer le classement car les données sont indisponibles.", None
         logger.debug(f"Retrieved DataFrame shape: {df.shape if hasattr(df, 'shape') else 'N/A'}")
         # Handle geolocation API errors
         if self.data_processor.geolocation_api_error:
