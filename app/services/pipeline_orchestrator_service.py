@@ -243,8 +243,7 @@ class PipelineOrchestrator:
         logger.warning("No results found within current radius")
         return None
 
-    def generate_response(self, 
-        prompt: str, top_k: int = None, max_radius_km: int = 5, detected_specialty: str=None) -> str:
+    def generate_response(self, prompt: str, max_radius_km: int = 5, detected_specialty: str=None) -> str:
         """
         Main entry point: processes the user question and returns a formatted answer with ranking and links.
         """
