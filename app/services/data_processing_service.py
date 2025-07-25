@@ -229,9 +229,15 @@ class DataProcessor:
         else:
             self.specialty = detections.get('specialty')
         self.city = detections.get('city')
-        # Defensive: ensure city is never an error string
-        if isinstance(self.city, str) and self.city in ["llm_handler_service is required for city checking.", "no match", "aucune correspondance", ""]:
+        # Defensive: ensure city is never an error string or None
+        if (
+            self.city is None
+            or (isinstance(self.city, str) and self.city in ["llm_handler_service is required for city checking.", "no match", "aucune correspondance", ""])
+        ):
+            logger.warning(f"Invalid city value detected: '{self.city}', setting to CITY_NO_CITY_MENTIONED")
             self.city = CITY_NO_CITY_MENTIONED
+        else:
+            logger.info(f"Valid city detected: '{self.city}'")
         self.institution_type = detections.get('institution_type')
         self.topk = detections.get('top_k')
         self.institution_name = detections.get('institution_name')

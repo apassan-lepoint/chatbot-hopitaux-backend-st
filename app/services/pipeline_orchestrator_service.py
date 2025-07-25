@@ -149,10 +149,16 @@ class PipelineOrchestrator:
         if self.data_processor.specialty_ranking_unavailable:
             logger.warning("Ranking not found for requested specialty/type")
             return self.df_gen
-        # If no city found, return general DataFrame
-        if self.data_processor.city in ['aucune correspondance', 'no match'] or not self.data_processor.city:
-            logger.info("No city found in the query, returning general ranking DataFrame")
-            self.city_not_specified= True
+        # If no city found or invalid city value, return general DataFrame
+        from app.config.features_config import CITY_NO_CITY_MENTIONED
+        if (
+            self.data_processor.city is None
+            or self.data_processor.city in ['aucune correspondance', 'no match', 'llm_handler_service is required for city checking.']
+            or self.data_processor.city == CITY_NO_CITY_MENTIONED
+            or (isinstance(self.data_processor.city, str) and self.data_processor.city.strip() == "")
+        ):
+            logger.info(f"No city found or invalid city value ('{self.data_processor.city}'), returning general ranking DataFrame")
+            self.city_not_specified = True
             return self.df_gen
         # Otherwise, calculate distances for hospitals
         self.city_not_specified= False
