@@ -70,16 +70,19 @@ def distance_to_query(query_coords: tuple, city: str, df_with_cities: pd.DataFra
         float: Distance in kilometers if successful, otherwise None.
     """
     # Get coordinates for the target city
+    from app.utility.logging import get_logger
+    logger = get_logger(__name__)
+    logger.debug(f"distance_to_query called: query_coords={query_coords}, city={city}")
     city_coords = get_coordinates(df_with_cities, city)
     if city_coords:
-        try: 
-            # Calculate geodesic distance between the two coordinate pairs
-            res=geodesic(query_coords, city_coords).kilometers
+        try:
+            res = geodesic(query_coords, city_coords).kilometers
+            logger.debug(f"Calculated distance for city '{city}': {res} km (query_coords={query_coords}, city_coords={city_coords})")
             return res
         except Exception as e:
-            # Set geolocation_api_error flag to True if an error occurs
-            geolocation_api_error=True
+            geolocation_api_error = True
+            logger.error(f"Error calculating distance for city '{city}': {e} (query_coords={query_coords}, city_coords={city_coords})")
             return None
     else:
-        # Return None if city coordinates not found
+        logger.warning(f"No coordinates found for city '{city}' in DataFrame. Returning None.")
         return None
