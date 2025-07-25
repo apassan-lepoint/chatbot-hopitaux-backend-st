@@ -216,18 +216,19 @@ class PipelineOrchestrator:
             logger.debug(f"Valid distance mask: {valid_distance_mask.tolist()}")
             filtered_df = df[valid_distance_mask].copy().reset_index(drop=True)
             logger.debug(f"Filtered DataFrame shape after removing invalid distances: {filtered_df.shape}")
-
             # Extra strict: filter again to ensure all Distance values are float/int and not None
             filtered_df = filtered_df[filtered_df["Distance"].apply(lambda x: isinstance(x, (int, float)) and pd.notnull(x))].reset_index(drop=True)
-
+            # Add extra debug logging before comparison
+            logger.debug(f"Distance values before radius filter: {filtered_df['Distance'].tolist()}")
+            problematic = [x for x in filtered_df["Distance"] if x is None or not isinstance(x, (int, float))]
+            if problematic:
+                logger.error(f"Problematic Distance values before radius filter: {problematic}")
+            # Final strict filter to remove any None or non-numeric values
+            filtered_df = filtered_df[filtered_df["Distance"].apply(lambda x: isinstance(x, (int, float)) and pd.notnull(x))].reset_index(drop=True)
             # Now filter by max_radius_km if provided
             if max_radius_km is not None:
                 filtered_df = filtered_df[filtered_df["Distance"] <= max_radius_km].reset_index(drop=True)
                 logger.debug(f"Filtered DataFrame shape after radius filter: {filtered_df.shape}")
-
-            # If still any None values, log them
-            if filtered_df["Distance"].isnull().any():
-                logger.error(f"Rows with None in Distance after all filtering: {filtered_df[filtered_df['Distance'].isnull()]}")
         else:
             # If no city, skip distance filtering
             logger.info("No city specified or Distance column missing, skipping distance filtering.")
