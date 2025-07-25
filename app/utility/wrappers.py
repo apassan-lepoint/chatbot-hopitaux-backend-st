@@ -31,7 +31,11 @@ def parse_llm_response(response: str, response_type: str, default=None):
     try:
         resp = response.strip()
         if response_type == "boolean":
-            return int(resp) == 1
+            resp_clean = resp.strip()
+            if resp_clean in ("1", "0"):
+                return int(resp_clean) == 1
+            logger.warning(f"Boolean response not strictly 1 or 0: {resp_clean}")
+            return default if default is not None else False
         if response_type == "numeric":
             return int(resp)
         if response_type == "city":

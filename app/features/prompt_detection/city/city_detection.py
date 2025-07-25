@@ -9,7 +9,7 @@ It supports conversation history context for better detection accuracy.
 from app.utility.logging import get_logger
 from app.utility.llm_helpers import invoke_llm_with_error_handling
 from app.utility.prompt_formatting_helpers import prompt_formatting
-from app.utility.llm_helpers import parse_llm_response
+from app.utility.wrappers import parse_llm_response
 from app.config.features_config import CITY_MENTIONED, CITY_FOREIGN, CITY_AMBIGUOUS, CITY_NO_CITY_MENTIONED
 
 logger = get_logger(__name__)
