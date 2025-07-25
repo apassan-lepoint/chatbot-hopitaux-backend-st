@@ -204,64 +204,37 @@ class DataProcessor:
         return url_mapping.get(institution_type, institution_type.lower())
     
     
-    def get_infos(self, prompt: str, detected_specialty: str = None, conv_history: list = None) -> dict:
-        logger.info(f"get_infos called with prompt: {prompt}, detected_specialty: {detected_specialty}, conv_history: {conv_history}")
+    def set_detection_results(self, specialty, city, city_detected, institution_type, topk=None, institution_name=None, institution_mentioned=None):
         """
-        Extracts key aspects from the user's question using PromptDetectionManager.
-        Args:
-            prompt (str): The user's question.
-            detected_specialty (str, optional): Pre-detected specialty from conversation context.
-            conv_history (list, optional): Conversation history for multi-turn context.
-        Returns:
-            dict: Dictionary of extracted info (city, specialty, institution type, etc.)
+        Sets detection results from orchestrator.
         """
-        logger.info(f"Extracting infos from prompt: {prompt}")
-        from app.features.prompt_detection.prompt_detection_manager import PromptDetectionManager
-        # Use the LLM model from llm_handler_service
-        model = getattr(self.llm_handler_service, 'model', None)
-        prompt_manager = PromptDetectionManager(model=model)
-        institution_list = self._get_institution_list()
-        conv_history_str = "".join(conv_history) if conv_history else ""
-        detections = prompt_manager.run_all_detections(prompt, conv_history=conv_history_str, institution_list=institution_list)
-        # Use provided specialty or detect it
-        if detected_specialty:
-            logger.info(f"Using provided specialty from context: {detected_specialty}")
-            self.specialty = detected_specialty
-        else:
-            self.specialty = detections.get('specialty')
-        self.city = detections.get('city')
-        self.city_detected = detections.get('city_detected', False)
-        logger.info(f"City detected: {self.city_detected}, value: '{self.city}'")
-        self.institution_type = detections.get('institution_type')
-        self.topk = detections.get('top_k')
-        self.institution_name = detections.get('institution_name')
-        self.institution_mentioned = detections.get('institution_mentioned')
+        self.specialty = specialty
+        self.city = city
+        self.city_detected = city_detected
+        self.institution_type = institution_type
+        self.topk = topk
+        self.institution_name = institution_name
+        self.institution_mentioned = institution_mentioned
         try:
             self.institution_coordinates_df = pd.read_excel(self.paths["hospital_coordinates_path"])
         except Exception as e:
             logger.error(f"Failed to load hospital coordinates Excel: {e}")
             raise
-        self.institution_list = institution_list
+        self.institution_list = self._get_institution_list()
         # Load ranking data
         try:
             ranking_file_path = self.paths["ranking_file_path"]
             logger.debug(f"Loading ranking data from: {ranking_file_path}")
-
-            # Check if file exists
             if not os.path.exists(ranking_file_path):
                 logger.error(f"Ranking file not found: {ranking_file_path}")
                 raise FileNotFoundError(f"Ranking file not found: {ranking_file_path}")
-
             self.ranking_df = pd.read_excel(ranking_file_path, sheet_name="Palmarès")
             logger.debug(f"Loaded ranking DataFrame with {len(self.ranking_df)} rows")
-
-            # Log column names for debugging
             logger.debug(f"Ranking DataFrame columns: {list(self.ranking_df.columns)}")
-
         except Exception as e:
             logger.error(f"Failed to load ranking file: {e}")
             raise
-        return detections
+        return
 
 
     def generate_response_links(self, matching_rows: pd.DataFrame = None) -> list:
@@ -418,52 +391,49 @@ class DataProcessor:
         logger.info("Loaded specialty DataFrame")
         return self.specialty_df
 
-    def find_excel_sheet_with_privacy(self, prompt: str, detected_specialty: str = None) -> pd.DataFrame:
-        logger.info(f"find_excel_sheet_with_privacy called with prompt: {prompt}, detected_specialty: {detected_specialty}")
+    def generate_data_response(self) -> pd.DataFrame:
+        logger.info("generate_data_response called")
         """
-        Finds and loads ranking data based on both specialty and institution type.
-
-        Args:
-            prompt (str): The user's question.
-            detected_specialty (str, optional): Pre-detected specialty from conversation context.
-
+        Main entry point for generating the data response (DataFrame) for a user query. Assumes detection results have already been set.
         Returns:
             pd.DataFrame: DataFrame with the relevant filtered data.
         """
-        logger.info(f"Finding Excel sheet with privacy for prompt: {prompt}")
-        
-        self.get_infos(prompt, detected_specialty)
         specialty = self.specialty
-        logger.debug(f"Extracted values - specialty: '{specialty}', institution_type: '{self.institution_type}', city: '{self.city}'")
-        # Defensive insertion: ensure specialty is never empty or None
+        institution_type = self.institution_type
+        logger.debug(f"Extracted values - specialty: '{specialty}', institution_type: '{institution_type}', city: '{self.city}'")
+
+        # Defensive: ensure specialty is never empty or None
         if not specialty or (isinstance(specialty, str) and specialty.strip() == ""):
             specialty = "no specialty match"
+
         # If no specialty, load general table
         if specialty in ['aucune correspondance', 'no specialty match']:
             logger.debug("No specialty match found, loading general rankings")
             self.generate_response_links()
-            institution_type_french = self.institution_type  # Already normalized
-            # When institution type is "aucune correspondance", load both public and private rankings
+            institution_type_french = institution_type  # Already normalized
             if institution_type_french == "aucune correspondance":
                 category_for_loading = "aucune correspondance"
             else:
                 category_for_loading = institution_type_french
             self.specialty_df = self.load_and_transform_for_no_specialty(category=category_for_loading)
             return self.specialty_df
-        
+
         # If no public/private criterion, load by specialty only
-        if self.institution_type in ['no match', 'aucune correspondance']:
+        if institution_type in ['no match', 'aucune correspondance']:
             logger.debug("No institution type match found, loading by specialty only")
-            return self.find_excel_sheet_with_specialty(prompt)
+            matching_rows = self._filter_ranking_by_criteria(specialty)
+            self.web_ranking_link = []
+            self.generate_response_links(matching_rows)
+            self.specialty_df = self.load_excel_sheets(matching_rows)
+            logger.info("Loaded specialty DataFrame")
+            return self.specialty_df
 
         # Filter rows by specialty and category using helper method
-        logger.debug(f"Filtering by both specialty '{specialty}' and institution type '{self.institution_type}'")
-        matching_rows = self._filter_ranking_by_criteria(specialty, self.institution_type)
+        logger.debug(f"Filtering by both specialty '{specialty}' and institution type '{institution_type}'")
+        matching_rows = self._filter_ranking_by_criteria(specialty, institution_type)
         logger.debug(f"Found {len(matching_rows)} matching rows")
-        
         self.generate_response_links(matching_rows)
         self.specialty_df = self.load_excel_sheets(matching_rows)
-        
         logger.debug(f"Loaded specialty DataFrame: {type(self.specialty_df)}")
         return self.specialty_df
 
@@ -500,6 +470,9 @@ class DataProcessor:
         # Skip geolocation if no city is detected
         if not self.city_detected or not self.city:
             logger.info("No city detected, skipping geolocation and returning DataFrame without distances.")
+            # Defensive: always add a Distance column filled with None if missing
+            if self.df_with_cities is not None and 'Distance' not in self.df_with_cities.columns:
+                self.df_with_cities['Distance'] = None
             return self.df_with_cities
 
         # Get coordinates for the query city

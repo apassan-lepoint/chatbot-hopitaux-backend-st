@@ -47,28 +47,12 @@ class LLMHandler:
 
         self.key_words = format_mapping_words_csv(self.paths["mapping_word_path"])
 
-        from app.features.prompt_detection.prompt_detection_manager import PromptDetectionManager # Import PromptDetectionManager locally to avoid circular import
-        self.prompt_manager = PromptDetectionManager(self.model)
+        # Removed PromptDetectionManager usage; now handled in orchestrator
         # Use ConversationManager for all conversation/multi-turn logic
         self.conversation_manager = ConversationManager(self.model)
 
     
-    def extract_prompt_info(self, prompt: str, conv_history: str = "", institution_list=None) -> Dict[str, Any]:
-        logger.info(f"extract_prompt_info called with prompt: {prompt}, conv_history: {conv_history}, institution_list: {institution_list}")
-        """
-        Extracts all relevant information from a prompt using PromptDetectionManager.
-        Returns a consolidated dictionary with city, specialty, top_k, institution name, and institution type.
-        """
-        # Ensure prompt_manager is available
-        if not hasattr(self, 'prompt_manager') or self.prompt_manager is None:
-            logger.debug("Prompt manager not found or None, reinitializing PromptDetectionManager")
-            from app.features.prompt_detection.prompt_detection_manager import PromptDetectionManager # Import PromptDetectionManager locally to avoid circular import
-            self.prompt_manager = PromptDetectionManager(self.model)
-        logger.debug("Running all detections with PromptDetectionManager")
-        results = self.prompt_manager.run_all_detections(prompt, conv_history, institution_list)
-        logger.debug(f"Prompt detection results: {results}")
-        # All top-k logic should be handled by PromptDetectionManager and included in its output
-        return results
+    # Removed extract_prompt_info; prompt detection is now handled in orchestrator
     
     def init_model(self) -> ChatOpenAI:
         """

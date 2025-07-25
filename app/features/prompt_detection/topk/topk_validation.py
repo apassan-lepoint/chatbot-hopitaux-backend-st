@@ -33,8 +33,17 @@ class TopKValidation:
         Returns:
             int: Normalized top-k value
         """
-        if detected_topk > 0 and self.validate_topk(detected_topk):
-            return detected_topk
-        if self.validate(user_topk):
-            return user_topk
+        # Safely cast detected_topk and user_topk to int if possible
+        try:
+            detected_topk_int = int(detected_topk)
+        except (ValueError, TypeError):
+            detected_topk_int = 0
+        try:
+            user_topk_int = int(user_topk)
+        except (ValueError, TypeError):
+            user_topk_int = 0
+        if detected_topk_int > 0 and self.validate_topk(detected_topk_int):
+            return detected_topk_int
+        if self.validate_topk(user_topk_int):
+            return user_topk_int
         return default_topk

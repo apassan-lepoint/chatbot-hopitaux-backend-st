@@ -17,7 +17,7 @@ class MessagePertinenceChecker:
             prompt: The message to check
             conv_history: Optional conversation history for context
         """
-        from app.utility.wrappers import prompt_formatting ## Import prompt_formatting locally to avoid circular import
+        from app.utility.prompt_formatting_helpers import prompt_formatting ## Import prompt_formatting locally to avoid circular import
         formatted_prompt = prompt_formatting(
             "sanity_check_medical_pertinence_prompt",
             prompt=prompt,
@@ -31,7 +31,7 @@ class MessagePertinenceChecker:
         Checks the pertinence of the given prompt for the chatbot using the LLM.
         Returns True if relevant to chatbot, False otherwise.
         """
-        from app.utility.wrappers import prompt_formatting
+        from app.utility.prompt_formatting_helpers import prompt_formatting
         formatted_prompt = prompt_formatting(
             "sanity_check_chatbot_pertinence_prompt",
             prompt=prompt,

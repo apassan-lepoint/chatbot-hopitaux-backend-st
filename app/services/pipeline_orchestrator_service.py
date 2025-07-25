@@ -103,52 +103,46 @@ class PipelineOrchestrator:
         ]:
             setattr(self, attr, None)
 
-    def extract_query_parameters(self, prompt: str, detected_specialty: str = None, conv_history: list = None) -> str:
+    def extract_query_parameters(self, prompt: str, detected_specialty: str = None, conv_history: list = None) -> dict:
         logger.info(f"Extracting query parameters: prompt='{prompt}', detected_specialty='{detected_specialty}', conv_history='{conv_history}'")
         """
-        Retrieves key aspects of the user query: city, institution type, and specialty using PromptDetectionManager.
-        Updates instance variables accordingly.
+        Centralized detection: runs PromptDetectionManager and sets results in DataProcessor.
+        Returns detections dict.
         """
-        logger.info(f"Getting infos from pipeline for prompt: {prompt}")
-        # Get LLM model from data processor
         model = getattr(self.data_processor.llm_handler_service, 'model', None)
-        # Create prompt manager for detection
         prompt_manager = PromptDetectionManager(model=model)
-        # Get institution list for detection
         institution_list = self.data_processor._get_institution_list()
-        # Convert conversation history to string if provided
         conv_history_str = "".join(conv_history) if conv_history else ""
-        # Run all detection routines
         detections = prompt_manager.run_all_detections(prompt, conv_history=conv_history_str, institution_list=institution_list)
-        # Assign detected parameters to instance variables
-        self.specialty = detected_specialty if detected_specialty else detections.get('specialty')
-        # City detection is now handled by DataProcessor
+        # Set all detection results in DataProcessor
+        self.data_processor.set_detection_results(
+            specialty=detected_specialty if detected_specialty else detections.get('specialty'),
+            city=detections.get('city'),
+            city_detected=detections.get('city_detected', False),
+            institution_type=detections.get('institution_type'),
+            topk=detections.get('topk'),
+            institution_name=detections.get('institution_name'),
+            institution_mentioned=detections.get('institution_mentioned')
+        )
+        # Set orchestrator attributes for downstream use
+        self.specialty = self.data_processor.specialty
         self.city = self.data_processor.city
-        self.institution_type = detections.get('institution_type')
-        self.institution_name = detections.get('institution_name')
-        self.institution_mentioned = detections.get('institution_mentioned')
-        self.topk = detections.get('topk')
+        self.institution_type = self.data_processor.institution_type
+        self.institution_name = self.data_processor.institution_name
+        self.institution_mentioned = self.data_processor.institution_mentioned
+        self.topk = self.data_processor.topk
         logger.debug(f"PipelineOrchestrator infos - specialty: {self.specialty}, city: {self.city}, institution_type: {self.institution_type}, institution: {self.institution_name}, institution_mentioned: {self.institution_mentioned}")
-        logger.debug(f"[DEBUG] City value after assignment in extract_query_parameters: {self.city}")
-        return self.specialty
+        return detections
 
-    def build_ranking_dataframe_with_distances(self, prompt: str, excel_path: str, detected_specialty: str = None) -> pd.DataFrame:
+    def build_ranking_dataframe_with_distances(self, prompt: str, excel_path: str, detected_specialty: str = None, conv_history: list = None) -> pd.DataFrame:
         logger.info(f"Building ranking DataFrame with distances: prompt='{prompt}', excel_path='{excel_path}', detected_specialty='{detected_specialty}'")
         """
         Retrieves the ranking DataFrame based on the user query, including distance calculations if a city is specified.
         """
-        logger.info(f"Building ranking DataFrame with distances for prompt: {prompt}")
-        # Find the relevant Excel sheet and extract info
-        self.df_gen = self.data_processor.find_excel_sheet_with_privacy(prompt, detected_specialty)
-        # Only extract query parameters if we don't have a detected specialty
-        if not detected_specialty or detected_specialty == "no specialty match":
-            self.extract_query_parameters(prompt)
-        else:
-            self.extract_query_parameters(prompt, detected_specialty)
-            self.specialty = detected_specialty
-            self.data_processor.specialty = detected_specialty
-        logger.debug(f"[DEBUG] City value before city validation in build_ranking_dataframe_with_distances: {self.city}")
-        logger.debug(f"[DEBUG] DataProcessor city value before city validation: {self.data_processor.city}")
+        # Centralized detection and data setup
+        detections = self.extract_query_parameters(prompt, detected_specialty, conv_history)
+        # Generate main DataFrame
+        self.df_gen = self.data_processor.generate_data_response()
         # If ranking unavailable for specialty/type, return general DataFrame
         if self.data_processor.specialty_ranking_unavailable:
             logger.warning("Ranking not found for requested specialty/type")

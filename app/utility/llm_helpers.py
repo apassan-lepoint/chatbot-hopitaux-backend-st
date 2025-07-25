@@ -6,7 +6,61 @@ and error handling that are used across multiple service files.
 """
 
 from app.utility.logging import get_logger
-from app.utility.wrappers import parse_llm_response
+
+def parse_llm_response(response: str, response_type: str, default=None):
+    """
+    Unified parser for LLM responses.
+    response_type: 'boolean', 'numeric', 'city', 'modification', 'institution_type', 'specialty'
+    """
+    from app.config.features_config import (
+        CITY_NO_CITY_MENTIONED,
+        CITY_FOREIGN,
+        CITY_AMBIGUOUS,
+        CITY_MENTIONED,
+        MODIFICATION_NEW_QUESTION,
+        MODIFICATION_MODIFICATION,
+        MODIFICATION_AMBIGUOUS,
+        SPECIALTY_NO_SPECIALTY_MENTIONED,
+        SPECIALTY_SINGLE_SPECIALTY,
+        SPECIALTY_MULTIPLE_SPECIALTIES
+    )
+    try:
+        resp = response.strip()
+        if response_type == "boolean":
+            return int(resp) == 1
+        if response_type == "numeric":
+            return int(resp)
+        if response_type == "city":
+            code = int(resp)
+            valid = {
+                CITY_NO_CITY_MENTIONED,
+                CITY_FOREIGN,
+                CITY_AMBIGUOUS,
+                CITY_MENTIONED
+            }
+            return code if code in valid else CITY_NO_CITY_MENTIONED
+        if response_type == "modification":
+            code = int(resp)
+            valid = {
+                MODIFICATION_NEW_QUESTION,
+                MODIFICATION_MODIFICATION,
+                MODIFICATION_AMBIGUOUS
+            }
+            return code if code in valid else MODIFICATION_NEW_QUESTION
+        if response_type == "institution_type":
+            return {0: "no match", 1: "public", 2: "private"}.get(int(resp), "no match")
+        if response_type == "specialty":
+            return {
+                SPECIALTY_NO_SPECIALTY_MENTIONED: "no specialty",
+                SPECIALTY_SINGLE_SPECIALTY: "single specialty",
+                SPECIALTY_MULTIPLE_SPECIALTIES: "multiple specialties"
+            }.get(int(resp), "no specialty")
+        # Unknown type, just return stripped response
+        return resp
+    except (ValueError, AttributeError):
+        import logging
+        logging.warning(f"Failed to parse {response_type} response: {response}")
+        return default
 
 logger = get_logger(__name__)
 
