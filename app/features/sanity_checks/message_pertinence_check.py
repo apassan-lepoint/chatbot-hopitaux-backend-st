@@ -1,4 +1,6 @@
+
 from app.config.features_config import WARNING_MESSAGES
+from app.utility.logging import get_logger
 
 
 class MessagePertinenceCheckException(Exception):
@@ -23,8 +25,13 @@ class MessagePertinenceChecker:
             prompt=prompt,
             conv_history=conv_history
         )
-        from app.utility.llm_helpers import invoke_llm_and_parse_boolean ## Import invoke_llm_and_parse_boolean locally to avoid circular import
-        return invoke_llm_and_parse_boolean(self.llm_handler_service.model, formatted_prompt, "sanity_check_medical_pertinence")
+        from app.utility.llm_helpers import invoke_llm_with_error_handling
+        logger = get_logger(__name__)
+        logger.debug(f"Sanity check medical pertinence prompt sent to LLM:\n{formatted_prompt}")
+        raw_response = invoke_llm_with_error_handling(self.llm_handler_service.model, formatted_prompt, "sanity_check_medical_pertinence")
+        logger.debug(f"Raw LLM response for medical pertinence:\n{raw_response}")
+        from app.utility.wrappers import parse_llm_response
+        return parse_llm_response(raw_response, "boolean")
 
     def sanity_check_chatbot_pertinence(self, prompt: str, conv_history: str = "") -> str:
         """
@@ -37,8 +44,13 @@ class MessagePertinenceChecker:
             prompt=prompt,
             conv_history=conv_history
         )
-        from app.utility.llm_helpers import invoke_llm_and_parse_boolean
-        return invoke_llm_and_parse_boolean(self.llm_handler_service.model, formatted_prompt, "sanity_check_chatbot_pertinence")
+        from app.utility.llm_helpers import invoke_llm_with_error_handling
+        logger = get_logger(__name__)
+        logger.debug(f"Sanity check chatbot pertinence prompt sent to LLM:\n{formatted_prompt}")
+        raw_response = invoke_llm_with_error_handling(self.llm_handler_service.model, formatted_prompt, "sanity_check_chatbot_pertinence")
+        logger.debug(f"Raw LLM response for chatbot pertinence:\n{raw_response}")
+        from app.utility.wrappers import parse_llm_response
+        return parse_llm_response(raw_response, "boolean")
     
     def check(self, user_input, conv_history=""):
         """
