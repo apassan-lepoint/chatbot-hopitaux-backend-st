@@ -269,51 +269,91 @@ class PipelineOrchestrator:
             logger.debug(f"Returning multiple matches response: {formatted_response}")
             return formatted_response, None
         # Build DataFrame with ranking and distances
-        df = self.build_ranking_dataframe_with_distances(prompt, relevant_file, detected_specialty)
+        logger.debug("Calling build_ranking_dataframe_with_distances")
+        try:
+            df = self.build_ranking_dataframe_with_distances(prompt, relevant_file, detected_specialty)
+            logger.debug(f"build_ranking_dataframe_with_distances returned DataFrame: {type(df)}")
+        except Exception as e:
+            logger.exception(f"Exception in build_ranking_dataframe_with_distances: {e}")
+            return "Erreur: Exception lors de la génération du classement.", None
+
         # Check if DataFrame is None and return error message if so
+        logger.debug("Checking if DataFrame is None")
         if df is None:
             logger.error("build_ranking_dataframe_with_distances returned None. Aborting response generation.")
             return "Erreur: Impossible de générer le classement car les données sont indisponibles.", None
         logger.debug(f"Retrieved DataFrame shape: {df.shape if hasattr(df, 'shape') else 'N/A'}")
+
         # Handle geolocation API errors
+        logger.debug("Checking for geolocation API errors")
         if self.data_processor.geolocation_api_error:
             logger.error("Geopy API error encountered, cannot calculate distances")
             return "Dû à une surutilisation de l'API de Geopy, le service de calcul des distances est indisponible pour le moment, merci de réessayer plus tard ou de recommencer avec une question sans localisation spécifique", None
+
         # Get ranking link for UI
+        logger.debug("Getting ranking link for UI")
         self.link = self.data_processor.web_ranking_link
+
         # Handle cases where no results are found for requested specialty/type
+        logger.debug("Checking for specialty_ranking_unavailable")
         if self.data_processor.specialty_ranking_unavailable:
             logger.warning("Ranking not found for requested specialty/type, suggesting alternative")
             if self.data_processor.institution_type == 'Public':
+                logger.debug("No public institution for this specialty")
                 return "Nous n'avons pas d'établissement public pour cette pathologie, mais un classement des établissements privés existe. ", self.link
             elif self.data_processor.institution_type == 'Privé':
+                logger.debug("No private institution for this specialty")
                 return "Nous n'avons pas d'établissement privé pour cette pathologie, mais un classement des établissements publics existe. ", self.link
+
         # If institution is mentioned, return its ranking and link
+        logger.debug("Checking if institution is mentioned")
         if self.institution_mentioned:
             logger.info("Returning result for mentioned institution")
-            res = self.get_filtered_and_sorted_df(df, max_radius_km, top_k, prompt)
-            logger.debug(f"Result: {res}, Links: {self.link}")
+            try:
+                res = self.get_filtered_and_sorted_df(df, max_radius_km, top_k, prompt)
+                logger.debug(f"Result from get_filtered_and_sorted_df: {res}, Links: {self.link}")
+            except Exception as e:
+                logger.exception(f"Exception in get_filtered_and_sorted_df: {e}")
+                return "Erreur: Exception lors de la récupération du classement de l'établissement.", self.link
             return res, self.link
+
         # If city found, try to find results within increasing radii
+        logger.debug("Checking if city is detected")
         if self.data_processor.city_detected:
             logger.info("City found, searching for results within increasing radii")
             for radius in [5, 10, 50, 100]:
-                res = self._try_radius_search(df, radius, top_k, prompt)
+                logger.debug(f"Trying radius search with radius={radius}")
+                try:
+                    res = self._try_radius_search(df, radius, top_k, prompt)
+                    logger.debug(f"Result from _try_radius_search (radius={radius}): {res}")
+                except Exception as e:
+                    logger.exception(f"Exception in _try_radius_search (radius={radius}): {e}")
+                    continue
                 if res:
+                    logger.debug(f"Returning result for radius={radius}")
                     return res, self.link
             logger.warning("No results found even at maximum radius")
             return "Aucun résultat trouvé dans votre région.", self.link
+
         # General ranking response if no city found
         logger.info("No city detected, returning general ranking")
-        if 'Distance' in self.df_gen.columns:
-            self.df_gen = self.df_gen.drop(columns=['Distance'])
-        res_tab = self.df_gen.nlargest(top_k, "Note / 20")
-        res_str = format_response(res_tab, not self.data_processor.city_detected)
-        base_message = "Voici le meilleur établissement" if top_k == 1 else f"Voici les {top_k} meilleurs établissements"
-        display_specialty, is_no_match = self._normalize_specialty_for_display(self.specialty)
-        if is_no_match:
-            res = f"{base_message}:<br> \n{res_str}"
-        else:
-            res = f"{base_message} pour la pathologie {display_specialty}<br> \n{res_str}"
-        logger.debug(f"Result: {res}, Links: {self.link}")
-        return res, self.link
+        try:
+            if 'Distance' in self.df_gen.columns:
+                logger.debug("Dropping Distance column from df_gen")
+                self.df_gen = self.df_gen.drop(columns=['Distance'])
+            res_tab = self.df_gen.nlargest(top_k, "Note / 20")
+            logger.debug(f"nlargest result shape: {res_tab.shape}")
+            res_str = format_response(res_tab, not self.data_processor.city_detected)
+            logger.debug(f"Formatted response string: {res_str}")
+            base_message = "Voici le meilleur établissement" if top_k == 1 else f"Voici les {top_k} meilleurs établissements"
+            display_specialty, is_no_match = self._normalize_specialty_for_display(self.specialty)
+            logger.debug(f"Display specialty: {display_specialty}, is_no_match: {is_no_match}")
+            if is_no_match:
+                res = f"{base_message}:<br> \n{res_str}"
+            else:
+                res = f"{base_message} pour la pathologie {display_specialty}<br> \n{res_str}"
+            logger.debug(f"Result: {res}, Links: {self.link}")
+            return res, self.link
+        except Exception as e:
+            logger.exception(f"Exception in general ranking response: {e}")
+            return "Erreur: Exception lors de la génération du classement général.", self.link
