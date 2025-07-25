@@ -46,10 +46,10 @@ class CityChecker:
         Raises:
             CityCheckException: If the city is foreign or ambiguous.
         """
-        if not self.llm_handler_service:
-            logger.warning("CityChecker.check: llm_handler_service is missing, skipping city validation.")
+        if not self.detector:
+            logger.warning("CityChecker.check: detector is missing, skipping city validation.")
             return  # Skip validation, do not raise exception
-        city_result = self.llm_handler_service.detect_city(user_input, conv_history)
+        city_result = self.detector.detect_city(user_input, conv_history)
         if self.detector.is_foreign_city(city_result):
             raise CityCheckException(
                 "Je ne peux pas répondre aux questions concernant les hôpitaux situés hors du territoire français, merci de consulter la page du palmarès. [🔗 Page du classement](https://www.lepoint.fr/hopitaux/classements)"
