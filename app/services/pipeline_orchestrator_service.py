@@ -201,6 +201,8 @@ class PipelineOrchestrator:
         if self.institution_mentioned:
             return self._institution_ranking_response(df, top_k)
         # Filter hospitals by distance
+        logger.debug(f"Distance column values before filtering: {df['Distance'].tolist()}")
+        logger.debug(f"Rows with None in Distance before filtering: {df[df['Distance'].isnull()]}")
         filtered_df = df[df["Distance"] <= max_radius_km]
         # Sort by score and select top_k
         self.sorted_df = filtered_df.nlargest(top_k, "Note / 20")

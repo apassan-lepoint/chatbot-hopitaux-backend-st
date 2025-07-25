@@ -535,6 +535,8 @@ class DataProcessor:
         self.df_with_distances = self.df_with_cities
         
         logger.debug(f"DataFrame with distances shape: {self.df_with_distances.shape}")
+        logger.debug(f"Distance column values after calculation: {self.df_with_distances['Distance'].tolist()}")
+        logger.debug(f"Rows with None in Distance after calculation: {self.df_with_distances[self.df_with_distances['Distance'].isnull()]}")
         return self.df_with_distances
 
 
