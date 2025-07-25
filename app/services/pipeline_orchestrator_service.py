@@ -204,32 +204,19 @@ class PipelineOrchestrator:
         if self.data_processor.city_detected and "Distance" in df.columns:
             df = df.copy()
             df["Distance"] = pd.to_numeric(df["Distance"], errors="coerce")
-            # Defensive: filter only rows where Distance is not null and is a number
-            logger.debug(f"Distance column values before filtering: {df['Distance'].tolist()}")
-            logger.debug(f"Rows with None in Distance before filtering: {df[df['Distance'].isnull()]}")
-
-            # Extra debug: print types of Distance column
-            logger.debug(f"Distance column types: {[type(x) for x in df['Distance']]}")
-
-            # Stricter filter: only keep rows where Distance is a valid float/int and not None
-            valid_distance_mask = df["Distance"].apply(lambda x: isinstance(x, (int, float)) and pd.notnull(x))
-            logger.debug(f"Valid distance mask: {valid_distance_mask.tolist()}")
-            filtered_df = df[valid_distance_mask].copy().reset_index(drop=True)
-            logger.debug(f"Filtered DataFrame shape after removing invalid distances: {filtered_df.shape}")
-            # Extra strict: filter again to ensure all Distance values are float/int and not None
-            filtered_df = filtered_df[filtered_df["Distance"].apply(lambda x: isinstance(x, (int, float)) and pd.notnull(x))].reset_index(drop=True)
-            # Add extra debug logging before comparison
-            logger.debug(f"Distance values before radius filter: {filtered_df['Distance'].tolist()}")
-            problematic = [x for x in filtered_df["Distance"] if x is None or not isinstance(x, (int, float))]
-            if problematic:
-                logger.error(f"Problematic Distance values before radius filter: {problematic}")
-            # Final strict filter to remove any None or non-numeric values
-            filtered_df = filtered_df[filtered_df["Distance"].apply(lambda x: isinstance(x, (int, float)) and pd.notnull(x))].reset_index(drop=True)
-            # Now filter by max_radius_km if provided
+            logger.info(f"[RadiusFilter] Initial DataFrame shape: {df.shape}")
+            logger.info(f"[RadiusFilter] Distance column values before dropna: {df['Distance'].tolist()}")
+            # Drop rows with NaN in Distance
+            filtered_df = df.dropna(subset=["Distance"]).reset_index(drop=True)
+            logger.info(f"[RadiusFilter] DataFrame shape after dropna on Distance: {filtered_df.shape}")
+            logger.info(f"[RadiusFilter] Distance values after dropna: {filtered_df['Distance'].tolist()}")
             if max_radius_km is not None:
-                # Robust filtering without direct use of <=
-                filtered_df = filtered_df[filtered_df["Distance"].apply(lambda x: isinstance(x, (int, float)) and x is not None and x - max_radius_km <= 0)].reset_index(drop=True)
-                logger.debug(f"Filtered DataFrame shape after radius filter: {filtered_df.shape}")
+                logger.info(f"[RadiusFilter] Applying radius filter: max_radius_km={max_radius_km}")
+                mask = filtered_df["Distance"] <= max_radius_km
+                logger.info(f"[RadiusFilter] Radius mask: {mask.tolist()}")
+                filtered_df = filtered_df[mask].reset_index(drop=True)
+                logger.info(f"[RadiusFilter] DataFrame shape after radius filter: {filtered_df.shape}")
+                logger.info(f"[RadiusFilter] Distance values after radius filter: {filtered_df['Distance'].tolist()}")
         else:
             # If no city, skip distance filtering
             logger.info("No city specified or Distance column missing, skipping distance filtering.")
