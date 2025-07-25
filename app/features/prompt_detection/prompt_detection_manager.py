@@ -37,8 +37,10 @@ class PromptDetectionManager:
 
         try:
             city_info = self.city_service.process_city(text, conv_history)
+            logger.debug(f"PromptDetectionManager.run_all_detections: city_info={city_info}")
         except CityCheckException as e:
             city_info = {"city": None, "city_detected": False}
+            logger.debug(f"PromptDetectionManager.run_all_detections: city_info exception, using fallback: {city_info}")
 
         institution_name_result = self.institution_name_service.detect_and_validate(text, conv_history)
         institution_type_result = self.institution_type_service.detect_and_validate_type(text, conv_history)
