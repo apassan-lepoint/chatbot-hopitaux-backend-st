@@ -227,8 +227,8 @@ class PipelineOrchestrator:
             filtered_df = filtered_df[filtered_df["Distance"].apply(lambda x: isinstance(x, (int, float)) and pd.notnull(x))].reset_index(drop=True)
             # Now filter by max_radius_km if provided
             if max_radius_km is not None:
-                filtered_df = filtered_df.dropna(subset=["Distance"])
-                filtered_df = filtered_df[filtered_df["Distance"] <= max_radius_km].reset_index(drop=True)
+                # Robust filtering without direct use of <=
+                filtered_df = filtered_df[filtered_df["Distance"].apply(lambda x: isinstance(x, (int, float)) and x is not None and x - max_radius_km <= 0)].reset_index(drop=True)
                 logger.debug(f"Filtered DataFrame shape after radius filter: {filtered_df.shape}")
         else:
             # If no city, skip distance filtering
@@ -259,7 +259,7 @@ class PipelineOrchestrator:
         return None
 
     def generate_response(self, 
-        prompt: str, top_k: int = None, max_radius_km: int = 50, detected_specialty: str=None) -> str:
+        prompt: str, top_k: int = None, max_radius_km: int = 5, detected_specialty: str=None) -> str:
         """
         Main entry point: processes the user question and returns a formatted answer with ranking and links.
         """
@@ -312,7 +312,7 @@ class PipelineOrchestrator:
         # If city found, try to find results within increasing radii
         if self.data_processor.city_detected:
             logger.info("City found, searching for results within increasing radii")
-            for radius in [max_radius_km, 100, 200, 500]:
+            for radius in [5, 10, 50, 100]:
                 res = self._try_radius_search(df, radius, top_k, prompt)
                 if res:
                     return res, self.link
