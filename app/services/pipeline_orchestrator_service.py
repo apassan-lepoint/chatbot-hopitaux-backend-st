@@ -110,7 +110,8 @@ class PipelineOrchestrator:
         Returns detections dict.
         """
         model = getattr(self.data_processor.llm_handler_service, 'model', None)
-        prompt_manager = PromptDetectionManager(model=model)
+        llm_handler_service = self.data_processor.llm_handler_service
+        prompt_manager = PromptDetectionManager(model=model, llm_handler_service=llm_handler_service)
         institution_list = self.data_processor._get_institution_list()
         conv_history_str = "".join(conv_history) if conv_history else ""
         detections = prompt_manager.run_all_detections(prompt, conv_history=conv_history_str, institution_list=institution_list)

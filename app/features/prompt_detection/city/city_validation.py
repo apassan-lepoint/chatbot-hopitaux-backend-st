@@ -47,7 +47,8 @@ class CityChecker:
             CityCheckException: If the city is foreign or ambiguous.
         """
         if not self.llm_handler_service:
-            raise CityCheckException("llm_handler_service is required for city checking.")
+            logger.warning("CityChecker.check: llm_handler_service is missing, skipping city validation.")
+            return  # Skip validation, do not raise exception
         city_result = self.llm_handler_service.detect_city(user_input, conv_history)
         if self.detector.is_foreign_city(city_result):
             raise CityCheckException(
