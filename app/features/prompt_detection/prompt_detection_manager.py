@@ -38,9 +38,16 @@ class PromptDetectionManager:
         try:
             city_info = self.city_service.process_city(text, conv_history)
             logger.debug(f"PromptDetectionManager.run_all_detections: city_info={city_info}")
+            # Sanity check: city_info must be a dict with 'city' and 'city_detected'
+            if not isinstance(city_info, dict) or "city" not in city_info or "city_detected" not in city_info:
+                logger.error(f"PromptDetectionManager.run_all_detections: city_info malformed, using fallback: {city_info}")
+                city_info = {"city": None, "city_detected": False}
         except CityCheckException as e:
+            logger.error(f"PromptDetectionManager.run_all_detections: CityCheckException: {e}")
             city_info = {"city": None, "city_detected": False}
-            logger.debug(f"PromptDetectionManager.run_all_detections: city_info exception, using fallback: {city_info}")
+        except Exception as e:
+            logger.error(f"PromptDetectionManager.run_all_detections: Unexpected exception: {e}")
+            city_info = {"city": None, "city_detected": False}
 
         institution_name_result = self.institution_name_service.detect_and_validate(text, conv_history)
         institution_type_result = self.institution_type_service.detect_and_validate_type(text, conv_history)
