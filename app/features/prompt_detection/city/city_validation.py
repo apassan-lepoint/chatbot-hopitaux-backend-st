@@ -50,11 +50,12 @@ class CityChecker:
             logger.warning("CityChecker.check: detector is missing, skipping city validation.")
             return  # Skip validation, do not raise exception
         city_result = self.detector.detect_city(user_input, conv_history)
-        if self.detector.is_foreign_city(city_result):
+        city_status_type = self.detector.get_city_status_type(city_result)
+        if city_status_type == "foreign":
             raise CityCheckException(
                 "Je ne peux pas répondre aux questions concernant les hôpitaux situés hors du territoire français, merci de consulter la page du palmarès. [🔗 Page du classement](https://www.lepoint.fr/hopitaux/classements)"
             )
-        if self.detector.is_ambiguous_city(city_result):
+        if city_status_type == "ambiguous":
             raise CityCheckException(
                 "Je ne parviens pas à détecter votre localisation, merci de reformuler avec une autre ville."
             )
