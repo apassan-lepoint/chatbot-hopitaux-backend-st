@@ -199,7 +199,7 @@ class PipelineOrchestrator:
         logger.info(f"Filtering and sorting DataFrame with max_radius_km={max_radius_km}, top_k={top_k}, prompt={prompt}")
         # If institution is mentioned, return its ranking response
         if self.institution_mentioned:
-            return self._institution_ranking_response(df, top_k)
+            return self._institution_ranking_response(df, self.topk)
         # Only filter by distance if city is detected and Distance column exists
         if self.data_processor.city_detected and "Distance" in df.columns:
             df = df.copy()
