@@ -511,11 +511,17 @@ class DataProcessor:
                 self.geolocation_api_error
             )
         )
-        self.df_with_distances = self.df_with_cities
 
-        logger.debug(f"DataFrame with distances shape: {self.df_with_distances.shape}")
-        logger.debug(f"Distance column values after calculation: {self.df_with_distances['Distance'].tolist()}")
-        logger.debug(f"Rows with None in Distance after calculation: {self.df_with_distances[self.df_with_distances['Distance'].isnull()]}")
+        # Log cities/hospitals with None in Distance
+        none_distance_rows = self.df_with_cities[self.df_with_cities['Distance'].isnull()]
+        if not none_distance_rows.empty:
+            logger.warning(f"Rows with None in Distance after calculation: {none_distance_rows[['Etablissement', 'City']]}")
+
+        # Strictly filter out all rows with None in Distance
+        self.df_with_distances = self.df_with_cities[self.df_with_cities['Distance'].notnull()]
+
+        logger.debug(f"DataFrame with distances shape after filtering: {self.df_with_distances.shape}")
+        logger.debug(f"Distance column values after filtering: {self.df_with_distances['Distance'].tolist()}")
         return self.df_with_distances
 
 
