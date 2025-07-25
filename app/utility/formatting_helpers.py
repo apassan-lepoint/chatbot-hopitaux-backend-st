@@ -79,13 +79,18 @@ def format_response(df: pd.DataFrame, city_not_specified: bool)-> str:
     # Format results with city and distance information
     else:  
         for index, row in df.iterrows():
+            # Defensive: handle None or non-numeric Distance
+            distance_val = row.get('Distance', None)
+            if isinstance(distance_val, (int, float)) and distance_val is not None:
+                distance_str = f"{int(distance_val)} km"
+            else:
+                distance_str = "distance inconnue"
             description = (
                 f"{row['Etablissement']}:"
-                f"Un établissement {row['Catégorie']} situé à {int(row['Distance'])} km. "
+                f"Un établissement {row['Catégorie']} situé à {distance_str}. "
                 f"avec une note de {row['Note / 20']} de 20"
             )
             descriptions.append(description)
-        
         # Join all descriptions with line breaks for chatbot display
         joined_text = "<br>\n".join(descriptions)
         return joined_text
