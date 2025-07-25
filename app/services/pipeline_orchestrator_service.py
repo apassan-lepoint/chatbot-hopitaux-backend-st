@@ -206,7 +206,8 @@ class PipelineOrchestrator:
             logger.debug(f"Rows with None in Distance before filtering: {df[df['Distance'].isnull()]}")
             df = df.copy()
             df["Distance"] = pd.to_numeric(df["Distance"], errors="coerce")
-            filtered_df = df[df["Distance"].notnull() & (df["Distance"] <= max_radius_km)]
+            # Defensive: filter only rows where Distance is not null and is a number
+            filtered_df = df[df["Distance"].apply(lambda x: isinstance(x, (int, float)) and pd.notnull(x)) & (df["Distance"] <= max_radius_km)]
         else:
             # If no city, skip distance filtering
             logger.info("No city specified or Distance column missing, skipping distance filtering.")
