@@ -214,12 +214,15 @@ class PipelineOrchestrator:
             # Stricter filter: only keep rows where Distance is a valid float/int and not None
             valid_distance_mask = df["Distance"].apply(lambda x: isinstance(x, (int, float)) and pd.notnull(x))
             logger.debug(f"Valid distance mask: {valid_distance_mask.tolist()}")
-            filtered_df = df[valid_distance_mask]
+            filtered_df = df[valid_distance_mask].copy().reset_index(drop=True)
             logger.debug(f"Filtered DataFrame shape after removing invalid distances: {filtered_df.shape}")
+
+            # Extra strict: filter again to ensure all Distance values are float/int and not None
+            filtered_df = filtered_df[filtered_df["Distance"].apply(lambda x: isinstance(x, (int, float)) and pd.notnull(x))].reset_index(drop=True)
 
             # Now filter by max_radius_km if provided
             if max_radius_km is not None:
-                filtered_df = filtered_df[filtered_df["Distance"] <= max_radius_km]
+                filtered_df = filtered_df[filtered_df["Distance"] <= max_radius_km].reset_index(drop=True)
                 logger.debug(f"Filtered DataFrame shape after radius filter: {filtered_df.shape}")
 
             # If still any None values, log them
