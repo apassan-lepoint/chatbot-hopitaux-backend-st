@@ -114,13 +114,14 @@ class PipelineOrchestrator:
         institution_list = self.data_processor._get_institution_list()
         conv_history_str = "".join(conv_history) if conv_history else ""
         detections = prompt_manager.run_all_detections(prompt, conv_history=conv_history_str, institution_list=institution_list)
+        logger.debug(f"Full detections dict: {detections}")
         # Set all detection results in DataProcessor
         self.data_processor.set_detection_results(
             specialty=detected_specialty if detected_specialty else detections.get('specialty'),
             city=detections.get('city'),
             city_detected=detections.get('city_detected', False),
             institution_type=detections.get('institution_type'),
-            topk=detections.get('topk'),
+            topk=detections.get('topk') if 'topk' in detections else detections.get('top_k'),
             institution_name=detections.get('institution_name'),
             institution_mentioned=detections.get('institution_mentioned')
         )
