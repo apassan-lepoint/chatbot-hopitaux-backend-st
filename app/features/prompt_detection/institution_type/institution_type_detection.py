@@ -11,7 +11,7 @@ including:
 
 from app.utility.logging import get_logger
 from app.utility.llm_helpers import invoke_llm_with_error_handling
-from app.utility.prompt_formatting_helpers import prompt_formatting
+from app.utility.wrappers import prompt_formatting
 from app.utility.wrappers import parse_llm_response
 
 logger = get_logger(__name__)
