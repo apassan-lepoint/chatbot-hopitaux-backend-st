@@ -323,7 +323,7 @@ class PipelineOrchestrator:
             for radius in [5, 10, 50, 100]:
                 logger.debug(f"Trying radius search with radius={radius}")
                 try:
-                    res = self._try_radius_search(df, radius, top_k, prompt)
+                    res = self._try_radius_search(df, radius, self.top_k, prompt)
                     logger.debug(f"Result from _try_radius_search (radius={radius}): {res}")
                 except Exception as e:
                     logger.exception(f"Exception in _try_radius_search (radius={radius}): {e}")
