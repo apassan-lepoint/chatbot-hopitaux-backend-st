@@ -122,8 +122,21 @@ class PipelineOrchestrator:
         detections = prompt_manager.run_all_detections(prompt, conv_history=conv_history_str, institution_list=institution_list)
         # Assign detected parameters to instance variables
         self.specialty = detected_specialty if detected_specialty else detections.get('specialty')
-        self.city = detections.get('city')
-        logger.debug(f"[DEBUG] City detected by PromptDetectionManager: {self.city}")
+        detected_city = detections.get('city')
+        logger.debug(f"[DEBUG] City detected by PromptDetectionManager: {detected_city}")
+        from app.config.features_config import CITY_NO_CITY_MENTIONED
+        if (
+            detected_city is None
+            or detected_city in ['aucune correspondance', 'no match', 'llm_handler_service is required for city checking.']
+            or detected_city == CITY_NO_CITY_MENTIONED
+            or (isinstance(detected_city, str) and detected_city.strip() == "")
+            or (isinstance(detected_city, int) and detected_city == 0)
+        ):
+            self.city = CITY_NO_CITY_MENTIONED
+            self.data_processor.city = CITY_NO_CITY_MENTIONED
+        else:
+            self.city = detected_city
+            self.data_processor.city = detected_city
         self.institution_type = detections.get('institution_type')
         self.institution_name = detections.get('institution_name')
         self.institution_mentioned = detections.get('institution_mentioned')
@@ -302,6 +315,9 @@ class PipelineOrchestrator:
             return "Aucun résultat trouvé dans votre région.", self.link
         # General ranking response if no city found
         logger.info("No city found, returning general ranking")
+        # Defensive: always drop Distance column before using for general ranking
+        if 'Distance' in self.df_gen.columns:
+            self.df_gen = self.df_gen.drop(columns=['Distance'])
         res_tab = self.df_gen.nlargest(top_k, "Note / 20")
         res_str = format_response(res_tab, self.city_not_specified)
         base_message = "Voici le meilleur établissement" if top_k == 1 else f"Voici les {top_k} meilleurs établissements"
