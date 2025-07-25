@@ -123,11 +123,13 @@ class PipelineOrchestrator:
         # Assign detected parameters to instance variables
         self.specialty = detected_specialty if detected_specialty else detections.get('specialty')
         self.city = detections.get('city')
+        logger.debug(f"[DEBUG] City detected by PromptDetectionManager: {self.city}")
         self.institution_type = detections.get('institution_type')
         self.institution_name = detections.get('institution_name')
         self.institution_mentioned = detections.get('institution_mentioned')
         self.topk = detections.get('topk')
         logger.debug(f"PipelineOrchestrator infos - specialty: {self.specialty}, city: {self.city}, institution_type: {self.institution_type}, institution: {self.institution_name}, institution_mentioned: {self.institution_mentioned}")
+        logger.debug(f"[DEBUG] City value after assignment in extract_query_parameters: {self.city}")
         return self.specialty
 
     def build_ranking_dataframe_with_distances(self, prompt: str, excel_path: str, detected_specialty: str = None) -> pd.DataFrame:
@@ -145,6 +147,8 @@ class PipelineOrchestrator:
             self.extract_query_parameters(prompt, detected_specialty)
             self.specialty = detected_specialty
             self.data_processor.specialty = detected_specialty
+        logger.debug(f"[DEBUG] City value before city validation in build_ranking_dataframe_with_distances: {self.city}")
+        logger.debug(f"[DEBUG] DataProcessor city value before city validation: {self.data_processor.city}")
         # If ranking unavailable for specialty/type, return general DataFrame
         if self.data_processor.specialty_ranking_unavailable:
             logger.warning("Ranking not found for requested specialty/type")
@@ -157,11 +161,13 @@ class PipelineOrchestrator:
             or self.data_processor.city == CITY_NO_CITY_MENTIONED
             or (isinstance(self.data_processor.city, str) and self.data_processor.city.strip() == "")
         ):
+            logger.debug(f"[DEBUG] City validation failed in build_ranking_dataframe_with_distances. City value: {self.data_processor.city}")
             logger.info(f"No city found or invalid city value ('{self.data_processor.city}'), returning general ranking DataFrame")
             self.city_not_specified = True
             return self.df_gen
         # Otherwise, calculate distances for hospitals
         self.city_not_specified= False
+        logger.debug(f"[DEBUG] City validation passed. Proceeding with distance calculation. City value: {self.data_processor.city}")
         logger.info("Extracting hospital locations and calculating distances")
         self.data_processor.extract_local_hospitals()
         return self.data_processor.get_df_with_distances()
@@ -200,10 +206,15 @@ class PipelineOrchestrator:
         # If institution is mentioned, return its ranking response
         if self.institution_mentioned:
             return self._institution_ranking_response(df, top_k)
-        # Filter hospitals by distance
-        logger.debug(f"Distance column values before filtering: {df['Distance'].tolist()}")
-        logger.debug(f"Rows with None in Distance before filtering: {df[df['Distance'].isnull()]}")
-        filtered_df = df[df["Distance"] <= max_radius_km]
+        # Only filter by distance if city is specified and Distance column exists
+        if not self.city_not_specified and "Distance" in df.columns:
+            logger.debug(f"Distance column values before filtering: {df['Distance'].tolist()}")
+            logger.debug(f"Rows with None in Distance before filtering: {df[df['Distance'].isnull()]}")
+            filtered_df = df[df["Distance"].notnull() & (df["Distance"] <= max_radius_km)]
+        else:
+            # If no city, skip distance filtering
+            logger.info("No city specified or Distance column missing, skipping distance filtering.")
+            filtered_df = df
         # Sort by score and select top_k
         self.sorted_df = filtered_df.nlargest(top_k, "Note / 20")
         logger.debug(f"Filtered DataFrame shape: {self.sorted_df.shape}")
