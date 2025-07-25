@@ -205,26 +205,26 @@ class PipelineOrchestrator:
             df = df.copy()
             df["Distance"] = pd.to_numeric(df["Distance"], errors="coerce")
             # Defensive: filter only rows where Distance is not null and is a number
-            self.logger.debug(f"Distance column values before filtering: {df['Distance'].tolist()}")
-            self.logger.debug(f"Rows with None in Distance before filtering: {df[df['Distance'].isnull()]}")
+            logger.debug(f"Distance column values before filtering: {df['Distance'].tolist()}")
+            logger.debug(f"Rows with None in Distance before filtering: {df[df['Distance'].isnull()]}")
 
             # Extra debug: print types of Distance column
-            self.logger.debug(f"Distance column types: {[type(x) for x in df['Distance']]}")
+            logger.debug(f"Distance column types: {[type(x) for x in df['Distance']]}")
 
             # Stricter filter: only keep rows where Distance is a valid float/int and not None
             valid_distance_mask = df["Distance"].apply(lambda x: isinstance(x, (int, float)) and pd.notnull(x))
-            self.logger.debug(f"Valid distance mask: {valid_distance_mask.tolist()}")
+            logger.debug(f"Valid distance mask: {valid_distance_mask.tolist()}")
             filtered_df = df[valid_distance_mask]
-            self.logger.debug(f"Filtered DataFrame shape after removing invalid distances: {filtered_df.shape}")
+            logger.debug(f"Filtered DataFrame shape after removing invalid distances: {filtered_df.shape}")
 
             # Now filter by max_radius_km if provided
             if max_radius_km is not None:
                 filtered_df = filtered_df[filtered_df["Distance"] <= max_radius_km]
-                self.logger.debug(f"Filtered DataFrame shape after radius filter: {filtered_df.shape}")
+                logger.debug(f"Filtered DataFrame shape after radius filter: {filtered_df.shape}")
 
             # If still any None values, log them
             if filtered_df["Distance"].isnull().any():
-                self.logger.error(f"Rows with None in Distance after all filtering: {filtered_df[filtered_df['Distance'].isnull()]}")
+                logger.error(f"Rows with None in Distance after all filtering: {filtered_df[filtered_df['Distance'].isnull()]}")
         else:
             # If no city, skip distance filtering
             logger.info("No city specified or Distance column missing, skipping distance filtering.")
