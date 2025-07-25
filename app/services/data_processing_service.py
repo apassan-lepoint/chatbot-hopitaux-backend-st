@@ -45,6 +45,7 @@ class DataProcessor:
         self.specialty= None
         self.institution_type= None
         self.city = None
+        self.city_detected = False
         self.df_with_cities = None
         self.institution_mentioned = None
         self.topk = None
@@ -229,15 +230,8 @@ class DataProcessor:
         else:
             self.specialty = detections.get('specialty')
         self.city = detections.get('city')
-        # Defensive: ensure city is never an error string or None
-        if (
-            self.city is None
-            or (isinstance(self.city, str) and self.city in ["llm_handler_service is required for city checking.", "no match", "aucune correspondance", ""])
-        ):
-            logger.warning(f"Invalid city value detected: '{self.city}', setting to CITY_NO_CITY_MENTIONED")
-            self.city = CITY_NO_CITY_MENTIONED
-        else:
-            logger.info(f"Valid city detected: '{self.city}'")
+        self.city_detected = detections.get('city_detected', False)
+        logger.info(f"City detected: {self.city_detected}, value: '{self.city}'")
         self.institution_type = detections.get('institution_type')
         self.topk = detections.get('top_k')
         self.institution_name = detections.get('institution_name')
@@ -503,7 +497,11 @@ class DataProcessor:
             pd.DataFrame or None: DataFrame with distance information, or None if geolocation fails.
         """
         logger.info(f"Calculating distances from query city: {self.city}")
-        
+        # Skip geolocation if no city is detected
+        if not self.city_detected or not self.city:
+            logger.info("No city detected, skipping geolocation and returning DataFrame without distances.")
+            return self.df_with_cities
+
         # Get coordinates for the query city
         try:
             query_coords, self.geolocation_api_error = exget_coordinates(self.city)
@@ -515,7 +513,7 @@ class DataProcessor:
             logger.error(f"Failed to get coordinates for city {self.city}: {e}")
             self.geolocation_api_error = True
             return None
-        
+
         # Drop rows with missing city info
         initial_count = len(self.df_with_cities)
         self.df_with_cities = self.df_with_cities.dropna(subset=['City'])
@@ -533,7 +531,7 @@ class DataProcessor:
             )
         )
         self.df_with_distances = self.df_with_cities
-        
+
         logger.debug(f"DataFrame with distances shape: {self.df_with_distances.shape}")
         logger.debug(f"Distance column values after calculation: {self.df_with_distances['Distance'].tolist()}")
         logger.debug(f"Rows with None in Distance after calculation: {self.df_with_distances[self.df_with_distances['Distance'].isnull()]}")

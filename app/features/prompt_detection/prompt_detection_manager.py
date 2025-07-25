@@ -36,14 +36,15 @@ class PromptDetectionManager:
         top_k = self.topk_service.process_topk(text, conv_history)
 
         try:
-            city = self.city_service.process_city(text, conv_history)
+            city_info = self.city_service.process_city(text, conv_history)
         except CityCheckException as e:
-            city = str(e)
+            city_info = {"city": None, "city_detected": False}
 
         institution_name_result = self.institution_name_service.detect_and_validate(text, conv_history)
         institution_type_result = self.institution_type_service.detect_and_validate_type(text, conv_history)
         return {
-            "city": city,
+            "city": city_info["city"],
+            "city_detected": city_info["city_detected"],
             "institution_name": institution_name_result.get("institution_name"),
             "institution_type": institution_type_result.get("institution_type"),
             "specialty": specialty,

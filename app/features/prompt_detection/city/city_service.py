@@ -17,18 +17,22 @@ class CityService:
     def process_city(self, prompt: str, conv_history: str = ""):
         logger.debug(f"process_city called: prompt={prompt}, conv_history={conv_history}")
         """
-        Detects and validates the city from the prompt, returning the final result.
+        Detects and validates the city from the prompt, returning both city and detection status.
         Args:
             prompt (str): The message to analyze
             conv_history (str, optional): Conversation history for context
         Returns:
-            str or int: Final city result (city name or status code)
+            dict: {"city": city_name_or_None, "city_detected": bool}
         Raises:
             CityCheckException: If the city is foreign or ambiguous
         """
         # Step 1: Detect city
         city_result = self.detector.detect_city(prompt, conv_history)
-        # Step 2: Validate city
+        # Step 2: Validate city (side effect, but not used for detection status)
         self.checker.check(prompt, conv_history)
         # Step 3: Finalize and return
-        return city_result
+        from app.config.features_config import CITY_MENTIONED
+        if isinstance(city_result, str) and city_result.strip():
+            return {"city": city_result.strip(), "city_detected": True}
+        else:
+            return {"city": None, "city_detected": False}

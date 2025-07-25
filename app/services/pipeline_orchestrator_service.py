@@ -30,7 +30,7 @@ class PipelineOrchestrator:
         self.specialty= None
         self.institution_type= None
         self.city = None
-        self.city_not_specified= None # Flag indicating if no city was found in the query
+        # ...existing code...
         self.df_gen = None # DF for results 
         self.institution_mentioned=None
         self.institution_name=None
@@ -122,21 +122,8 @@ class PipelineOrchestrator:
         detections = prompt_manager.run_all_detections(prompt, conv_history=conv_history_str, institution_list=institution_list)
         # Assign detected parameters to instance variables
         self.specialty = detected_specialty if detected_specialty else detections.get('specialty')
-        detected_city = detections.get('city')
-        logger.debug(f"[DEBUG] City detected by PromptDetectionManager: {detected_city}")
-        from app.config.features_config import CITY_NO_CITY_MENTIONED
-        if (
-            detected_city is None
-            or detected_city in ['aucune correspondance', 'no match', 'llm_handler_service is required for city checking.']
-            or detected_city == CITY_NO_CITY_MENTIONED
-            or (isinstance(detected_city, str) and detected_city.strip() == "")
-            or (isinstance(detected_city, int) and detected_city == 0)
-        ):
-            self.city = CITY_NO_CITY_MENTIONED
-            self.data_processor.city = CITY_NO_CITY_MENTIONED
-        else:
-            self.city = detected_city
-            self.data_processor.city = detected_city
+        # City detection is now handled by DataProcessor
+        self.city = self.data_processor.city
         self.institution_type = detections.get('institution_type')
         self.institution_name = detections.get('institution_name')
         self.institution_mentioned = detections.get('institution_mentioned')
@@ -167,25 +154,12 @@ class PipelineOrchestrator:
             logger.warning("Ranking not found for requested specialty/type")
             return self.df_gen
         # If no city found or invalid city value, return general DataFrame
-        from app.config.features_config import CITY_NO_CITY_MENTIONED
-        # Defensive: treat both '0' (int) and '0' (str) as no city
-        if (
-            self.data_processor.city is None
-            or self.data_processor.city in ['aucune correspondance', 'no match', 'llm_handler_service is required for city checking.']
-            or self.data_processor.city == CITY_NO_CITY_MENTIONED
-            or (isinstance(self.data_processor.city, str) and self.data_processor.city.strip() == "")
-            or (isinstance(self.data_processor.city, int) and self.data_processor.city == 0)
-        ):
-            logger.debug(f"[DEBUG] City validation failed in build_ranking_dataframe_with_distances. City value: {self.data_processor.city}")
-            logger.info(f"No city found or invalid city value ('{self.data_processor.city}'), returning general ranking DataFrame")
-            self.city_not_specified = True
-            # Defensive: remove Distance column if present
+        if not self.data_processor.city_detected:
+            logger.info(f"No city detected, returning general ranking DataFrame")
             if 'Distance' in self.df_gen.columns:
                 self.df_gen = self.df_gen.drop(columns=['Distance'])
             return self.df_gen
         # Otherwise, calculate distances for hospitals
-        self.city_not_specified= False
-        logger.debug(f"[DEBUG] City validation passed. Proceeding with distance calculation. City value: {self.data_processor.city}")
         logger.info("Extracting hospital locations and calculating distances")
         self.data_processor.extract_local_hospitals()
         return self.data_processor.get_df_with_distances()
@@ -224,10 +198,12 @@ class PipelineOrchestrator:
         # If institution is mentioned, return its ranking response
         if self.institution_mentioned:
             return self._institution_ranking_response(df, top_k)
-        # Only filter by distance if city is specified and Distance column exists
-        if not self.city_not_specified and "Distance" in df.columns:
+        # Only filter by distance if city is detected and Distance column exists
+        if self.data_processor.city_detected and "Distance" in df.columns:
             logger.debug(f"Distance column values before filtering: {df['Distance'].tolist()}")
             logger.debug(f"Rows with None in Distance before filtering: {df[df['Distance'].isnull()]}")
+            df = df.copy()
+            df["Distance"] = pd.to_numeric(df["Distance"], errors="coerce")
             filtered_df = df[df["Distance"].notnull() & (df["Distance"] <= max_radius_km)]
         else:
             # If no city, skip distance filtering
@@ -305,7 +281,7 @@ class PipelineOrchestrator:
             logger.debug(f"Result: {res}, Links: {self.link}")
             return res, self.link
         # If city found, try to find results within increasing radii
-        if self.city_not_specified == False:
+        if self.data_processor.city_detected:
             logger.info("City found, searching for results within increasing radii")
             for radius in [max_radius_km, 100, 200, 500]:
                 res = self._try_radius_search(df, radius, top_k, prompt)
@@ -314,12 +290,11 @@ class PipelineOrchestrator:
             logger.warning("No results found even at maximum radius")
             return "Aucun résultat trouvé dans votre région.", self.link
         # General ranking response if no city found
-        logger.info("No city found, returning general ranking")
-        # Defensive: always drop Distance column before using for general ranking
+        logger.info("No city detected, returning general ranking")
         if 'Distance' in self.df_gen.columns:
             self.df_gen = self.df_gen.drop(columns=['Distance'])
         res_tab = self.df_gen.nlargest(top_k, "Note / 20")
-        res_str = format_response(res_tab, self.city_not_specified)
+        res_str = format_response(res_tab, not self.data_processor.city_detected)
         base_message = "Voici le meilleur établissement" if top_k == 1 else f"Voici les {top_k} meilleurs établissements"
         display_specialty, is_no_match = self._normalize_specialty_for_display(self.specialty)
         if is_no_match:
