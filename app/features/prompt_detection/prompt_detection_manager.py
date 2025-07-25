@@ -28,12 +28,12 @@ class PromptDetectionManager:
                 'institution_name': ...,
                 'institution_type': ...,
                 'specialty': ...,
-                'top_k': ...
+                'topk': ...
             }
         """
         specialty_result = self.specialty_detector.detect_specialty(text, conv_history)
         specialty = specialty_result.get_primary_specialty() if hasattr(specialty_result, 'get_primary_specialty') else specialty_result
-        top_k = self.topk_service.process_topk(text, conv_history)
+        topk = self.topk_service.process_topk(text, conv_history)
 
         try:
             city_info = self.city_service.process_city(text, conv_history)
@@ -57,5 +57,5 @@ class PromptDetectionManager:
             "institution_name": institution_name_result.get("institution_name"),
             "institution_type": institution_type_result.get("institution_type"),
             "specialty": specialty,
-            "top_k": top_k
+            "topk": topk
         }

@@ -82,13 +82,13 @@ class PipelineOrchestrator:
         logger.debug(f"Formatted response: {response}")
         return response
 
-    def _try_radius_search(self, df: pd.DataFrame, radius: int, top_k: int, prompt: str) -> str:
-        logger.info(f"Trying radius search: radius={radius}, top_k={top_k}, prompt={prompt}")
+    def _try_radius_search(self, df: pd.DataFrame, radius: int, topk: int, prompt: str) -> str:
+        logger.info(f"Trying radius search: radius={radius}, topk={topk}, prompt={prompt}")
         """
         Try to find results within a specific radius.
         """
         # Delegate to main filtering/sorting method
-        return self.get_filtered_and_sorted_df(df, radius, top_k, prompt)
+        return self.get_filtered_and_sorted_df(df, radius, topk, prompt)
 
     def reset_attributes(self):
         logger.info("Resetting PipelineOrchestrator attributes for new query")
@@ -122,7 +122,7 @@ class PipelineOrchestrator:
             city=detections.get('city'),
             city_detected=detections.get('city_detected', False),
             institution_type=detections.get('institution_type'),
-            topk=detections.get('topk') if 'topk' in detections else detections.get('top_k'),
+            topk=detections.get('topk') if 'topk' in detections else detections.get('topk'),
             institution_name=detections.get('institution_name'),
             institution_mentioned=detections.get('institution_mentioned')
         )
@@ -191,12 +191,12 @@ class PipelineOrchestrator:
             response += f" {self.institution_type}."
         return response
 
-    def get_filtered_and_sorted_df(self, df: pd.DataFrame, max_radius_km: int, top_k: int, prompt:str) -> str:
-        logger.info(f"Filtering and sorting DataFrame: max_radius_km={max_radius_km}, top_k={top_k}, prompt={prompt}")
+    def get_filtered_and_sorted_df(self, df: pd.DataFrame, max_radius_km: int, topk: int, prompt:str) -> str:
+        logger.info(f"Filtering and sorting DataFrame: max_radius_km={max_radius_km}, topk={topk}, prompt={prompt}")
         """
         Filters and sorts the ranking DataFrame by distance and score, and formats the response.
         """
-        logger.info(f"Filtering and sorting DataFrame with max_radius_km={max_radius_km}, top_k={top_k}, prompt={prompt}")
+        logger.info(f"Filtering and sorting DataFrame with max_radius_km={max_radius_km}, topk={topk}, prompt={prompt}")
         # If institution is mentioned, return its ranking response
         if self.institution_mentioned:
             return self._institution_ranking_response(df, self.topk)
@@ -219,16 +219,16 @@ class PipelineOrchestrator:
             # If no city, skip distance filtering
             logger.info("No city specified or Distance column missing, skipping distance filtering.")
             filtered_df = df
-        # Sort by score and select top_k
-        self.sorted_df = filtered_df.nlargest(top_k, "Note / 20")
+        # Sort by score and select topk
+        self.sorted_df = filtered_df.nlargest(topk, "Note / 20")
         logger.debug(f"Filtered DataFrame shape: {self.sorted_df.shape}")
         # If enough results found, format and return response
-        if self.sorted_df.shape[0] == top_k:
-            logger.info(f"Found {top_k} results within {max_radius_km}km")
+        if self.sorted_df.shape[0] == topk:
+            logger.info(f"Found {topk} results within {max_radius_km}km")
             res_str = format_response(self.sorted_df, self.city_not_specified)
             message = self._format_response_with_specialty(
                 "Voici les {count} meilleurs établissements {specialty}{location}:",
-                top_k, max_radius_km, self.city
+                topk, max_radius_km, self.city
             )
             return self._create_response_and_log(message, res_str, prompt)
         # If at max radius, return all found institutions
@@ -309,7 +309,7 @@ class PipelineOrchestrator:
         if self.institution_mentioned:
             logger.info("Returning result for mentioned institution")
             try:
-                res = self.get_filtered_and_sorted_df(df, max_radius_km, top_k, prompt)
+                res = self.get_filtered_and_sorted_df(df, max_radius_km, topk, prompt)
                 logger.debug(f"Result from get_filtered_and_sorted_df: {res}, Links: {self.link}")
             except Exception as e:
                 logger.exception(f"Exception in get_filtered_and_sorted_df: {e}")
@@ -323,7 +323,7 @@ class PipelineOrchestrator:
             for radius in [5, 10, 50, 100]:
                 logger.debug(f"Trying radius search with radius={radius}")
                 try:
-                    res = self._try_radius_search(df, radius, self.top_k, prompt)
+                    res = self._try_radius_search(df, radius, self.topk, prompt)
                     logger.debug(f"Result from _try_radius_search (radius={radius}): {res}")
                 except Exception as e:
                     logger.exception(f"Exception in _try_radius_search (radius={radius}): {e}")
@@ -340,11 +340,11 @@ class PipelineOrchestrator:
             if 'Distance' in self.df_gen.columns:
                 logger.debug("Dropping Distance column from df_gen")
                 self.df_gen = self.df_gen.drop(columns=['Distance'])
-            res_tab = self.df_gen.nlargest(top_k, "Note / 20")
+            res_tab = self.df_gen.nlargest(topk, "Note / 20")
             logger.debug(f"nlargest result shape: {res_tab.shape}")
             res_str = format_response(res_tab, not self.data_processor.city_detected)
             logger.debug(f"Formatted response string: {res_str}")
-            base_message = "Voici le meilleur établissement" if top_k == 1 else f"Voici les {top_k} meilleurs établissements"
+            base_message = "Voici le meilleur établissement" if topk == 1 else f"Voici les {topk} meilleurs établissements"
             display_specialty, is_no_match = self._normalize_specialty_for_display(self.specialty)
             logger.debug(f"Display specialty: {display_specialty}, is_no_match: {is_no_match}")
             if is_no_match:
