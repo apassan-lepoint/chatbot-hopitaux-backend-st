@@ -212,9 +212,7 @@ class PipelineOrchestrator:
             logger.info(f"[RadiusFilter] Distance values after dropna: {filtered_df['Distance'].tolist()}")
             if max_radius_km is not None:
                 logger.info(f"[RadiusFilter] Applying radius filter: max_radius_km={max_radius_km}")
-                mask = filtered_df["Distance"] <= max_radius_km
-                logger.info(f"[RadiusFilter] Radius mask: {mask.tolist()}")
-                filtered_df = filtered_df[mask].reset_index(drop=True)
+                filtered_df = filtered_df[filtered_df["Distance"] <= max_radius_km].reset_index(drop=True)
                 logger.info(f"[RadiusFilter] DataFrame shape after radius filter: {filtered_df.shape}")
                 logger.info(f"[RadiusFilter] Distance values after radius filter: {filtered_df['Distance'].tolist()}")
         else:
