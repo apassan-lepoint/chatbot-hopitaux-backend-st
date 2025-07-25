@@ -126,11 +126,17 @@ class PipelineOrchestrator:
         )
         # Set orchestrator attributes for downstream use
         self.specialty = self.data_processor.specialty
+        logger.debug(f"PipelineOrchestrator.specialty set to: {self.specialty!r}")
         self.city = self.data_processor.city
+        logger.debug(f"PipelineOrchestrator.city set to: {self.city!r}")
         self.institution_type = self.data_processor.institution_type
+        logger.debug(f"PipelineOrchestrator.institution_type set to: {self.institution_type!r}")
         self.institution_name = self.data_processor.institution_name
+        logger.debug(f"PipelineOrchestrator.institution_name set to: {self.institution_name!r}")
         self.institution_mentioned = self.data_processor.institution_mentioned
+        logger.debug(f"PipelineOrchestrator.institution_mentioned set to: {self.institution_mentioned!r}")
         self.topk = self.data_processor.topk
+        logger.debug(f"PipelineOrchestrator.topk set to: {self.topk!r}")
         logger.debug(f"PipelineOrchestrator infos - specialty: {self.specialty}, city: {self.city}, institution_type: {self.institution_type}, institution: {self.institution_name}, institution_mentioned: {self.institution_mentioned}")
         return detections
 

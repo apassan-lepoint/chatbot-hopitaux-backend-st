@@ -208,13 +208,21 @@ class DataProcessor:
         """
         Sets detection results from orchestrator.
         """
+        logger.debug(f"set_detection_results: specialty={specialty!r}, city={city!r}, city_detected={city_detected!r}, institution_type={institution_type!r}, topk={topk!r}, institution_name={institution_name!r}, institution_mentioned={institution_mentioned!r}")
         self.specialty = specialty
+        logger.debug(f"DataProcessor.specialty set to: {self.specialty!r}")
         self.city = city
+        logger.debug(f"DataProcessor.city set to: {self.city!r}")
         self.city_detected = city_detected
+        logger.debug(f"DataProcessor.city_detected set to: {self.city_detected!r}")
         self.institution_type = institution_type
+        logger.debug(f"DataProcessor.institution_type set to: {self.institution_type!r}")
         self.topk = topk
+        logger.debug(f"DataProcessor.topk set to: {self.topk!r}")
         self.institution_name = institution_name
+        logger.debug(f"DataProcessor.institution_name set to: {self.institution_name!r}")
         self.institution_mentioned = institution_mentioned
+        logger.debug(f"DataProcessor.institution_mentioned set to: {self.institution_mentioned!r}")
         try:
             self.institution_coordinates_df = pd.read_excel(self.paths["hospital_coordinates_path"])
         except Exception as e:

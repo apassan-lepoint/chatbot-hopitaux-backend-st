@@ -28,11 +28,14 @@ class CityService:
         """
         # Step 1: Detect city
         city_result = self.detector.detect_city(prompt, conv_history)
+        logger.debug(f"CityService.process_city: city_result={city_result!r}")
         # Step 2: Validate city (side effect, but not used for detection status)
         self.checker.check(prompt, conv_history)
         # Step 3: Finalize and return
         from app.config.features_config import CITY_MENTIONED
-        if isinstance(city_result, str) and city_result.strip():
+        if isinstance(city_result, str) and city_result.strip() and city_result.strip().lower() != "aucune correspondance":
+            logger.info(f"CityService.process_city: Detected city '{city_result.strip()}', setting city_detected=True")
             return {"city": city_result.strip(), "city_detected": True}
         else:
+            logger.info("CityService.process_city: No valid city detected, setting city_detected=False")
             return {"city": None, "city_detected": False}
