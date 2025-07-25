@@ -227,6 +227,7 @@ class PipelineOrchestrator:
             filtered_df = filtered_df[filtered_df["Distance"].apply(lambda x: isinstance(x, (int, float)) and pd.notnull(x))].reset_index(drop=True)
             # Now filter by max_radius_km if provided
             if max_radius_km is not None:
+                filtered_df = filtered_df.dropna(subset=["Distance"])
                 filtered_df = filtered_df[filtered_df["Distance"] <= max_radius_km].reset_index(drop=True)
                 logger.debug(f"Filtered DataFrame shape after radius filter: {filtered_df.shape}")
         else:
