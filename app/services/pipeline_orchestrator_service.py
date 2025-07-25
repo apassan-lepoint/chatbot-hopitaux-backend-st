@@ -155,15 +155,20 @@ class PipelineOrchestrator:
             return self.df_gen
         # If no city found or invalid city value, return general DataFrame
         from app.config.features_config import CITY_NO_CITY_MENTIONED
+        # Defensive: treat both '0' (int) and '0' (str) as no city
         if (
             self.data_processor.city is None
             or self.data_processor.city in ['aucune correspondance', 'no match', 'llm_handler_service is required for city checking.']
             or self.data_processor.city == CITY_NO_CITY_MENTIONED
             or (isinstance(self.data_processor.city, str) and self.data_processor.city.strip() == "")
+            or (isinstance(self.data_processor.city, int) and self.data_processor.city == 0)
         ):
             logger.debug(f"[DEBUG] City validation failed in build_ranking_dataframe_with_distances. City value: {self.data_processor.city}")
             logger.info(f"No city found or invalid city value ('{self.data_processor.city}'), returning general ranking DataFrame")
             self.city_not_specified = True
+            # Defensive: remove Distance column if present
+            if 'Distance' in self.df_gen.columns:
+                self.df_gen = self.df_gen.drop(columns=['Distance'])
             return self.df_gen
         # Otherwise, calculate distances for hospitals
         self.city_not_specified= False
