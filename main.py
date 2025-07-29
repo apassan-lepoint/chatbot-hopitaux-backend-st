@@ -8,7 +8,7 @@ This file creates and configures the FastAPI app, sets up CORS middleware,
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import router
-from app.utils.logging import get_logger
+from app.utility.logging import get_logger
 logger = get_logger(__name__)
 
 def create_app() -> FastAPI:
@@ -34,7 +34,7 @@ def create_app() -> FastAPI:
     # Add CORS middleware to allow frontend-backend communication
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],  # Allow all origins; restrict in production!
+        allow_origins=["*"],  # FIXME : restrict the origins in production and when connecting to the frontend
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
