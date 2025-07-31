@@ -2,7 +2,7 @@ from typing import Dict, Any
 from app.utility.logging import get_logger
 from app.utility.wrappers import prompt_formatting
 from app.utility.llm_helpers import invoke_llm_and_parse_boolean
-from config.features_config import OFF_TOPIC_RESPONSE
+from app.config.features_config import OFF_TOPIC_RESPONSE
 
 logger = get_logger(__name__)
 

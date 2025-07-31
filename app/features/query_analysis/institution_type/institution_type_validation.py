@@ -1,5 +1,5 @@
 from typing import Optional
-from config.features_config import INSTITUTION_TYPE_MAPPING,INSTITUTION_TYPE_CODES
+from app.config.features_config import INSTITUTION_TYPE_MAPPING,INSTITUTION_TYPE_CODES
 
 class InstitutionTypeValidator:
     """

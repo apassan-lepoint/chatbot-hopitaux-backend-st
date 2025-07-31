@@ -1,5 +1,5 @@
 from app.utility.logging import get_logger
-from config.features_config import FOREIGN_CITY_CHECK_EXCEPTION_MSG, AMBIGUOUS_CITY_CHECK_EXCEPTION_MSG
+from app.config.features_config import FOREIGN_CITY_CHECK_EXCEPTION_MSG, AMBIGUOUS_CITY_CHECK_EXCEPTION_MSG
 
 logger = get_logger(__name__)
 
