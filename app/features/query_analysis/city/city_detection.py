@@ -1,15 +1,7 @@
-"""
-Module for detecting cities mentioned in user queries.
-
-This module handles the detection of cities or locations mentioned by users,
-including validation for French cities, foreign cities, and ambiguous cases.
-It supports conversation history context for better detection accuracy.
-"""
-
 from app.utility.logging import get_logger
 from app.utility.llm_helpers import invoke_llm_with_error_handling
 from app.utility.wrappers import parse_llm_response, prompt_formatting
-from app.config.features_config import CITY_MENTIONED, CITY_FOREIGN, CITY_AMBIGUOUS, CITY_NO_CITY_MENTIONED
+from app.config.features_config import CITY_MENTIONED, CITY_FOREIGN, CITY_AMBIGUOUS, CITY_NO_CITY_MENTIONED, STATUS_DESCRIPTIONS_DICT
 
 logger = get_logger(__name__)
 
@@ -20,19 +12,29 @@ class CityDetector:
     This class handles the detection of cities or locations mentioned by users,
     including validation for French cities, foreign cities, and ambiguous cases.
     It supports conversation history context for better detection accuracy.
+
+    Attributes:
+        model: The language model used for city detection.  
+    Methods:
+        detect_city(prompt: str, conv_history: str = "") -> str:
+            Detects the city from the given prompt using the LLM.
+        _detect_city_status(prompt: str, conv_history: str = "") -> int:
+            Detects the status of city detection from the given prompt.
+        _detect_city_name(prompt: str, conv_history: str = "") -> str:
+            Detects the city name from the given prompt using the LLM.
+        _get_city_response_description(city_status: int) -> str:
+            Gets a human-readable description of the city response based on its status. 
     """
     
     def __init__(self, model):
-        """
-        Initialize the CityDetector.
-        
-        Args:
-            model: The language model used for detection
-        """
         logger.info("Initializing CityDetector")
         self.model = model
     
     def _detect_city_status(self, prompt: str, conv_history: str = "") -> int:
+        """
+        Detects the status of city detection from the given prompt using the LLM.
+        This method determines if a city is mentioned, foreign, ambiguous, or not mentioned at all.
+        """
         logger.debug(f"_detect_city_status called: prompt={prompt}, conv_history={conv_history}")
         formatted_prompt = prompt_formatting("detect_city_prompt", prompt=prompt, conv_history=conv_history)
         logger.info(f"Formatted city status prompt: {formatted_prompt}")
@@ -47,6 +49,9 @@ class CityDetector:
         return city_status
     
     def _detect_city_name(self, prompt: str, conv_history: str = "") -> str:
+        """
+        Detects the city name from the given prompt using the LLM.
+        """
         logger.debug(f"_detect_city_name called: prompt={prompt}, conv_history={conv_history}")
         formatted_prompt = prompt_formatting("second_detect_city_prompt", prompt=prompt, conv_history=conv_history)
         logger.info(f"Formatted city name prompt: {formatted_prompt}")
@@ -63,20 +68,10 @@ class CityDetector:
     def _get_city_response_description(city_status) -> str:
         """
         Gets a human-readable description of the city response.
-        Args:
-            city_status: The city detection status
-        Returns:
-            str: Human-readable description of the status
         """
         if isinstance(city_status, str):
             return f"French city: {city_status}"
-        status_descriptions = {
-            CITY_NO_CITY_MENTIONED: "No city mentioned",
-            CITY_FOREIGN: "Foreign city detected",
-            CITY_AMBIGUOUS: "Ambiguous city detection",
-            CITY_MENTIONED: "French city mentioned"
-        }
-        return status_descriptions.get(city_status, f"Unknown status: {city_status}")
+        return STATUS_DESCRIPTIONS_DICT.get(city_status, f"Unknown status: {city_status}")
 
     def detect_city(self, prompt: str, conv_history: str = ""):
         logger.debug(f"detect_city called: prompt={prompt}, conv_history={conv_history}")
@@ -114,10 +109,6 @@ class CityDetector:
     def get_city_status_type(self, city_status):
         """
         Returns a string representing the type of city status.
-        Args:
-            city_status: The city detection status or result
-        Returns:
-            str: One of 'french', 'foreign', 'ambiguous', 'none', or 'unknown'
         """
         if city_status == CITY_MENTIONED or isinstance(city_status, str):
             return "french"

@@ -2,15 +2,32 @@ from typing import Optional, Dict
 from .institution_type_detection import InstitutionTypeDetector
 from .institution_type_validation import InstitutionTypeValidator
 
-class InstitutionTypeService:
+class InstitutionTypeAnalyst:
     """
     Orchestrates detection and validation of institution type only (public/privé/none).
+    Uses InstitutionTypeDetector for detection and InstitutionTypeValidator for validation.
+    
+    Attributes:
+        model: The model used for detection.
+        institution_list: A string representing the list of institutions.
+        detector: An instance of InstitutionTypeDetector.
+        validator: An instance of InstitutionTypeValidator. 
+
+    Methods:
+        set_institution_list(institution_list: str): Updates the institution list for both detector and validator.
+        detect_and_validate_type(prompt: str, conv_history: str = "") -> Dict[str, Optional[str]]:
+            Detects the institution type from the prompt and conversation history, validates it,
+            and returns a summary dictionary containing the raw institution type, normalized institution type,
+            and validation status.  
     """
     def __init__(self, model, institution_list: str):
         self.detector = InstitutionTypeDetector(model, institution_list)
         self.validator = InstitutionTypeValidator(institution_list)
 
     def set_institution_list(self, institution_list: str):
+        """
+        Updates the institution list for both detector and validator.
+        """
         self.detector.institution_list = institution_list
         self.validator.institution_list = institution_list
 

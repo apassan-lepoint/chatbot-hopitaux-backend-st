@@ -1,6 +1,3 @@
-"""
-Module for detecting medical specialties mentioned in user queries.
-"""
 import pandas as pd
 from app.config.file_paths_config import PATHS
 from typing import Optional, List
@@ -16,7 +13,7 @@ logger = get_logger(__name__)
 
 class SpecialtyDetectionResult:
     """
-    Container for specialty detection results.
+    Container for specialty detection results.  
     
     Attributes:
         specialty: The detected specialty string
@@ -25,6 +22,9 @@ class SpecialtyDetectionResult:
         is_multiple: Whether multiple specialties were detected
         is_no_match: Whether no specialty was detected
         confidence: Confidence level of the detection
+    Methods:
+        get_primary_specialty: Returns the primary specialty (first in list for multiple matches)
+        __str__: String representation of the detection result      
     """
     
     def __init__(self, specialty: str, detection_method: str = "unknown"):

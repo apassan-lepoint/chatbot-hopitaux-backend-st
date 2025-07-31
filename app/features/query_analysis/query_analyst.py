@@ -1,22 +1,37 @@
-from .city.city_service import CityService
+from .city.city_analyst import CityAnalyst
 from .city.city_validation import CityCheckException
-from .institution_name.institution_name_service import InstitutionNameService
-from .institution_type.institution_type_service import InstitutionTypeService
-from .topk.topk_service import TopKService
+from .institution_name.institution_name_analyst import InstitutionNameAnalyst
+from .institution_type.institution_type_analyst import InstitutionTypeAnalyst
+from .number_institutions.number_institutions_analyst import NumberInstitutionsAnalyst
 from .specialty.specialty_detection import SpecialtyDetector
 from app.utility.logging import get_logger
 
 logger = get_logger(__name__)
 
-class PromptDetectionManager:
+class QueryAnalyst:
+    """
+    QueryAnalyst consolidates various detection services to analyze queries for city, institution name,
+    institution type, specialty, and number of institutions.
+    It provides a unified interface to run all detections and returns the results in a structured format.
+
+    Attributes:
+        model: The model used for processing queries.
+        institution_list: Optional list of institutions for validation.
+        llm_handler_service: Optional service for handling large language model interactions.
+    Methods:
+        run_all_detections(text, conv_history="", institution_list=None):
+            Analyzes the provided text and conversation history to detect city, institution name,
+            institution type, specialty, and number of institutions.    
+    """
     def __init__(self, model=None, institution_list=None, llm_handler_service=None):
-        logger.info("Initializing PromptDetectionManager")
+        logger.info("Initializing QueryAnalyst")
         self.model = model
-        self.city_service = CityService(llm_handler_service, model)
-        self.institution_name_service = InstitutionNameService(model, institution_list or "")
-        self.institution_type_service = InstitutionTypeService(model, institution_list or "")
+        self.city_service = CityAnalyst(llm_handler_service, model)
+        self.institution_name_service = InstitutionNameAnalyst(model, institution_list or "")
+        self.institution_type_service = InstitutionTypeAnalyst(model, institution_list or "")
         self.specialty_detector = SpecialtyDetector(model)
-        self.topk_service = TopKService(model)
+        self.number_institutions_service = NumberInstitutionsAnalyst(model)
+
 
     def run_all_detections(self, text, conv_history="", institution_list=None):
         logger.debug(f"run_all_detections called: text={text}, conv_history={conv_history}, institution_list={institution_list}")
@@ -28,25 +43,25 @@ class PromptDetectionManager:
                 'institution_name': ...,
                 'institution_type': ...,
                 'specialty': ...,
-                'topk': ...
+                'number_institutions': ...
             }
         """
         specialty_result = self.specialty_detector.detect_specialty(text, conv_history)
         specialty = specialty_result.get_primary_specialty() if hasattr(specialty_result, 'get_primary_specialty') else specialty_result
-        topk = self.topk_service.process_topk(text, conv_history)
+        number_institutions = self.number_institutions_service.process_number_institutions(text, conv_history)
 
         try:
             city_info = self.city_service.process_city(text, conv_history)
-            logger.debug(f"PromptDetectionManager.run_all_detections: city_info={city_info}")
+            logger.debug(f"QueryAnalyst.run_all_detections: city_info={city_info}")
             # Sanity check: city_info must be a dict with 'city' and 'city_detected'
             if not isinstance(city_info, dict) or "city" not in city_info or "city_detected" not in city_info:
-                logger.error(f"PromptDetectionManager.run_all_detections: city_info malformed, using fallback: {city_info}")
+                logger.error(f"QueryAnalyst.run_all_detections: city_info malformed, using fallback: {city_info}")
                 city_info = {"city": None, "city_detected": False}
         except CityCheckException as e:
-            logger.error(f"PromptDetectionManager.run_all_detections: CityCheckException: {e}")
+            logger.error(f"QueryAnalyst.run_all_detections: CityCheckException: {e}")
             city_info = {"city": None, "city_detected": False}
         except Exception as e:
-            logger.error(f"PromptDetectionManager.run_all_detections: Unexpected exception: {e}")
+            logger.error(f"QueryAnalyst.run_all_detections: Unexpected exception: {e}")
             city_info = {"city": None, "city_detected": False}
 
         institution_name_result = self.institution_name_service.detect_and_validate(text, conv_history)
@@ -57,5 +72,5 @@ class PromptDetectionManager:
             "institution_name": institution_name_result.get("institution_name"),
             "institution_type": institution_type_result.get("institution_type"),
             "specialty": specialty,
-            "topk": topk
+            "number_institutions": number_institutions
         }

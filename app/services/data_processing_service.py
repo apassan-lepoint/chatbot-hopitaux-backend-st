@@ -1,19 +1,11 @@
-"""
-Service for processing and transforming hospital ranking data.
-
-This file defines the DataProcessor class, which loads, merges, and filters ranking and
-    location data, and prepares results for the chatbot pipeline.
-"""
-
 import os
-from click import prompt
 import pandas as pd
 import csv
 from datetime import datetime
 import unicodedata
 
 from app.config.file_paths_config import PATHS
-from app.config.features_config import CITY_NO_CITY_MENTIONED
+from app.config.features_config import (PUBLIC_RANKING_URL, PRIVATE_RANKING_URL, INSTITUTION_TYPE_URL_MAPPING)
 from app.services.llm_handler_service import LLMHandler
 from app.utility.formatting_helpers import remove_accents
 from app.utility.distance_calc_helpers import exget_coordinates, distance_to_query
@@ -26,14 +18,49 @@ class DataProcessor:
     """
     Processes hospital ranking data based on user queries. Extracts query information using LLM services, 
     loads and filters ranking data by specialty and institution type, and calculates distances to provide relevant results.
-        """
+
+    Attributes:
+        paths (dict): Paths to various data files and resources.
+        ranking_df (pd.DataFrame): DataFrame containing hospital rankings.
+        llm_handler_service (LLMHandler): Service for handling LLM interactions.
+        specialty_df (pd.DataFrame): DataFrame for the specific specialty rankings.
+        institution_name (str): Name of the institution mentioned in the query.
+        specialty_ranking_unavailable (bool): Flag indicating if the specialty ranking is unavailable.      
+        web_ranking_link (list): List of generated web links for rankings.
+        geolocation_api_error (bool): Flag indicating if there was an error with geolocation API
+        specialty (str): Medical specialty extracted from the query.
+        institution_type (str): Type of institution (public/private) extracted from the query.
+        city (str): City extracted from the query.      
+        city_detected (bool): Flag indicating if a city was detected in the query.
+        df_with_cities (pd.DataFrame): DataFrame containing hospitals with city information.
+        institution_mentioned (str): Institution mentioned in the query.
+        number_institutions (int): Number of institutions mentioned in the query.
+        weblinks (dict): Predefined links for public and private rankings.
+        institution_coordinates_df (pd.DataFrame): DataFrame containing hospital coordinates.
+    Methods:
+        __init__: Initializes the DataProcessor class, sets up file paths, loads the LLM service, and prepares variables for query processing.
+        _load_ranking_dataframe: Loads and prepares a ranking DataFrame with category.
+        _generate_web_link: Generates a single web ranking link based on    specialty and institution type.     
+        _normalize_str: Normalizes strings for matching.
+        _is_no_specialty: Checks if the specialty is empty or no match.
+        _parse_specialty_list: Parses multiple specialties from a string.
+        _get_institution_list: Returns a formatted, deduplicated list of institutions present in the rankings.
+        _filter_ranking_by_criteria: Filters ranking DataFrame by specialty and optionally by institution type.
+        get_institution_type_for_url: Converts institution type to format expected by web URLs.
+        set_detection_results: Sets detection results from orchestrator.
+        generate_response_links: Generates web links to the relevant ranking pages based on specialty and institution type.
+        _concat_dataframes: Concatenates a list of DataFrames.
+        load_and_transform_for_no_specialty: Loads and merges the general tables (tableau d'honneur) for queries that do not mention a specific specialty.
+        load_excel_sheets: Loads the Excel sheets corresponding to the matched specialties and categories.
+        find_excel_sheet_with_specialty: Finds and loads ranking data based only on the specialty if no public/private criterion is provided.
+        generate_data_response: Main entry point for generating the data response (DataFrame) for a user query.
+        extract_local_hospitals: Merges ranking data with hospital location data to associate each institution with its city and coordinates.
+        get_df_with_distances: Calculates the distances between hospitals and the city specified in the user's query.
+        create_csv: Saves the user's query and the system's response to a CSV file for history tracking.
+    """
     
     def __init__(self):
         logger.info("Initializing DataProcessor")
-        """
-        Initializes the DataProcessor class, sets up file paths, loads the LLM service, and prepares variables 
-        for query processing.
-        """
         self.paths = PATHS
         self.ranking_df = None
         self.llm_handler_service = LLMHandler()
@@ -48,11 +75,11 @@ class DataProcessor:
         self.city_detected = False
         self.df_with_cities = None
         self.institution_mentioned = None
-        self.topk = None
+        self.number_institutions = None
         # Predefined links for public/private rankings
         self.weblinks={
-                "public":"https://www.lepoint.fr/hopitaux/classements/tableau-d-honneur-public.php",
-                "privé":"https://www.lepoint.fr/hopitaux/classements/tableau-d-honneur-prive.php"
+            "public": PUBLIC_RANKING_URL,
+            "privé": PRIVATE_RANKING_URL
         }
         try:
             self.institution_coordinates_df = pd.read_excel(self.paths["hospital_coordinates_path"])
@@ -62,25 +89,24 @@ class DataProcessor:
     
     
     def _load_ranking_dataframe(self, file_path: str, category: str) -> pd.DataFrame:
-        logger.debug(f"Loading ranking dataframe from {file_path} for category {category}")
         """
-        Helper method to load and prepare ranking DataFrame with category.
-        
+        Helper method to load a ranking DataFrame from a CSV file and add the category.
         Args:
-            file_path: Path to the CSV file
-            category: Category to assign to the data
-            
+            file_path (str): Path to the CSV file containing the ranking data.
+            category (str): The category of the ranking (e.g., 'Public', 'Privé').
         Returns:
-            pd.DataFrame: Prepared DataFrame with category and renamed columns
+            pd.DataFrame: DataFrame with the loaded ranking data and category added.
         """
+        logger.debug(f"Loading ranking dataframe from {file_path} for category {category}")
         df = pd.read_csv(file_path)
         df['Catégorie'] = category
         df = df.rename(columns={'Score final': 'Note / 20', 'Nom Print': 'Etablissement'})
         logger.debug(f"Loaded {category} rankings: {len(df)} rows")
         return df
 
+
     def _generate_web_link(self, specialty: str, institution_type: str) -> str:
-        logger.debug(f"Generating web link for specialty '{specialty}' and institution_type '{institution_type}'")
+        
         """
         Helper method to generate a single web ranking link.
         
@@ -91,14 +117,22 @@ class DataProcessor:
         Returns:
             str: Generated web link URL
         """
+        logger.debug(f"Generating web link for specialty '{specialty}' and institution_type '{institution_type}'")
         web_link = specialty.replace(' ', '-')
         web_link = f'https://www.lepoint.fr/hopitaux/classements/{web_link}-{institution_type}.php'
         web_link = web_link.lower()
         return remove_accents(web_link)
 
+
     def _normalize_str(self, s: str) -> str:
+        """
+        Utility to normalize strings for matching.
+        Args:
+            s (str): The string to normalize.
+        Returns:
+            str: Normalized string, stripped of whitespace and lowercased.  
+        """
         logger.debug(f"Normalizing string: {s}")
-        """Utility to normalize strings for matching."""
         if not isinstance(s, str):
             return ""
         s = s.strip().lower()
@@ -106,14 +140,29 @@ class DataProcessor:
         s = ''.join(c for c in s if not unicodedata.combining(c))
         return s
 
+
     def _is_no_specialty(self, specialty: str) -> bool:
+        """
+        Utility to check if specialty is empty or no match.
+        Args:
+            specialty (str): The specialty string to check.
+        Returns:
+            bool: True if specialty is empty or indicates no match, False otherwise.    
+        """
         logger.debug(f"Checking if specialty is 'no match': {specialty}")
-        """Utility to check if specialty is empty or no match."""
         return not specialty or specialty in ["no match", "no specialty match", "aucune correspondance"] or specialty.strip() == ""
 
+
     def _parse_specialty_list(self, specialty: str) -> list:
+        
+        """
+        Utility to parse multiple specialties from a string.
+        Args:
+            specialty (str): The specialty string to parse.
+        Returns:
+            list: List of individual specialties extracted from the string. 
+        """
         logger.debug(f"Parsing specialty list from: {specialty}")
-        """Utility to parse multiple specialties from a string."""
         if specialty.startswith('plusieurs correspondances:'):
             specialty_list = specialty.replace('plusieurs correspondances:', '').strip()
         elif specialty.startswith('multiple matches:'):
@@ -122,12 +171,15 @@ class DataProcessor:
             specialty_list = specialty
         return [s.strip() for s in specialty_list.split(',') if s.strip()]
     
+
     def _get_institution_list(self):
-        logger.info("Getting institution list from coordinates DataFrame")
         """
         Returns a formatted, deduplicated list of institutions present in the rankings.
         Cleans names to avoid duplicates or matching errors.
+        Returns:
+            str: Comma-separated list of unique institution names.
         """
+        logger.info("Getting institution list from coordinates DataFrame")
         column_1 = self.institution_coordinates_df.iloc[:, 0]
         institution_list = [element.split(",")[0] for element in column_1]
         institution_list = list(set(institution_list))
@@ -136,12 +188,21 @@ class DataProcessor:
         logger.debug(f"Institution list: {institution_list}")
         return institution_list
 
+
     def _filter_ranking_by_criteria(self, specialty: str, institution_type: str = None) -> pd.DataFrame:
-        logger.info(f"Filtering ranking by criteria: specialty='{specialty}', institution_type='{institution_type}'")
+        
         """
         Helper method to filter ranking DataFrame by specialty and optionally by institution type.
         Normalizes both specialty and data for robust matching.
+
+        Args:       
+            specialty (str): The specialty to filter by.
+            institution_type (str, optional): The institution type to filter by (e.g., 'Public', 'Privé'). Defaults to None.    
+
+        Returns:
+            pd.DataFrame: DataFrame containing rows that match the specified specialty and institution type.    
         """
+        logger.info(f"Filtering ranking by criteria: specialty='{specialty}', institution_type='{institution_type}'")
         logger.debug(f"Filtering ranking data - specialty: '{specialty}', institution_type: '{institution_type}'")
         logger.debug(f"Specialty type: {type(specialty)}, length: {len(specialty) if specialty else 'None'}")
         logger.debug(f"Available specialties in ranking data: {self.ranking_df['Spécialité'].unique()}")
@@ -182,7 +243,7 @@ class DataProcessor:
                 return pd.DataFrame()
         # Filter by institution type if provided
         if institution_type and institution_type not in ['no match', 'aucune correspondance']:
-            # Assume institution_type is already normalized by PromptDetectionManager
+            # Assume institution_type is already normalized by QueryAnalyst
             logger.debug(f"Filtering by institution type: '{institution_type}' (already normalized)")
             logger.debug(f"Available categories in ranking data: {self.ranking_df['Catégorie'].unique()}")
             if institution_type not in ["no match", "aucune correspondance"]:
@@ -193,22 +254,34 @@ class DataProcessor:
                     logger.warning(f"Error filtering by institution type '{institution_type}': {e}")
         return matching_rows
 
+
     def get_institution_type_for_url(self, institution_type: str) -> str:
+        """
+        Convert institution type to format expected by web URLs. Assumes input is already normalized.
+        Args:
+            institution_type (str): The institution type to convert.
+        Returns:
+            str: Converted institution type for URL, or the original if not found in mapping.   
+        """
         logger.debug(f"Mapping institution type for URL: {institution_type}")
-        """Convert institution type to format expected by web URLs. Assumes input is already normalized."""
-        url_mapping = {
-            "Public": "public",
-            "Privé": "prive",
-            "aucune correspondance": "aucune correspondance"
-        }
-        return url_mapping.get(institution_type, institution_type.lower())
+        return INSTITUTION_TYPE_URL_MAPPING.get(institution_type, institution_type.lower())
     
     
-    def set_detection_results(self, specialty, city, city_detected, institution_type, topk=None, institution_name=None, institution_mentioned=None):
+    def set_detection_results(self, specialty, city, city_detected, institution_type, number_institutions=None, institution_name=None, institution_mentioned=None):
         """
         Sets detection results from orchestrator.
+        Args:
+            specialty (str): The medical specialty detected in the query.
+            city (str): The city detected in the query.
+            city_detected (bool): Flag indicating if a city was detected.
+            institution_type (str): The type of institution (public/private) detected.
+            number_institutions (int, optional): Number of institutions mentioned in the query.
+            institution_name (str, optional): Name of the institution mentioned in the query.
+            institution_mentioned (str, optional): Institution mentioned in the query.
+        Returns:
+            None
         """
-        logger.debug(f"set_detection_results: specialty={specialty!r}, city={city!r}, city_detected={city_detected!r}, institution_type={institution_type!r}, topk={topk!r}, institution_name={institution_name!r}, institution_mentioned={institution_mentioned!r}")
+        logger.debug(f"set_detection_results: specialty={specialty!r}, city={city!r}, city_detected={city_detected!r}, institution_type={institution_type!r}, number_institutions={number_institutions!r}, institution_name={institution_name!r}, institution_mentioned={institution_mentioned!r}")
         self.specialty = specialty
         logger.debug(f"DataProcessor.specialty set to: {self.specialty!r}")
         self.city = city
@@ -217,8 +290,8 @@ class DataProcessor:
         logger.debug(f"DataProcessor.city_detected set to: {self.city_detected!r}")
         self.institution_type = institution_type
         logger.debug(f"DataProcessor.institution_type set to: {self.institution_type!r}")
-        self.topk = topk
-        logger.debug(f"DataProcessor.topk set to: {self.topk!r}")
+        self.number_institutions = number_institutions
+        logger.debug(f"DataProcessor.number_institutions set to: {self.number_institutions!r}")
         self.institution_name = institution_name
         logger.debug(f"DataProcessor.institution_name set to: {self.institution_name!r}")
         self.institution_mentioned = institution_mentioned
@@ -253,8 +326,8 @@ class DataProcessor:
         Args:
             matching_rows (pd.DataFrame, optional): Rows from the ranking sheet that match the query.
 
-        Returns:
-            list or None: List of generated URLs or None if not applicable.
+        Returns:    
+            list: List of generated web links for rankings. 
         """
         logger.info("Generating ranking links")
         self.web_ranking_link.clear()
@@ -293,14 +366,19 @@ class DataProcessor:
 
 
     def _concat_dataframes(self, dfs: list) -> pd.DataFrame:
+        """
+        Utility to concatenate DataFrames.
+        Args:   
+            dfs (list): List of DataFrames to concatenate.
+        Returns:    
+            pd.DataFrame: Concatenated DataFrame with inner join and reset index.
+        """
         logger.debug(f"Concatenating {len(dfs)} dataframes")
-        """Utility to concatenate DataFrames."""
         if not dfs:
             return pd.DataFrame()
         return pd.concat(dfs, join="inner", ignore_index=True)
 
     def load_and_transform_for_no_specialty(self, category: str) -> pd.DataFrame:
-        logger.info(f"load_and_transform_for_no_specialty called with category: {category}")
         """
         Loads and merges the general tables (tableau d'honneur) (public and/or private) for queries
             that do not mention a specific specialty.
@@ -312,6 +390,7 @@ class DataProcessor:
         Returns:
             pd.DataFrame: The combined DataFrame of relevant institutions.
         """
+        logger.info(f"load_and_transform_for_no_specialty called with category: {category}")
         logger.info(f"Loading general rankings for category: {category}")
         
         try:
@@ -337,7 +416,6 @@ class DataProcessor:
 
 
     def load_excel_sheets(self, matching_rows: pd.DataFrame) -> pd.DataFrame:
-        logger.info(f"load_excel_sheets called with matching_rows of length: {len(matching_rows) if matching_rows is not None else 'None'}")
         """
         Loads the Excel sheets corresponding to the matched specialties and categories.
 
@@ -347,7 +425,7 @@ class DataProcessor:
         Returns:
             pd.DataFrame: Concatenated DataFrame of results, or an empty DataFrame if not found.
         """
-        logger.info(f"Loading Excel sheets for {len(matching_rows)} matched specialties/categories")
+        logger.info(f"load_excel_sheets called with matching_rows of length: {len(matching_rows) if matching_rows is not None else 'None'}")
 
         if len(matching_rows) == 0:
             logger.warning("No matching rows provided to load_excel_sheets")
@@ -379,7 +457,6 @@ class DataProcessor:
 
 
     def find_excel_sheet_with_specialty(self, prompt: str) -> pd.DataFrame:
-        logger.info(f"find_excel_sheet_with_specialty called with prompt: {prompt}")
         """
         Finds and loads ranking data based only on the specialty if no public/private criterion is provided.
 
@@ -399,13 +476,14 @@ class DataProcessor:
         logger.info("Loaded specialty DataFrame")
         return self.specialty_df
 
+
     def generate_data_response(self) -> pd.DataFrame:
-        logger.info("generate_data_response called")
         """
         Main entry point for generating the data response (DataFrame) for a user query. Assumes detection results have already been set.
         Returns:
             pd.DataFrame: DataFrame with the relevant filtered data.
         """
+        logger.info("generate_data_response called")
         specialty = self.specialty
         institution_type = self.institution_type
         logger.debug(f"Extracted values - specialty: '{specialty}', institution_type: '{institution_type}', city: '{self.city}'")
@@ -526,13 +604,14 @@ class DataProcessor:
 
 
     def create_csv(self, question:str, reponse: str):
-        logger.info(f"create_csv called with question: {question}")
         """
         Saves the user's query and the system's response to a CSV file for history tracking.
 
         Args:
             question (str): The user's question.
             reponse (str): The system's response.
+        Returns:
+            None
         """
 
         logger.info(f"Saving Q&A to CSV: question={question}")

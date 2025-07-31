@@ -6,6 +6,7 @@ used in the chatbot UI.
 """
 
 import streamlit as st
+
 from typing import Dict, Any, Optional, Callable
 from app.utility.logging import get_logger
 

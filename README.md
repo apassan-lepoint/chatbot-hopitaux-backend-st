@@ -16,20 +16,16 @@ BackendChatbotHopitaux/
 │   ├── api/
 │   │   ├── dependencies.py 
 │   │   └── routes.py
-│   ├── db/
+│   ├── snowflake_db/
 │   │   ├── query.py
 │   │   └── snowflake_connector.py
-│   ├── models/
+│   ├── pydantic_models/
 │   │   ├── query_model.py
 │   │   └── response_model.py
 │   ├── services/
-│   │   ├── query_extraction_service.py
-│   │   ├── conversation_service.py
+│   │   ├── data_processing_service.py
 │   │   ├── llm_handler_service.py
-│   │   ├── pipeline_service.py
-│   │   └── data_processing_service.py
-│   └── ui/
-│       ├── streamlit_app.py
+│   │   └── pipeline_orchestrator_service.py
 │   └── utils/
 │       ├── query_detection/
 │       │   ├── institutions.py
@@ -44,6 +40,13 @@ BackendChatbotHopitaux/
 │       ├── distance.py
 │       ├── formatting.py
 │       └── logging.py
+├── streamlit/
+│   ├── st_app.py
+│   ├── st_config.py
+│   ├── st_message_handler.py
+│   ├── st_specialty_handler.py
+│   ├── st_ui_components.py
+│   └── st_utility.py
 ├── data/
 ├── history/
 ├── tests/
@@ -120,8 +123,8 @@ backend_chatbot_hopitaux
 │       │   ├── message_length_check.py
 │       │   ├── conversation_limit_check.py
 │       │   └── relevance_check.py
-│       └── prompt_detection
-│           ├── prompt_detection_manager.py
+│       └── query_analysis
+│           ├── query_analysis_manager.py
 │           ├── specialty_detection.py
 │           ├── city_detection.py
 │           ├── kpop_detection.py

@@ -1,21 +1,21 @@
-from app.config.features_config import MAX_LENGTH
+from app.config.features_config import MAX_LENGTH, MESSAGE_LENGTH_RESPONSE
 
 class MessageLengthCheckException(Exception):
+    """
+    Exception raised when a message exceeds the maximum allowed length.
+    """
     pass
 
 class MessageLengthChecker:
+    """
+    Class to check if a message exceeds the maximum allowed length.
+    """
     def __init__(self, max_length=MAX_LENGTH):
         self.max_length = max_length
 
     def check(self, message):
         """
         Checks if the message exceeds the maximum allowed length.
-
-        Args:
-            message (str): The message to check.
-
-        Raises:
-            MessageLengthCheckException: If the message is too long.
         """
         if len(message) > self.max_length:
-            raise MessageLengthCheckException("Votre message est trop long. Merci de reformuler.")
+            raise MessageLengthCheckException(MESSAGE_LENGTH_RESPONSE)

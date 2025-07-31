@@ -1,8 +1,5 @@
 """
 Snowflake database connection utilities.
-
-This file manages the connection to the Snowflake data warehouse and provides
-    helper functions for executing queries and retrieving results.
 """
 
 import snowflake.connector
@@ -15,12 +12,8 @@ load_dotenv()
 def get_snowflake_connection():
     """
     Establish and return a connection to the Snowflake database using credentials and configuration loaded from environment variables.
-    
     Returns:
-        snowflake.connector.connection.SnowflakeConnection: An active Snowflake connection object.
-    
-    Raises:
-        snowflake.connector.errors.Error: If the connection fails due to invalid credentials or configuration.
+        snowflake.connector.SnowflakeConnection: A connection object to the Snowflake database. 
     """
     return snowflake.connector.connect(
         user=os.getenv("SNOWFLAKE_USER"),

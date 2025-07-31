@@ -9,7 +9,6 @@ history context for better detection accuracy.
 from app.utility.logging import get_logger
 from app.utility.llm_helpers import invoke_llm_with_error_handling
 from app.utility.wrappers import prompt_formatting
-from app.utility.wrappers import parse_llm_response
 
 
 logger = get_logger(__name__)
@@ -18,6 +17,16 @@ logger = get_logger(__name__)
 class InstitutionNameDetector:
     """
     Responsible for extracting institution name or type from prompt using LLM.
+
+    Attributes:
+        model: The language model used for detection
+        institution_list: Comma-separated list of valid institution names
+        conv_history: Conversation history for context      
+
+    Methods:
+        detect_specific_institution(prompt: str, institution_list: str, conv_history: str = "")
+            Detects if a specific institution is mentioned in the prompt.
+            Returns the institution name or "aucune correspondance" if not found.       
     """
     def __init__(self, model):
         self.model = model

@@ -1,29 +1,24 @@
 """
 Entry point for the FastAPI application.
-
-This file creates and configures the FastAPI app, sets up CORS middleware,
-    and includes all API routes for the hospital ranking chatbot backend.
 """
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import router
 from app.utility.logging import get_logger
+
+
 logger = get_logger(__name__)
 
 def create_app() -> FastAPI:
     """
-    Create and configure the FastAPI application.
+    Create and configure the FastAPI application instance with necessary configurations, middleware, and routes.
     
-    Sets up the FastAPI app with metadata, enables CORS middleware for cross-origin requests,
-    and includes the API routes.
-
-    Args: 
-        None
     Returns:
         FastAPI: Configured FastAPI application instance.
+    Raises:
+        Exception: If there is an error during application setup.
     """
-
     logger.info("Creating FastAPI app")
     app = FastAPI(
         title="Chatbot Hôpitaux",
@@ -44,6 +39,7 @@ def create_app() -> FastAPI:
     app.include_router(router)
     logger.info("API router included")
     return app
+
 
 # Instantiate the FastAPI app
 app = create_app()

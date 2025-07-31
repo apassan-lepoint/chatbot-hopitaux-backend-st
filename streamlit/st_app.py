@@ -1,37 +1,21 @@
 """
 Main Streamlit-based user interface for the hospital ranking chatbot.
 """
+
 import sys
 import os
+import streamlit as st
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-import streamlit as st
-
-from app.features.sanity_checks.sanity_checks_manager import SanityChecksManager
-
+from app.features.sanity_checks.sanity_checks_analyst import SanityChecksAnalyst
 from app.utility.logging import get_logger
 from app.utility.formatting_helpers import format_links
 
-from st_config import (
-    DEFAULT_CHECKS_TO_RUN,
-    SESSION_STATE_KEYS,
-    MAX_MESSAGES,
-    UI_CHAT_INPUT_PLACEHOLDER,
-    ERROR_MESSAGES, 
-    SPINNER_MESSAGES
-)
-
-from st_utility import (
-    append_to_conversation,
-    display_conversation_history,
-    get_conversation_list,
-    get_conversation_length,
-    get_session_state_value,
-    execute_with_spinner
-)
-from st_specialty_handler import SpecialtyHandler
+from st_config import (DEFAULT_CHECKS_TO_RUN, SESSION_STATE_KEYS, SESSION_STATE_DEFAULTS, MAX_MESSAGES, UI_CHAT_INPUT_PLACEHOLDER, ERROR_MESSAGES, SPINNER_MESSAGES)
+from st_utility import (append_to_conversation, display_conversation_history, get_conversation_list, get_conversation_length, get_session_state_value, execute_with_spinner)
 from st_message_handler import MessageHandler
+from st_specialty_handler import SpecialtyHandler
 from st_ui_components import UIComponents
 
 
@@ -40,22 +24,9 @@ logger = get_logger(__name__)
 
 class StreamlitChatbot:
     """
-    Main Streamlit chatbot UI class.
-    This class encapsulates the entire chatbot functionality, including UI setup,
-    message handling, and session state management.
+    Main class for the Streamlit-based hospital ranking chatbot application.
+    This class initializes the application, sets up the UI, handles user input, performs sanity checks, and manages the conversation flow.
     """
-
-    SESSION_STATE_DEFAULTS = {
-        SESSION_STATE_KEYS["conversation"]: [],
-        SESSION_STATE_KEYS["selected_option"]: None,
-        SESSION_STATE_KEYS["prompt"]: "",
-        SESSION_STATE_KEYS["specialty"]: "",
-        SESSION_STATE_KEYS["selected_specialty"]: None,
-        SESSION_STATE_KEYS["specialty_context"]: None,
-        SESSION_STATE_KEYS["multiple_specialties"]: None,
-        SESSION_STATE_KEYS["original_prompt"]: "",
-    }
-
     def __init__(self) -> None:
         logger.info("Initializing StreamlitChatbot")
         from app.services.llm_handler_service import LLMHandler ## Import LLMHandler locally to avoid circular import
@@ -68,16 +39,16 @@ class StreamlitChatbot:
     
     def _reset_session_state(self) -> None:
         """
-        Reset all session state variables.
+        Reset the session state to its default values.
         """
         logger.info("Resetting session state")
-        for key, value in self.SESSION_STATE_DEFAULTS.items():
+        for key, value in SESSION_STATE_DEFAULTS.items():
             st.session_state[key] = value
     
     
     def _perform_sanity_checks(self, prompt: str, conversation: list = None, checks_to_run: list = None) -> None:
         """
-        Perform selected sanity checks on user input using SanityChecksManager.
+        Perform sanity checks on the user input and conversation history.
         """
         logger.debug("Starting sanity checks for user input")
 
@@ -88,7 +59,7 @@ class StreamlitChatbot:
         if len(conversation) > 0:
             conv_history = "\n".join([f"Utilisateur: {q}\nAssistant: {r}" for q, r in conversation])
 
-        sanity_checks_manager = SanityChecksManager(self.llm_handler, max_messages=self.MAX_MESSAGES)
+        sanity_checks_manager = SanityChecksAnalyst(self.llm_handler, max_messages=self.MAX_MESSAGES)
         # Default to all checks if not specified
         if checks_to_run is None:
             checks_to_run = DEFAULT_CHECKS_TO_RUN
@@ -104,7 +75,9 @@ class StreamlitChatbot:
     
     def _append_answer(self, prompt: str, specialty: str) -> None:
         """
-        Generate and append answer to conversation.
+        This method uses the PipelineOrchestrator to generate a response based on the prompt and detected specialty.
+        It also formats the result and appends it to the conversation history.
+        If an error occurs during response generation, it logs the error and displays an error message to the user.
         """
         try:
             from app.services.pipeline_orchestrator_service import PipelineOrchestrator ## Import PipelineOrchestrator locally to avoid circular import
@@ -119,7 +92,13 @@ class StreamlitChatbot:
     
     def _handle_first_message(self):
         """        
-        Handles the first user message, including sanity checks, specialty selection, and answer generation.
+        This method handles the first message from the user.
+        It retrieves the user input, performs sanity checks, detects the specialty, and appends the answer to the conversation history.
+        If the user input is empty, it returns without doing anything.
+        If the user has selected a specialty, it appends the answer accordingly.
+        If the user input is not empty, it performs sanity checks and detects the specialty.
+        If the specialty is detected, it appends the answer to the conversation history.
+        If an error occurs during any of these steps, it logs the error and displays an error message to the user.  
         """
         # Get user input
         user_input = st.chat_input(UI_CHAT_INPUT_PLACEHOLDER)
@@ -177,8 +156,13 @@ class StreamlitChatbot:
     
     def _handle_subsequent_messages(self):
         """
-        Handle subsequent messages using 6-case approach.
-        This method also checks if the user has selected a specialty, and if so, appends the answer accordingly.
+        This method handles subsequent messages from the user.
+        It retrieves the user input, checks if a specialty has been selected, and appends the answer to the conversation history.
+        If a specialty is selected, it appends the answer accordingly.
+        If the user input is empty, it returns without doing anything.
+        If the user has selected a specialty, it appends the answer accordingly.
+        If the user input is not empty, it performs sanity checks and appends the answer to the conversation history.
+        If an error occurs during any of these steps, it logs the error and displays an error message to the user.
         """
         # Handle specialty selection for subsequent messages
         selected_specialty = self.specialty_handler.handle_specialty_selection(
@@ -215,27 +199,21 @@ class StreamlitChatbot:
 
     def run(self):
         """
-        This method sets up the UI, initializes session state, checks conversation limits, and handles the first or subsequent messages based on the conversation history.
-        It also displays the conversation history.
+        This method runs the StreamlitChatbot application.
+        It sets up the UI, initializes the session state, performs sanity checks, and handles user messages.
+        If the conversation limit is reached, it resets the session state and displays a warning message.
+        If this is the first message, it handles the first message input.
+        If there are subsequent messages, it handles them accordingly.
+        Finally, it displays the conversation history.  
         """
         logger.info("Running StreamlitChatbot application")
         # Setup UI
         self.ui_components.setup_ui()
         # Initialize session state
-        default_values = {
-            SESSION_STATE_KEYS["conversation"]: [],
-            SESSION_STATE_KEYS["selected_option"]: None,
-            SESSION_STATE_KEYS["prompt"]: "",
-            SESSION_STATE_KEYS["specialty"]: "",
-            SESSION_STATE_KEYS["selected_specialty"]: None,
-            SESSION_STATE_KEYS["specialty_context"]: None,
-            SESSION_STATE_KEYS["multiple_specialties"]: None,
-            SESSION_STATE_KEYS["original_prompt"]: "",
-        }
-        self.ui_components.setup_session_state(default_values)
+        self.ui_components.setup_session_state(SESSION_STATE_DEFAULTS)
 
-        # Check conversation limit using SanityChecksManager
-        sanity_checks_manager = SanityChecksManager(self.llm_handler)
+        # Check conversation limit using SanityChecksAnalyst
+        sanity_checks_manager = SanityChecksAnalyst(self.llm_handler)
         conversation = get_conversation_list()
         results = sanity_checks_manager.run_checks("", conversation, checks_to_run=["conversation_limit"])
         if not results["conversation_limit"]["passed"]:
