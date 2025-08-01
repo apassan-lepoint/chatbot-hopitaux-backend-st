@@ -21,7 +21,7 @@ def exget_coordinates(city_name: str) -> tuple:
     """
     try:
         # Initialize geopy geolocator
-        geolocator = Nominatim(user_agent="city_distance_calculator")
+        geolocator = Nominatim(user_agent="city_distance_calculator", timeout=5)  # Increased timeout to 5 seconds for reliability
         # Attempt to geocode the city name
         location = geolocator.geocode(city_name)
         if location:
