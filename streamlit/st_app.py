@@ -231,8 +231,9 @@ class StreamlitChatbot:
             self._handle_first_message()
         else:
             self._handle_subsequent_messages()
-        # Display conversation history
-        display_conversation_history()
+        # Only display conversation history if there is something to show
+        if get_conversation_length() > 0:
+            display_conversation_history()
 
 
 def main():
