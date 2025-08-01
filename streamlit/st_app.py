@@ -34,7 +34,7 @@ class StreamlitChatbot:
         self.specialty_handler = SpecialtyHandler(self.llm_handler)
         self.message_handler = MessageHandler(self.llm_handler, self.specialty_handler)
         self.ui_components = UIComponents(self._reset_session_state)
-        self.MAX_MESSAGES = MAX_MESSAGES
+        self.max_messages = MAX_MESSAGES
     
     
     def _reset_session_state(self) -> None:
@@ -59,7 +59,7 @@ class StreamlitChatbot:
         if len(conversation) > 0:
             conv_history = "\n".join([f"Utilisateur: {q}\nAssistant: {r}" for q, r in conversation])
 
-        sanity_checks_manager = SanityChecksAnalyst(self.llm_handler, max_messages=self.MAX_MESSAGES)
+        sanity_checks_manager = SanityChecksAnalyst(self.llm_handler, max_messages=self.max_messages)
         # Default to all checks if not specified
         if checks_to_run is None:
             checks_to_run = DEFAULT_CHECKS_TO_RUN

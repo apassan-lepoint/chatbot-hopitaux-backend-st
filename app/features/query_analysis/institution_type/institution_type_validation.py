@@ -34,16 +34,16 @@ class InstitutionTypeValidator:
         if not institution_type or institution_type in ["no match", "aucune correspondance"]:
             return "aucune correspondance"
         type_lower = institution_type.lower().strip()
-        return self.INSTITUTION_TYPE_MAPPING.get(type_lower, "aucune correspondance")
+        return INSTITUTION_TYPE_MAPPING.get(type_lower, "aucune correspondance")
 
     def get_institution_type_code(self, institution_type: str) -> int:
         normalized = self.normalize_institution_type(institution_type)
         if normalized == "Public":
-            return self.INSTITUTION_TYPE_CODES["public"]
+            return INSTITUTION_TYPE_CODES["public"]
         elif normalized == "Privé":
-            return self.INSTITUTION_TYPE_CODES["private"]
+            return INSTITUTION_TYPE_CODES["private"]
         else:
-            return self.INSTITUTION_TYPE_CODES["no_match"]
+            return INSTITUTION_TYPE_CODES["no_match"]
 
     def is_public_institution(self, institution_type: Optional[str]) -> bool:
         """
