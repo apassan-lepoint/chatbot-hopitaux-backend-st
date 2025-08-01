@@ -39,11 +39,16 @@ class StreamlitChatbot:
     
     def _reset_session_state(self) -> None:
         """
-        Reset the session state to its default values.
+        Reset the session state to its default values and remove any extra keys.
         """
         logger.info("Resetting session state")
+        # Set all default values
         for key, value in SESSION_STATE_DEFAULTS.items():
             st.session_state[key] = value
+        # Remove any extra keys not in defaults
+        extra_keys = [k for k in st.session_state.keys() if k not in SESSION_STATE_DEFAULTS]
+        for k in extra_keys:
+            del st.session_state[k]
     
     
     def _perform_sanity_checks(self, prompt: str, conversation: list = None, checks_to_run: list = None) -> None:
