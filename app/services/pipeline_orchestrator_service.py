@@ -394,6 +394,8 @@ class PipelineOrchestrator:
                 self.data_processor.institution_type = fallback_type
                 self.institution_type = fallback_type
                 self.data_processor.specialty_ranking_unavailable = False
+                # Reset DataProcessor's DataFrame cache to force reload for new institution type
+                self.data_processor.df_gen = None
                 try:
                     df_fallback = self.build_ranking_dataframe_with_distances(prompt, relevant_file, detected_specialty)
                     # Ensure DataFrame has expected columns even if empty
