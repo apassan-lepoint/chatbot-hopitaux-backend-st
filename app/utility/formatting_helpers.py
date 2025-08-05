@@ -6,7 +6,7 @@ This file provides helpers to convert DataFrames to text, remove accents,
 """
 
 import pandas as pd
-import unicodedata         
+import unicodedata
 
 def format_mapping_words_csv(file_path: str) -> str:
     """
@@ -72,7 +72,7 @@ def format_response(public_df: pd.DataFrame, private_df: pd.DataFrame, number_in
                     distance_str = "distance inconnue"
                 response += f"{row['Etablissement']}: Un établissement {row['Catégorie']} situé à {distance_str}. avec une note de {row['Note / 20']} de 20<br>"
     else:
-        response += "Aucun établissement privé trouvé.<br>"
+        response += "<br>Aucun établissement privé trouvé.<br>"
     # Public institutions
     if not public_df.empty:
         if len(public_df) < number_institutions:
@@ -90,7 +90,7 @@ def format_response(public_df: pd.DataFrame, private_df: pd.DataFrame, number_in
                     distance_str = "distance inconnue"
                 response += f"{row['Etablissement']}: Un établissement {row['Catégorie']} situé à {distance_str}. avec une note de {row['Note / 20']} de 20<br>"
     else:
-        response += "Aucun établissement public trouvé.<br>"
+        response += "<br>Aucun établissement public trouvé.<br>"
     return response.rstrip('<br>')
     
     

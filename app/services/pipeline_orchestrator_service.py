@@ -5,6 +5,7 @@ from app.config.file_paths_config import PATHS
 from app.config.features_config import (SEARCH_RADIUS_KM, ERROR_GENERAL_RANKING_MSG, ERROR_INSTITUTION_RANKING_MSG,ERROR_GEOPY_MSG, ERROR_DATA_UNAVAILABLE_MSG, ERROR_IN_CREATING_TABLE_MSG, NO_PRIVATE_INSTITUTION_MSG, NO_PUBLIC_INSTITUTION_MSG, NO_RESULTS_FOUND_IN_LOCATION_MSG)
 from app.utility.logging import get_logger
 from app.utility.formatting_helpers import format_response
+from app.utility.radius_search_helpers import multi_radius_search
 
 logger = get_logger(__name__)
 
@@ -383,23 +384,30 @@ class PipelineOrchestrator:
                 return ERROR_INSTITUTION_RANKING_MSG, self.link
             return res, self.link
 
-        # If city found, try to find results within increasing radii
+        # If city found, use multi-radius search utility to get enough results
         logger.debug("Checking if city is detected")
         if self.data_processor.city_detected:
-            logger.info("City found, searching for results within increasing radii")
-            for radius in SEARCH_RADIUS_KM:
-                logger.debug(f"Trying radius search with radius={radius}")
-                try:
-                    res = self._try_radius_search(df, radius, self.number_institutions, prompt)
-                    logger.debug(f"Result from _try_radius_search (radius={radius}): {res}")
-                except Exception as e:
-                    logger.exception(f"Exception in _try_radius_search (radius={radius}): {e}")
-                    continue
-                if res:
-                    logger.debug(f"Returning result for radius={radius}")
-                    return res, self.link
-            logger.warning("No results found even at maximum radius")
-            return NO_RESULTS_FOUND_IN_LOCATION_MSG, self.link
+            logger.info("City found, searching for results using multi-radius search")
+            # Prepare DataFrame for public/private split
+            df = df.copy()
+            df["Distance"] = pd.to_numeric(df["Distance"], errors="coerce")
+            filtered_df = df.dropna(subset=["Distance"]).reset_index(drop=True)
+            public_df = filtered_df[filtered_df["Catégorie"] == "Public"].nlargest(self.number_institutions, "Note / 20")
+            private_df = filtered_df[filtered_df["Catégorie"] == "Privé"].nlargest(self.number_institutions, "Note / 20")
+            # Use multi_radius_search to get enough results
+            filtered_public_df, filtered_private_df, used_radius = multi_radius_search(
+                public_df, private_df, self.number_institutions, not self.data_processor.city_detected
+            )
+            # If no results at all, return not found message
+            if filtered_public_df.empty and filtered_private_df.empty:
+                logger.warning("No results found even at maximum radius (multi_radius_search)")
+                return NO_RESULTS_FOUND_IN_LOCATION_MSG, self.link
+            res_str = format_response(filtered_public_df, filtered_private_df, self.number_institutions, not self.data_processor.city_detected)
+            message = self._format_response_with_specialty(
+                f"Voici les meilleurs établissements (rayon utilisé : {used_radius} km)",
+                self.number_institutions, used_radius, self.city
+            )
+            return self._create_response_and_log(message, res_str, prompt), self.link
 
         # General ranking response if no city found
         logger.info("No city detected, returning general ranking")
