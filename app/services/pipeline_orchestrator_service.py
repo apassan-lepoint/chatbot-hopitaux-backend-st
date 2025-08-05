@@ -408,7 +408,7 @@ class PipelineOrchestrator:
             private_df = filtered_df[filtered_df["Catégorie"] == "Privé"].nlargest(self.number_institutions, "Note / 20")
             # Use multi_radius_search to get enough results
             filtered_public_df, filtered_private_df, used_radius = multi_radius_search(public_df, private_df, self.number_institutions, self.city_detected, radii=SEARCH_RADIUS_KM)
-            )
+            
             # If no results at all, return not found message
             if (filtered_public_df is None or filtered_public_df.empty) and (filtered_private_df is None or filtered_private_df.empty):
                 logger.warning("No results found even at maximum radius (multi_radius_search)")
