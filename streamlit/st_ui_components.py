@@ -37,8 +37,8 @@ class UIComponents:
         Setup the example questions section in the UI. 
         """
         st.write(UI_EXAMPLES_HEADER)
-        col1, col2, col3 = st.columns(3)
-        columns = [col1, col2, col3]
+        col1, col2, col3, col4 = st.columns(4)
+        columns = [col1, col2, col3, col4]
         
         for i, (col, question) in enumerate(zip(columns, EXAMPLE_QUESTIONS)):
             with col:
