@@ -1,6 +1,4 @@
 """
-Defines all API endpoints for the hospital ranking chatbot.
-
 This file registers the main routes for user queries, health checks, and other
 API functionalities, and organizes them using FastAPI's router system.
 """
@@ -12,11 +10,12 @@ from app.services.llm_handler_service import LLMHandler
 from app.pydantic_models.query_model import UserQuery, ChatRequest
 from app.pydantic_models.response_model import AskResponse, ChatResponse
 from app.utility.formatting_helpers import format_links
-from app.features.sanity_checks.sanity_checks_manager import SanityChecksManager
-from app.features.conversation.conversation_manager import ConversationManager
+from app.features.sanity_checks.sanity_checks_analyst import SanityChecksAnalyst
+from app.features.conversation.conversation_analyst import ConversationAnalyst
 from app.utility.logging import get_logger
-from app.config.features_config import MAX_MESSAGES,CHECKS_TO_RUN_Q1, CHECKS_TO_RUN_MULTI_TURN
+from app.config.features_config import (MAX_MESSAGES, CHECKS_TO_RUN_Q1, CHECKS_TO_RUN_MULTI_TURN, OFF_TOPIC_RESPONSE, INTERNAL_SERVER_ERROR_MSG)
 
+# Initialize logger for this module
 logger = get_logger(__name__)
 
 # Initialize the API router instance to define and group related endpoints
@@ -26,7 +25,7 @@ router = APIRouter()
 logger.info("Initializing core services...")
 pipeline = PipelineOrchestrator()
 llm_handler_service = LLMHandler()
-conv_manager = ConversationManager(llm_handler_service.model)
+conv_manager = ConversationAnalyst(llm_handler_service.model)
 logger.info("Core services initialized successfully")
 
 def perform_sanity_checks(prompt: str, conversation: list = None, checks_to_run=None) -> None:
@@ -41,25 +40,20 @@ def perform_sanity_checks(prompt: str, conversation: list = None, checks_to_run=
     else:
         logger.debug("Checking pertinence without conversation context")
 
-    sanity_checks_manager = SanityChecksManager(llm_handler_service, max_messages=MAX_MESSAGES)
+    sanity_checks_manager = SanityChecksAnalyst(llm_handler_service, max_messages=MAX_MESSAGES)
     results = sanity_checks_manager.run_checks(prompt, conversation, conv_history, checks_to_run=checks_to_run)
     for check, result in results.items():
         if not result["passed"]:
             raise HTTPException(status_code=400, detail=result["error"])
     logger.debug("All sanity checks passed successfully")
 
+
 @router.post("/ask", response_model=AskResponse)
 def ask_question(query: UserQuery) -> AskResponse:
     """
     Handles POST requests to the /ask endpoint for single-turn conversations.
-    Args:
-        query: The user's query containing the prompt and optional specialty
-    Returns:
-        AskResponse: JSON object with the chatbot's final answer and links
-    Raises:
-        HTTPException: 
-            - 400: Bad request (failed sanity checks)
-            - 500: Internal server error (processing failures)
+    Validates the user query, performs sanity checks, and generates a response
+    using the pipeline orchestrator.  
     """
     logger.info(f"Received /ask request with prompt length: {len(query.prompt)} chars, specialty: {query.detected_specialty}")
     try:
@@ -75,6 +69,7 @@ def ask_question(query: UserQuery) -> AskResponse:
             raise HTTPException(status_code=500, detail="Internal server error")
         raise
 
+
 @router.post("/chat", response_model=ChatResponse)
 def chat(request: ChatRequest) -> ChatResponse:
     """
@@ -85,21 +80,11 @@ def chat(request: ChatRequest) -> ChatResponse:
     3. Does it need search in hospital data?
     4. How should queries be merged?
     
-    Args:
-        request: The chat request containing:
-                - prompt: Current user message
-                - conversation: List of [user_msg, assistant_response] pairs
-    
     Returns:
         ChatResponse: Contains:
         - response: The chatbot's response
         - conversation: Updated conversation history
         - ambiguous: Flag indicating if user intent was unclear
-    
-    Raises:
-        HTTPException: 
-            - 400: Bad request (failed sanity checks, conversation too long)
-            - 500: Internal server error (processing failures)
     """
     logger.info(f"Received /chat request - Prompt length: {len(request.prompt)} chars, "
                 f"Conversation history: {len(request.conversation) if request.conversation else 0} turns")
@@ -107,7 +92,7 @@ def chat(request: ChatRequest) -> ChatResponse:
         perform_sanity_checks(request.prompt, request.conversation, checks_to_run=CHECKS_TO_RUN_MULTI_TURN)
         logger.debug("Sanity checks completed for /chat request")
         conv_history = request.conversation if request.conversation else []
-        # Use ConversationManager for consolidated conversation logic
+        # Use ConversationAnalyst for consolidated conversation logic
         conv_results = conv_manager.run_all_conversation_checks(request.prompt, conv_history)
         multi_turn_result = conv_results["multi_turn_result"]
         # Determine case from multi_turn_result
@@ -119,7 +104,7 @@ def chat(request: ChatRequest) -> ChatResponse:
             case = llm_handler_service.determine_case(analysis)
         logger.info(f"Determined case: {case}, Analysis: {multi_turn_result}")
         if case == "case1":
-            result = "Je n'ai pas bien saisi la nature de votre demande. Merci de reformuler une question relative aux classements des hôpitaux."
+            result = OFF_TOPIC_RESPONSE
             updated_conversation = conv_history + [[request.prompt, result]]
             return ChatResponse(response=result, conversation=updated_conversation, ambiguous=False)
         elif case == "case2":
@@ -157,5 +142,5 @@ def chat(request: ChatRequest) -> ChatResponse:
     except Exception as e:
         logger.error(f"Error processing /chat request: {str(e)}")
         if not isinstance(e, HTTPException):
-            raise HTTPException(status_code=500, detail="Internal server error")
+            raise HTTPException(status_code=500, detail=INTERNAL_SERVER_ERROR_MSG)
         raise

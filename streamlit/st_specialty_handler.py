@@ -1,54 +1,52 @@
 """
 Handles specialty detection and selection logic for Streamlit UI.
-
-This module provides the SpecialtyHandler class, which manages specialty detection,
-normalization, and user selection in the Streamlit frontend. It bridges backend specialty
-detection with frontend user interaction, updating session state and handling UI elements.
 """
 
 import streamlit as st
 from datetime import datetime
 from app.utility.logging import get_logger
-from st_config import (
-    SESSION_STATE_KEYS,
-    UI_SPECIALTY_SELECTION_PROMPT,
-    UI_INVALID_SELECTION_ERROR
-)
+from app.features.query_analysis.specialty.specialty_detection import SpecialtyDetector
+from st_config import (SESSION_STATE_KEYS, UI_SPECIALTY_SELECTION_PROMPT, UI_INVALID_SELECTION_ERROR, NO_SPECIALTY_MATCH)
 from st_utility import get_session_state_value
-from app.features.prompt_detection.specialty.specialty_detection import SpecialtyDetector
 
-
+# Initialize logger for this module
 logger = get_logger(__name__)
 
 class SpecialtyHandler:
     """
-    Manages specialty detection and selection in the Streamlit UI.
-    - Interacts with LLMHandler to detect specialties from user prompts.
-    - Normalizes specialty formats for consistent handling.
-    - Handles user selection when multiple specialties are detected.
+    SpecialtyHandler class for managing specialty detection and selection in Streamlit UI.
+    Uses a backend LLMHandler for specialty detection and manages session state
+    for user-selected specialties.
+    Attributes:
+        llm_handler (LLMHandler): Backend service for specialty detection.
+        specialty_detector (SpecialtyDetector): Instance for detecting specialties.
+    Methods:
+        get_current_specialty_context: Retrieves the current specialty context from session state.
+        normalize_specialty_format: Normalizes specialty format to use consistent prefix for multiple matches.
+        extract_specialty_options: Extracts specialty options from a formatted string containing multiple matches.
+        handle_specialty_selection: Handles specialty selection UI and logic for multiple detected specialties.
+        detect_and_handle_specialty: Detects specialty from user prompt and handles cases with multiple matches
     """
-
     def __init__(self, llm_handler):
         logger.info("Initializing SpecialtyHandler")
-        """
-        Initialize the SpecialtyHandler with a backend LLMHandler instance.
-        Args:
-            llm_handler (LLMHandler): Backend service for specialty detection.
-        """
         self.llm_handler = llm_handler
         # Use SpecialtyDetector for specialty detection
         self.specialty_detector = SpecialtyDetector(llm_handler.model)
 
-    def get_current_specialty_context(self) -> str:
-        logger.debug("Getting current specialty context")
-        """
-        Retrieves the current specialty context from session state.
-        Checks for selected specialty in session state, then specialty context,
-        then detected specialty, and returns the first valid value found.
 
-        Returns:
-            str: The currently selected specialty or None if no specialty is set.
+    def get_current_specialty_context(self) -> str:
         """
+        The function to get the current specialty context.  
+        It checks session state for selected specialty, existing specialty context,
+        or detected specialty, returning the appropriate value. 
+
+        Args:
+            None        
+        Returns:
+            str: The current specialty context or None if not found.    
+        """
+        logger.debug("Getting current specialty context")
+
         # Check if a specialty has been selected by the user
         selected_specialty = get_session_state_value(SESSION_STATE_KEYS["selected_specialty"], None)
         if selected_specialty:
@@ -71,13 +69,13 @@ class SpecialtyHandler:
     def normalize_specialty_format(self, specialty: str) -> str:
         logger.debug(f"Normalizing specialty format: {specialty}")
         """
-        Normalize specialty format to use consistent prefix for multiple matches.
+        The method aims to normalize the format of a specialty string.
+        It replaces the French prefix for multiple matches with the English equivalent. 
 
         Args:
-            specialty: The specialty string to normalize
-
+            specialty (str): The specialty string to normalize. 
         Returns:
-            str: Normalized specialty string with consistent prefix
+            str: The normalized specialty string with consistent prefix for multiple matches.
         """
         if specialty.startswith("plusieurs correspondances:"):
             return specialty.replace("plusieurs correspondances:", "multiple matches:")
@@ -87,14 +85,14 @@ class SpecialtyHandler:
     def extract_specialty_options(self, specialty: str) -> list:
         logger.debug(f"Extracting specialty options from: {specialty}")
         """
-        Extract specialty options from a formatted string containing multiple matches.
-        Removes duplicates and trims whitespace.
+        The method extracts specialty options from a formatted string containing multiple matches.
+        It handles both English and French prefixes for multiple matches, splits the options by comma,
+        removes duplicates, and strips whitespace.  
 
         Args:
-            specialty: The specialty string containing multiple options 
-
+            specialty (str): The specialty string containing multiple matches.
         Returns:
-            list: List of unique specialty options extracted from the string
+            list: A list of unique specialty options extracted from the string. 
         """
         # Handle both English and French multiple match prefixes
         if specialty.startswith("multiple matches:"):
@@ -103,22 +101,21 @@ class SpecialtyHandler:
             options_str = specialty.removeprefix("plusieurs correspondances:").strip()
         else:
             return []
-
         # Split by comma, remove duplicates, and strip whitespace
         return list(dict.fromkeys([opt.strip() for opt in options_str.split(',') if opt.strip()]))
     
     
     def handle_specialty_selection(self, prompt: str, key_suffix: str = "") -> str:
         """
-        Handle specialty selection UI and logic for multiple detected specialties.
-        Displays a radio button for user selection and updates session state.
+        The method handles the UI for selecting a specialty when multiple specialties are detected.
+        It retrieves the list of specialties from session state, displays a radio button for selection,
+        and updates session state with the selected specialty. If no valid selection is made, it shows an error.
 
-        Args:
-            prompt: The user's prompt
-            key_suffix: Suffix for radio button key to avoid conflicts
-
+        Args:      
+            prompt (str): The user's prompt to provide context for specialty selection.
+            key_suffix (str): Optional suffix for the Streamlit key to avoid conflicts in session state.    
         Returns:
-            Selected specialty if valid selection made, None otherwise
+            str: The selected specialty if a valid selection is made, otherwise None.   
         """
         # Get list of multiple specialties from session state
         multiple_specialties = get_session_state_value(SESSION_STATE_KEYS["multiple_specialties"], None)
@@ -183,6 +180,6 @@ class SpecialtyHandler:
                 return "aucune correspondance", False
         else:
             # Single specialty detected or no specialty
-            if not specialty or specialty in ["no specialty match", "aucune correspondance", ""]:
-                specialty = "no specialty match"
+            if not specialty or specialty in [NO_SPECIALTY_MATCH, "aucune correspondance", ""]:
+                specialty = NO_SPECIALTY_MATCH
             return specialty, False

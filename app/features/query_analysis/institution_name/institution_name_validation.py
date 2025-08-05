@@ -6,21 +6,30 @@ logger = get_logger(__name__)
 class InstitutionNameValidator:
     """
     Responsible for validating detected institution name and determining type.
+    It checks if the detected institution name is in a predefined list of known institutions.   
+    Attributes:
+        institution_list (str): Comma-separated list of known institution names.
+    Methods:
+        set_institution_list(institution_list: str) -> None:
+            Updates the institution list used for validation.
+        validate_institution_name(detected_name: str) -> bool:
+            Checks if the detected institution name is in the known institution list.
+        build_detection_result(detected_name: str, institution_type: Optional[str] = None) -> Dict[str, Optional[str]]:
+            Builds the result dictionary for the detection process. 
     """
     def __init__(self, institution_list: str = ""):
         self.institution_list = institution_list
 
     def set_institution_list(self, institution_list: str) -> None:
+        """
+        Updates the institution list used for validation.
+        """
         self.institution_list = institution_list
         logger.debug(f"Institution list updated with {len(institution_list.split(','))} institutions")
 
     def validate_institution_name(self, detected_name: str) -> bool:
         """
         Checks if the detected institution name is in the known institution list.
-        Args:
-            detected_name (str): The name detected by the detector
-        Returns:
-            bool: True if valid, False otherwise
         """
         institution_names = [name.strip() for name in self.institution_list.split(",")]
         is_valid = detected_name in institution_names
@@ -30,11 +39,6 @@ class InstitutionNameValidator:
     def build_detection_result(self, detected_name: str, institution_type: Optional[str] = None) -> Dict[str, Optional[str]]:
         """
         Builds the result dictionary for the detection process.
-        Args:
-            detected_name (str): The name detected by the detector
-            institution_type (str, optional): The type if no specific institution
-        Returns:
-            dict: Result with institution_name, institution_mentioned, institution_type
         """
         if self.validate_institution_name(detected_name):
             logger.info(f"Specific institution mentioned: {detected_name}")

@@ -1,19 +1,13 @@
-"""
-Service for interacting with the language model (LLM).
-
-This file defines the LLMHandler class, which handles all LLM-based extraction of
-specialties, cities, institution types, and other information from user queries.
-"""
-
 import os
 from typing import Dict, Any
 from langchain_openai import ChatOpenAI
 from dotenv import load_dotenv
 
 from app.config.file_paths_config import PATHS
+from app.config.features_config import OPENAI_MODEL
 from app.utility.formatting_helpers import format_mapping_words_csv
 from app.utility.logging import get_logger
-from app.features.conversation.conversation_manager import ConversationManager
+from app.features.conversation.conversation_analyst import ConversationAnalyst
 
 
 logger = get_logger(__name__)
@@ -24,13 +18,21 @@ class LLMHandler:
     
     This service handles all LLM-based extraction of specialties, cities, institution types,
     and other information from user queries, as well as managing conversation history.
+
+    Attributes:
+        model (ChatOpenAI): The ChatOpenAI model instance used for processing queries.
+        paths (Dict[str, str]): A dictionary containing file paths for various resources.
+        key_words (Dict[str, Any]): A dictionary containing keywords loaded from a CSV file.
+        conversation_manager (ConversationAnalyst): An instance of ConversationAnalyst for managing conversation logic. 
+    Methods:
+        init_model() -> ChatOpenAI: Initializes and returns the ChatOpenAI model.
+        run_conversation_checks(prompt: str, conv_history: list) -> dict: Runs all conversation-related checks and consolidates results.
+        rewrite_query_merge(prompt: str, conv_history: str) -> str: Rewrites the query using the merge approach (Case 2).
+        rewrite_query_add(prompt: str, conv_history: str) -> str: Rewrites the query using the add
+        approach (Case 3).  
     """
     def __init__(self):
         logger.info("LLMHandler __init__ called")
-        """
-        Initializes the LLMHandler class by loading environment variables, setting up the LLM model with different 
-        parameters for the query, and preparing file paths and keyword mappings.
-        """
         logger.info("Initializing LLMHandler")
         load_dotenv(override=False) 
         self.model = self.init_model()
@@ -46,14 +48,9 @@ class LLMHandler:
             logger.warning(f"Data directory does not exist: {data_dir}")
 
         self.key_words = format_mapping_words_csv(self.paths["mapping_word_path"])
+        self.conversation_manager = ConversationAnalyst(self.model)
 
-        # Removed PromptDetectionManager usage; now handled in orchestrator
-        # Use ConversationManager for all conversation/multi-turn logic
-        self.conversation_manager = ConversationManager(self.model)
-
-    
-    # Removed extract_prompt_info; prompt detection is now handled in orchestrator
-    
+        
     def init_model(self) -> ChatOpenAI:
         """
         Initializes and returns the ChatOpenAI model using the API key from environment variables.
@@ -66,22 +63,26 @@ class LLMHandler:
         logger.debug("Creating ChatOpenAI instance")
         self.model = ChatOpenAI(
             openai_api_key=api_key,
-            model="gpt-4o-mini"
+            model=OPENAI_MODEL
         )
         logger.info("ChatOpenAI model initialized")
         return self.model
     
 
     def run_conversation_checks(self, prompt: str, conv_history: list) -> dict:
+        """
+        Runs all conversation-related checks and consolidates results into a dictionary using ConversationAnalyst.
+        Args:
+            prompt (str): The user's prompt.
+            conv_history (list): The conversation history.  
+        Returns:
+            dict: A dictionary containing the results of all conversation checks.   
+        """
         logger.info(f"run_conversation_checks called with prompt: {prompt}, conv_history: {conv_history}")
-        """
-        Runs all conversation-related checks and consolidates results into a dictionary using ConversationManager.
-        """
-        logger.debug("Running all conversation checks with ConversationManager")
         return self.conversation_manager.run_all_conversation_checks(prompt, conv_history)
 
+
     def rewrite_query_merge(self, prompt: str, conv_history: str) -> str:
-        logger.info(f"rewrite_query_merge called with prompt: {prompt}, conv_history: {conv_history}")
         """
         Rewrites the query using the merge approach (Case 2).
         
@@ -92,11 +93,11 @@ class LLMHandler:
         Returns:
             str: The rewritten query using the merge approach.
         """
-        logger.debug("Calling rewrite_query_merge on ConversationManager")
+        logger.info(f"Calling rewrite_query_merge called with prompt: {prompt}, conv_history: {conv_history}")
         return self.conversation_manager.conversation.rewrite_query_merge(prompt, conv_history)
 
+
     def rewrite_query_add(self, prompt: str, conv_history: str) -> str:
-        logger.info(f"rewrite_query_add called with prompt: {prompt}, conv_history: {conv_history}")
         """
         Rewrites the query using the add approach (Case 3).
         
@@ -107,5 +108,5 @@ class LLMHandler:
         Returns:
             str: The rewritten query using the add approach.
         """
-        logger.debug("Calling rewrite_query_add on ConversationManager")
+        logger.info(f"Calling rewrite_query_add with prompt: {prompt}, conv_history: {conv_history}")
         return self.conversation_manager.conversation.rewrite_query_add(prompt, conv_history)

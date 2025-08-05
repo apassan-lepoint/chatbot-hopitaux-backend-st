@@ -212,7 +212,7 @@ Exemples avec contexte conversationnel:
 - Avec historique sur Marseille, 'Merci' → 'aucune correspondance'
 """,
 
-    "detect_topk_prompt": """
+    "detect_number_institutions_prompt": """
 Extrayez le nombre d'établissements demandés dans le message suivant.
 
 HISTORIQUE DE CONVERSATION:

@@ -1,4 +1,5 @@
 .env
-chop_venv/
+# virtual environment
+chatbot_hop/ 
 __pycache__/
 .DS_Store

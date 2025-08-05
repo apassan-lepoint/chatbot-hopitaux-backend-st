@@ -19,6 +19,13 @@ logger = get_logger(__name__)
 class InstitutionTypeDetector:
     """
     Handles only detection/extraction of institution name and type from prompt using LLM.
+    Attributes:
+        model: The model used for detection.
+        institution_list: A string representing the list of institutions.
+    Methods:
+        detect_public_private_preference(prompt: str, conv_history: str = "") -> str:
+            Detects if the user has a preference for public or private institutions.
+            Returns the raw LLM output (e.g., 'public', 'private', 'no match', etc.).
     """
     def __init__(self, model, institution_list: str):
         self.model = model
