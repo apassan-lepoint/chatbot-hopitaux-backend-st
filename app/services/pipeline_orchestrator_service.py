@@ -295,11 +295,23 @@ class PipelineOrchestrator:
             # If no city, skip distance filtering
             logger.info("No city specified or Distance column missing, skipping distance filtering.")
             filtered_df = df
-        # Split and filter public/private separately
-        public_df = filtered_df[filtered_df["Catégorie"] == "Public"].nlargest(number_institutions, "Note / 20")
-        private_df = filtered_df[filtered_df["Catégorie"] == "Privé"].nlargest(number_institutions, "Note / 20")
-        logger.debug(f"Filtered public_df shape: {public_df.shape}, private_df shape: {private_df.shape}")
-        res_str = format_response(public_df, private_df, number_institutions, self.city_not_specified)
+        # Only filter and format the DataFrame(s) for the institution type(s) requested by the user
+        institution_type = getattr(self, 'institution_type', None)
+        public_df = None
+        private_df = None
+        if institution_type == 'Public':
+            public_df = filtered_df[filtered_df["Catégorie"] == "Public"].nlargest(number_institutions, "Note / 20")
+            logger.debug(f"Filtered public_df shape: {public_df.shape}")
+            res_str = format_response(public_df, None, number_institutions, self.city_not_specified)
+        elif institution_type == 'Privé':
+            private_df = filtered_df[filtered_df["Catégorie"] == "Privé"].nlargest(number_institutions, "Note / 20")
+            logger.debug(f"Filtered private_df shape: {private_df.shape}")
+            res_str = format_response(None, private_df, number_institutions, self.city_not_specified)
+        else:
+            public_df = filtered_df[filtered_df["Catégorie"] == "Public"].nlargest(number_institutions, "Note / 20")
+            private_df = filtered_df[filtered_df["Catégorie"] == "Privé"].nlargest(number_institutions, "Note / 20")
+            logger.debug(f"Filtered public_df shape: {public_df.shape}, private_df shape: {private_df.shape}")
+            res_str = format_response(public_df, private_df, number_institutions, self.city_not_specified)
         message = self._format_response_with_specialty(
             "Voici les meilleurs établissements :",
             number_institutions, max_radius_km, self.city
@@ -388,26 +400,32 @@ class PipelineOrchestrator:
         logger.debug("Checking if city is detected")
         if self.data_processor.city_detected:
             logger.info("City found, searching for results using multi-radius search")
-            # Prepare DataFrame for public/private split
-            df = df.copy()
-            df["Distance"] = pd.to_numeric(df["Distance"], errors="coerce")
-            filtered_df = df.dropna(subset=["Distance"]).reset_index(drop=True)
-            public_df = filtered_df[filtered_df["Catégorie"] == "Public"].nlargest(self.number_institutions, "Note / 20")
-            private_df = filtered_df[filtered_df["Catégorie"] == "Privé"].nlargest(self.number_institutions, "Note / 20")
-            # Use multi_radius_search to get enough results
-            filtered_public_df, filtered_private_df, used_radius = multi_radius_search(
-                public_df, private_df, self.number_institutions, not self.data_processor.city_detected
-            )
-            # If no results at all, return not found message
-            if filtered_public_df.empty and filtered_private_df.empty:
-                logger.warning("No results found even at maximum radius (multi_radius_search)")
-                return NO_RESULTS_FOUND_IN_LOCATION_MSG, self.link
+        # Prepare DataFrame for public/private split
+        df = df.copy()
+        df["Distance"] = pd.to_numeric(df["Distance"], errors="coerce")
+        filtered_df = df.dropna(subset=["Distance"]).reset_index(drop=True)
+        public_df = filtered_df[filtered_df["Catégorie"] == "Public"].nlargest(self.number_institutions, "Note / 20")
+        private_df = filtered_df[filtered_df["Catégorie"] == "Privé"].nlargest(self.number_institutions, "Note / 20")
+        # Use multi_radius_search to get enough results
+        filtered_public_df, filtered_private_df, used_radius = multi_radius_search(
+            public_df, private_df, self.number_institutions, not self.data_processor.city_detected
+        )
+        # If no results at all, return not found message
+        if (filtered_public_df is None or filtered_public_df.empty) and (filtered_private_df is None or filtered_private_df.empty):
+            logger.warning("No results found even at maximum radius (multi_radius_search)")
+            return NO_RESULTS_FOUND_IN_LOCATION_MSG, self.link
+        institution_type = getattr(self, 'institution_type', None)
+        if institution_type == 'Public':
+            res_str = format_response(filtered_public_df, None, self.number_institutions, not self.data_processor.city_detected)
+        elif institution_type == 'Privé':
+            res_str = format_response(None, filtered_private_df, self.number_institutions, not self.data_processor.city_detected)
+        else:
             res_str = format_response(filtered_public_df, filtered_private_df, self.number_institutions, not self.data_processor.city_detected)
-            message = self._format_response_with_specialty(
-                f"Voici les meilleurs établissements (rayon utilisé : {used_radius} km)",
-                self.number_institutions, used_radius, self.city
-            )
-            return self._create_response_and_log(message, res_str, prompt), self.link
+        message = self._format_response_with_specialty(
+            f"Voici les meilleurs établissements (rayon utilisé : {used_radius} km)",
+            self.number_institutions, used_radius, self.city
+        )
+        return self._create_response_and_log(message, res_str, prompt), self.link
 
         # General ranking response if no city found
         logger.info("No city detected, returning general ranking")
