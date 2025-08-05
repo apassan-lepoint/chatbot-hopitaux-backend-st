@@ -51,7 +51,7 @@ class PipelineOrchestrator:
         self.specialty= None
         self.institution_type= None
         self.city = None
-        # ...existing code...
+        self.city_detected = False  # Flag to indicate if a city was detected
         self.df_gen = None # DF for results 
         self.institution_mentioned=None
         self.institution_name=None
