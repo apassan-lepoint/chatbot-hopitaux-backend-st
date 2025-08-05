@@ -89,21 +89,3 @@ def prompt_formatting(mode, **kwargs):
     if mode not in PROMPT_INSTRUCTIONS:
         raise ValueError(f"Unknown prompt formatting mode: {mode}")
     return PROMPT_INSTRUCTIONS[mode].format(**kwargs)
-
-## KEEP BELOW FUNTIONS UNTIL POST TESTING 
-# # Streamlit generic wrapper
-# def streamlit_check_wrapper(check_func, *args, reset_callback=None, **kwargs):
-#     try:
-#         check_func(*args, **kwargs)
-#     except Exception as e:
-#         if reset_callback:
-#             reset_callback()
-#         st.warning(str(e))
-#         st.stop()
-
-# # FastAPI generic wrapper
-# def fastapi_check_wrapper(check_func, *args, **kwargs):
-#     try:
-#         check_func(*args, **kwargs)
-#     except Exception as e:
-#         raise HTTPException(status_code=400, detail=str(e))

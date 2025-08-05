@@ -11,7 +11,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 from app.features.sanity_checks.sanity_checks_analyst import SanityChecksAnalyst
 from app.utility.logging import get_logger
 from app.utility.formatting_helpers import format_links
-
+from app.services.pipeline_orchestrator_service import PipelineOrchestrator
 from st_config import (DEFAULT_CHECKS_TO_RUN, SESSION_STATE_KEYS, SESSION_STATE_DEFAULTS, MAX_MESSAGES, UI_CHAT_INPUT_PLACEHOLDER, ERROR_MESSAGES, SPINNER_MESSAGES)
 from st_utility import (append_to_conversation, display_conversation_history, get_conversation_list, get_conversation_length, get_session_state_value, execute_with_spinner)
 from st_message_handler import MessageHandler
@@ -86,7 +86,7 @@ class StreamlitChatbot:
         If an error occurs during response generation, it logs the error and displays an error message to the user.
         """
         try:
-            from app.services.pipeline_orchestrator_service import PipelineOrchestrator ## Import PipelineOrchestrator locally to avoid circular import
+            
             result, links = PipelineOrchestrator().generate_response(prompt=prompt, detected_specialty=specialty)
             formatted_result = format_links(result, links)
             result = execute_with_spinner(SPINNER_MESSAGES["loading"], lambda: formatted_result)
