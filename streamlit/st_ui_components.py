@@ -75,5 +75,9 @@ class UIComponents:
         Initialize session state with default values.   
         """
         for key, value in default_values.items():
-            if key not in st.session_state:
-                st.session_state[key] = value
+            if key == "conversation":
+                if key not in st.session_state:
+                    st.session_state[key] = []  # Always use a new empty list
+            else:
+                if key not in st.session_state:
+                    st.session_state[key] = value
