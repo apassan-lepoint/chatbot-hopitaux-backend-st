@@ -56,7 +56,7 @@ def format_response(public_df: pd.DataFrame, private_df: pd.DataFrame, number_in
     """
     response = ""
     # Private institutions
-    if not private_df.empty:
+    if private_df is not None and not private_df.empty:
         if len(private_df) < number_institutions:
             response += f"Seulement {len(private_df)} établissements privés trouvés :<br>"
         else:
@@ -71,10 +71,10 @@ def format_response(public_df: pd.DataFrame, private_df: pd.DataFrame, number_in
                 else:
                     distance_str = "distance inconnue"
                 response += f"{row['Etablissement']}: Un établissement {row['Catégorie']} situé à {distance_str}. avec une note de {row['Note / 20']} de 20<br>"
-    else:
+    elif private_df is not None:
         response += "<br>Aucun établissement privé trouvé.<br>"
     # Public institutions
-    if not public_df.empty:
+    if public_df is not None and not public_df.empty:
         if len(public_df) < number_institutions:
             response += f"Seulement {len(public_df)} établissements publics trouvés :<br>"
         else:
@@ -89,7 +89,7 @@ def format_response(public_df: pd.DataFrame, private_df: pd.DataFrame, number_in
                 else:
                     distance_str = "distance inconnue"
                 response += f"{row['Etablissement']}: Un établissement {row['Catégorie']} situé à {distance_str}. avec une note de {row['Note / 20']} de 20<br>"
-    else:
+    elif public_df is not None:
         response += "<br>Aucun établissement public trouvé.<br>"
     return response.rstrip('<br>')
     

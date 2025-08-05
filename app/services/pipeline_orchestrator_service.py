@@ -296,7 +296,7 @@ class PipelineOrchestrator:
             logger.info("No city specified or Distance column missing, skipping distance filtering.")
             filtered_df = df
         # Only filter and format the DataFrame(s) for the institution type(s) requested by the user
-        institution_type = getattr(self, 'institution_type', None)
+        institution_type = self.institution_type
         public_df = None
         private_df = None
         if institution_type == 'Public':
