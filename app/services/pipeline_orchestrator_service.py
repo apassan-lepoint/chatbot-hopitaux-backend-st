@@ -379,11 +379,37 @@ class PipelineOrchestrator:
         logger.debug("Checking for specialty_ranking_unavailable")
         if self.data_processor.specialty_ranking_unavailable:
             logger.warning("Ranking not found for requested specialty/type, suggesting alternative")
+            fallback_type = None
+            fallback_msg = None
             if self.data_processor.institution_type == 'Public':
-                logger.debug("No public institution for this specialty")
+                logger.debug("No public institution for this specialty, trying private institutions as fallback")
+                fallback_type = 'Privé'
+                fallback_msg = NO_PUBLIC_INSTITUTION_MSG + "\nCependant, voici les établissements privés disponibles :"
+            elif self.data_processor.institution_type == 'Privé':
+                logger.debug("No private institution for this specialty, trying public institutions as fallback")
+                fallback_type = 'Public'
+                fallback_msg = NO_PRIVATE_INSTITUTION_MSG + "\nCependant, voici les établissements publics disponibles :"
+            if fallback_type:
+                # Set fallback type and reset flag
+                self.data_processor.institution_type = fallback_type
+                self.institution_type = fallback_type
+                self.data_processor.specialty_ranking_unavailable = False
+                try:
+                    df_fallback = self.build_ranking_dataframe_with_distances(prompt, relevant_file, detected_specialty)
+                    if df_fallback is not None and not df_fallback[df_fallback["Catégorie"] == fallback_type].empty:
+                        if fallback_type == 'Public':
+                            res_str = format_response(df_fallback[df_fallback["Catégorie"] == "Public"].nlargest(self.number_institutions, "Note / 20"), None, self.number_institutions, not self.data_processor.city_detected)
+                        else:
+                            res_str = format_response(None, df_fallback[df_fallback["Catégorie"] == "Privé"].nlargest(self.number_institutions, "Note / 20"), self.number_institutions, not self.data_processor.city_detected)
+                        return self._create_response_and_log(fallback_msg, res_str, prompt), self.link
+                except Exception as e:
+                    logger.exception(f"Exception in fallback to {fallback_type} institutions: {e}")
+                # If fallback also fails, return original message
+                return (NO_PUBLIC_INSTITUTION_MSG if fallback_type == 'Privé' else NO_PRIVATE_INSTITUTION_MSG), self.link
+            # If no fallback type, return as before
+            if self.data_processor.institution_type == 'Public':
                 return NO_PUBLIC_INSTITUTION_MSG, self.link
             elif self.data_processor.institution_type == 'Privé':
-                logger.debug("No private institution for this specialty")
                 return NO_PRIVATE_INSTITUTION_MSG, self.link
 
         # If institution is mentioned, return its ranking and link
