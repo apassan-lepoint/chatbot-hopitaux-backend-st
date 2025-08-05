@@ -50,75 +50,48 @@ def remove_accents(original_string: str)-> str:
     return string_no_accents
 
 
-def format_response(df: pd.DataFrame, city_not_specified: bool)-> str:
+def format_response(public_df: pd.DataFrame, private_df: pd.DataFrame, number_institutions: int, city_not_specified: bool) -> str:
     """
-    Convert a DataFrame of hospital results into a formatted text response.
-
-    Args:
-        df (pd.DataFrame): DataFrame containing hospital results.
-
-    Returns:
-        str: Formatted string for chatbot response.
+    Format public and private DataFrames into a chatbot response, with count checks and user messages.
     """
-    # If both public and private are present, group and label them
-    if 'Catégorie' in df.columns and set(df['Catégorie'].unique()) >= {'Privé', 'Public'}:
-        response = ""
-        private_df = df[df['Catégorie'] == 'Privé']
-        public_df = df[df['Catégorie'] == 'Public']
-        if not private_df.empty:
+    response = ""
+    # Private institutions
+    if not private_df.empty:
+        if len(private_df) < number_institutions:
+            response += f"Seulement {len(private_df)} établissements privés trouvés :<br>"
+        else:
             response += "Voici les établissements privés :<br>"
-            for index, row in private_df.iterrows():
-                if city_not_specified:
-                    response += f"{row['Etablissement']}: Un établissement {row['Catégorie']}. avec une note de {row['Note / 20']} de 20<br>"
-                else:
-                    distance_val = row.get('Distance', None)
-                    if isinstance(distance_val, (int, float)) and distance_val is not None:
-                        distance_str = f"{int(distance_val)} km"
-                    else:
-                        distance_str = "distance inconnue"
-                    response += f"{row['Etablissement']}: Un établissement {row['Catégorie']} situé à {distance_str}. avec une note de {row['Note / 20']} de 20<br>"
-        if not public_df.empty:
-            response += "Voici les établissements publics :<br>"
-            for index, row in public_df.iterrows():
-                if city_not_specified:
-                    response += f"{row['Etablissement']}: Un établissement {row['Catégorie']}. avec une note de {row['Note / 20']} de 20<br>"
-                else:
-                    distance_val = row.get('Distance', None)
-                    if isinstance(distance_val, (int, float)) and distance_val is not None:
-                        distance_str = f"{int(distance_val)} km"
-                    else:
-                        distance_str = "distance inconnue"
-                    response += f"{row['Etablissement']}: Un établissement {row['Catégorie']} situé à {distance_str}. avec une note de {row['Note / 20']} de 20<br>"
-        return response.rstrip('<br>')
-    # Otherwise, use the default formatting
-    descriptions = []
-    if city_not_specified:
-        for index, row in df.iterrows():
-            description = (
-                f"{row['Etablissement']}:"
-                f"Un établissement {row['Catégorie']}. "
-                f"avec une note de {row['Note / 20']} de 20"
-            )
-            descriptions.append(description)
-        
-        # Join all descriptions with line breaks for chatbot display
-        joined_text = "<br>\n".join(descriptions)
-        return joined_text
-    else:
-        for index, row in df.iterrows():
-            distance_val = row.get('Distance', None)
-            if isinstance(distance_val, (int, float)) and distance_val is not None:
-                distance_str = f"{int(distance_val)} km"
+        for index, row in private_df.iterrows():
+            if city_not_specified:
+                response += f"{row['Etablissement']}: Un établissement {row['Catégorie']}. avec une note de {row['Note / 20']} de 20<br>"
             else:
-                distance_str = "distance inconnue"
-            description = (
-                f"{row['Etablissement']}:"
-                f"Un établissement {row['Catégorie']} situé à {distance_str}. "
-                f"avec une note de {row['Note / 20']} de 20"
-            )
-            descriptions.append(description)
-        joined_text = "<br>\n".join(descriptions)
-        return joined_text
+                distance_val = row.get('Distance', None)
+                if isinstance(distance_val, (int, float)) and distance_val is not None:
+                    distance_str = f"{int(distance_val)} km"
+                else:
+                    distance_str = "distance inconnue"
+                response += f"{row['Etablissement']}: Un établissement {row['Catégorie']} situé à {distance_str}. avec une note de {row['Note / 20']} de 20<br>"
+    else:
+        response += "Aucun établissement privé trouvé.<br>"
+    # Public institutions
+    if not public_df.empty:
+        if len(public_df) < number_institutions:
+            response += f"Seulement {len(public_df)} établissements publics trouvés :<br>"
+        else:
+            response += "Voici les établissements publics :<br>"
+        for index, row in public_df.iterrows():
+            if city_not_specified:
+                response += f"{row['Etablissement']}: Un établissement {row['Catégorie']}. avec une note de {row['Note / 20']} de 20<br>"
+            else:
+                distance_val = row.get('Distance', None)
+                if isinstance(distance_val, (int, float)) and distance_val is not None:
+                    distance_str = f"{int(distance_val)} km"
+                else:
+                    distance_str = "distance inconnue"
+                response += f"{row['Etablissement']}: Un établissement {row['Catégorie']} situé à {distance_str}. avec une note de {row['Note / 20']} de 20<br>"
+    else:
+        response += "Aucun établissement public trouvé.<br>"
+    return response.rstrip('<br>')
     
     
 def format_links(result: str, links: list) -> str:

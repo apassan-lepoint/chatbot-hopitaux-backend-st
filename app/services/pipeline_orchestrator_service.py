@@ -294,29 +294,16 @@ class PipelineOrchestrator:
             # If no city, skip distance filtering
             logger.info("No city specified or Distance column missing, skipping distance filtering.")
             filtered_df = df
-        # Sort by score and select number_institutions
-        self.sorted_df = filtered_df.nlargest(number_institutions, "Note / 20")
-        logger.debug(f"Filtered DataFrame shape: {self.sorted_df.shape}")
-        # If enough results found, format and return response
-        if self.sorted_df.shape[0] == number_institutions:
-            logger.info(f"Found {number_institutions} results within {max_radius_km}km")
-            res_str = format_response(self.sorted_df, self.city_not_specified)
-            message = self._format_response_with_specialty(
-                "Voici les {count} meilleurs établissements {specialty}{location}:",
-                number_institutions, max_radius_km, self.city
-            )
-            return self._create_response_and_log(message, res_str, prompt)
-        # If at max radius, return all found institutions
-        if max_radius_km == SEARCH_RADIUS_KM[-1]:
-            res_str = format_response(self.sorted_df, self.city_not_specified)
-            message = self._format_response_with_specialty(
-                "Voici les {count} meilleurs établissements {specialty}{location}:<br>",
-                self.sorted_df.shape[0], max_radius_km, self.city
-            )
-            return self._create_response_and_log(message, res_str, prompt)
-        # If no results found, return None
-        logger.warning("No results found within current radius")
-        return None
+        # Split and filter public/private separately
+        public_df = filtered_df[filtered_df["Catégorie"] == "Public"].nlargest(number_institutions, "Note / 20")
+        private_df = filtered_df[filtered_df["Catégorie"] == "Privé"].nlargest(number_institutions, "Note / 20")
+        logger.debug(f"Filtered public_df shape: {public_df.shape}, private_df shape: {private_df.shape}")
+        res_str = format_response(public_df, private_df, number_institutions, self.city_not_specified)
+        message = self._format_response_with_specialty(
+            "Voici les meilleurs établissements :",
+            number_institutions, max_radius_km, self.city
+        )
+        return self._create_response_and_log(message, res_str, prompt)
 
     def generate_response(self, prompt: str, max_radius_km: int = 5, detected_specialty: str=None) -> str:
         """
@@ -389,7 +376,7 @@ class PipelineOrchestrator:
         if self.institution_mentioned:
             logger.info("Returning result for mentioned institution")
             try:
-                res = self.get_filtered_and_sorted_df(df, max_radius_km, number_institutions, prompt)
+                res = self.get_filtered_and_sorted_df(df, max_radius_km, self.number_institutions, prompt)
                 logger.debug(f"Result from get_filtered_and_sorted_df: {res}, Links: {self.link}")
             except Exception as e:
                 logger.exception(f"Exception in get_filtered_and_sorted_df: {e}")
@@ -420,11 +407,11 @@ class PipelineOrchestrator:
             if 'Distance' in self.df_gen.columns:
                 logger.debug("Dropping Distance column from df_gen")
                 self.df_gen = self.df_gen.drop(columns=['Distance'])
-            res_tab = self.df_gen.nlargest(number_institutions, "Note / 20")
-            logger.debug(f"nlargest result shape: {res_tab.shape}")
-            res_str = format_response(res_tab, not self.data_processor.city_detected)
+            public_df = self.df_gen[self.df_gen["Catégorie"] == "Public"].nlargest(self.number_institutions, "Note / 20")
+            private_df = self.df_gen[self.df_gen["Catégorie"] == "Privé"].nlargest(self.number_institutions, "Note / 20")
+            res_str = format_response(public_df, private_df, self.number_institutions, not self.data_processor.city_detected)
             logger.debug(f"Formatted response string: {res_str}")
-            base_message = "Voici le meilleur établissement" if number_institutions == 1 else f"Voici les {number_institutions} meilleurs établissements"
+            base_message = "Voici le meilleur établissement" if self.number_institutions == 1 else f"Voici les {self.number_institutions} meilleurs établissements"
             display_specialty, is_no_match = self._normalize_specialty_for_display(self.specialty)
             logger.debug(f"Display specialty: {display_specialty}, is_no_match: {is_no_match}")
             if is_no_match:
