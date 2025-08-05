@@ -396,9 +396,9 @@ class PipelineOrchestrator:
                 return ERROR_INSTITUTION_RANKING_MSG, self.link
             return res, self.link
 
-        # If city found, use multi-radius search utility to get enough results
+        # If city found and Distance column exists, use multi-radius search utility to get enough results
         logger.debug("Checking if city is detected")
-        if self.data_processor.city_detected:
+        if self.data_processor.city_detected and "Distance" in df.columns:
             logger.info("City found, searching for results using multi-radius search")
         # Prepare DataFrame for public/private split
         df = df.copy()
@@ -407,7 +407,7 @@ class PipelineOrchestrator:
         public_df = filtered_df[filtered_df["Catégorie"] == "Public"].nlargest(self.number_institutions, "Note / 20")
         private_df = filtered_df[filtered_df["Catégorie"] == "Privé"].nlargest(self.number_institutions, "Note / 20")
         # Use multi_radius_search to get enough results
-        filtered_public_df, filtered_private_df, used_radius = multi_radius_search(public_df, private_df, self.number_institutions, not self.city_detected, radii=SEARCH_RADIUS_KM)
+        filtered_public_df, filtered_private_df, used_radius = multi_radius_search(public_df, private_df, self.number_institutions, self.city_detected, radii=SEARCH_RADIUS_KM)
         )
         # If no results at all, return not found message
         if (filtered_public_df is None or filtered_public_df.empty) and (filtered_private_df is None or filtered_private_df.empty):
