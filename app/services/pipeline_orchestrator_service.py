@@ -185,6 +185,8 @@ class PipelineOrchestrator:
         logger.debug(f"PipelineOrchestrator.specialty set to: {self.specialty!r}")
         self.city = self.data_processor.city
         logger.debug(f"PipelineOrchestrator.city set to: {self.city!r}")
+        self.city_detected = self.data_processor.city_detected
+        logger.debug(f"PipelineOrchestrator.city_detected set to: {self.city_detected!r}")
         self.institution_type = self.data_processor.institution_type
         logger.debug(f"PipelineOrchestrator.institution_type set to: {self.institution_type!r}")
         self.institution_name = self.data_processor.institution_name
