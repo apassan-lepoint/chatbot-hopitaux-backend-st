@@ -9,10 +9,9 @@ import pandas as pd
 from geopy.geocoders import Nominatim  
 from geopy.distance import geodesic 
 from typing import List, Tuple
-from app.config.features_config import SEARCH_RADIUS_KM
 
 
-def multi_radius_search(public_df: pd.DataFrame, private_df: pd.DataFrame,number_institutions: int,city_not_specified: bool,radii=SEARCH_RADIUS_KM) -> Tuple[pd.DataFrame, pd.DataFrame, int]:
+def multi_radius_search(public_df: pd.DataFrame, private_df: pd.DataFrame,number_institutions: int,city_not_specified: bool,radii: List[int]) -> Tuple[pd.DataFrame, pd.DataFrame, int]:
     """
     Try increasing radii to get enough institutions. Returns filtered public/private dfs and the used radius.
     If city_not_specified is True, returns original dfs and radius 0.
