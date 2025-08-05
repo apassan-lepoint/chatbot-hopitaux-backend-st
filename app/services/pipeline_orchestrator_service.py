@@ -5,7 +5,7 @@ from app.config.file_paths_config import PATHS
 from app.config.features_config import (SEARCH_RADIUS_KM, ERROR_GENERAL_RANKING_MSG, ERROR_INSTITUTION_RANKING_MSG,ERROR_GEOPY_MSG, ERROR_DATA_UNAVAILABLE_MSG, ERROR_IN_CREATING_TABLE_MSG, NO_PRIVATE_INSTITUTION_MSG, NO_PUBLIC_INSTITUTION_MSG, NO_RESULTS_FOUND_IN_LOCATION_MSG)
 from app.utility.logging import get_logger
 from app.utility.formatting_helpers import format_response
-from app.utility.radius_search_helpers import multi_radius_search
+from app.utility.distance_calc_helpers import multi_radius_search
 
 logger = get_logger(__name__)
 
