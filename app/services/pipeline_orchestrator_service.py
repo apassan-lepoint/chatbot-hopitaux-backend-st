@@ -388,6 +388,10 @@ class PipelineOrchestrator:
             # Fallback logic for both directions
             if self.data_processor.institution_type == 'Privé':
                 logger.debug("No private institution for this specialty, trying public institutions as fallback")
+                fallback_type = 'Public'
+            elif self.data_processor.institution_type == 'Public':
+                logger.debug("No public institution for this specialty, trying private institutions as fallback")
+                fallback_type = 'Privé'
             if fallback_type:
                 # Set fallback type and specialty, then fully recalculate the query pipeline
                 self.data_processor.specialty = detected_specialty
