@@ -396,18 +396,14 @@ class PipelineOrchestrator:
                 fallback_type = 'Privé'
                 fallback_msg = NO_PUBLIC_INSTITUTION_MSG + "\nCependant, voici les établissements privés disponibles :"
             if fallback_type:
-                # Set fallback type and reset flag
+                # Reset DataProcessor state for fallback
+                self.data_processor.specialty = detected_specialty
                 self.data_processor.institution_type = fallback_type
                 self.institution_type = fallback_type
                 self.data_processor.specialty_ranking_unavailable = False
-                # Reset DataProcessor's DataFrame cache to force reload for new institution type
                 self.data_processor.df_gen = None
+                self.specialty = detected_specialty
                 try:
-                    # Force DataProcessor to reload and filter for fallback institution type
-                    self.data_processor.df_gen = None
-                    self.data_processor.specialty_ranking_unavailable = False
-                    self.institution_type = fallback_type
-                    self.data_processor.institution_type = fallback_type
                     df_fallback = self.build_ranking_dataframe_with_distances(prompt, relevant_file, detected_specialty)
                     if df_fallback is not None and "Catégorie" in df_fallback.columns:
                         filtered_fallback = df_fallback[df_fallback["Catégorie"] == fallback_type]
