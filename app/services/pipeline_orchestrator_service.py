@@ -410,8 +410,18 @@ class PipelineOrchestrator:
                 if hasattr(self.data_processor, 'institution_mentioned'):
                     self.data_processor.institution_mentioned = None
                 try:
-                    # Recalculate the DataFrame and all query logic with the fallback institution type
-                    fallback_df = self.build_ranking_dataframe_with_distances(prompt, self.ranking_file_path, detected_specialty)
+                    # Force fallback institution_type in detection and DataFrame build
+                    # Use a custom detection dict to override institution_type
+                    fallback_detections = self.extract_query_parameters(
+                        prompt,
+                        detected_specialty,
+                        conv_history=None
+                    )
+                    # Override institution_type in DataProcessor and orchestrator
+                    self.data_processor.institution_type = fallback_type
+                    self.institution_type = fallback_type
+                    # Now build the DataFrame for fallback_type
+                    fallback_df = self.data_processor.generate_data_response()
                     if fallback_df is not None and hasattr(fallback_df, 'columns') and "Catégorie" in fallback_df.columns:
                         filtered_fallback = fallback_df[fallback_df["Catégorie"] == fallback_type]
                         if filtered_fallback is not None and not filtered_fallback.empty and "Note / 20" in filtered_fallback.columns:
