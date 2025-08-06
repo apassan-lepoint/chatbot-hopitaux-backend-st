@@ -215,6 +215,10 @@ class PipelineOrchestrator:
         detections = self.extract_query_parameters(prompt, detected_specialty, conv_history)
         # Generate main DataFrame
         self.df_gen = self.data_processor.generate_data_response()
+        # Debug: Log unique specialties and institution types in the loaded DataFrame
+        if self.df_gen is not None:
+            logger.debug(f"[DEBUG] Unique specialties in DataFrame: {self.df_gen['Spécialité'].unique() if 'Spécialité' in self.df_gen.columns else 'N/A'}")
+            logger.debug(f"[DEBUG] Unique institution types in DataFrame: {self.df_gen['Catégorie'].unique() if 'Catégorie' in self.df_gen.columns else 'N/A'}")
         # If ranking unavailable for specialty/type, return general DataFrame
         if self.data_processor.specialty_ranking_unavailable:
             logger.warning("Ranking not found for requested specialty/type")
