@@ -30,9 +30,10 @@ class ConversationAnalyst:
         - 'modification_result': Result of detecting query modification.
         - 'multi_turn_result': Result of analyzing subsequent messages in a multi-turn conversation (if enabled).
         """
-        # Run sanity checks first
+        # Ensure conv_history is a list of messages for sanity checks
+        conversation_list = conv_history if isinstance(conv_history, list) else []
         sanity_analyst = SanityChecksAnalyst(self.model)
-        results = sanity_analyst.run_checks(prompt, conv_history, conv_history, checks_to_run=CHECKS_TO_RUN_MULTI_TURN)
+        results = sanity_analyst.run_checks(prompt, conversation_list, conv_history, checks_to_run=CHECKS_TO_RUN_MULTI_TURN)
         failed = next((k for k, v in results.items() if not v["passed"]), None)
         if failed:
             return {
