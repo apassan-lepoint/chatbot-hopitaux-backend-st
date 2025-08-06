@@ -396,17 +396,19 @@ class PipelineOrchestrator:
                 fallback_type = 'Privé'
                 fallback_msg = NO_PUBLIC_INSTITUTION_MSG + "\nCependant, voici les établissements privés disponibles :"
             if fallback_type:
-                # Reset DataProcessor state for fallback
+                # Force fallback DataFrame to reload from the original Excel source
                 self.data_processor.specialty = detected_specialty
                 self.data_processor.institution_type = fallback_type
                 self.institution_type = fallback_type
                 self.data_processor.specialty_ranking_unavailable = False
                 self.data_processor.df_gen = None
                 self.specialty = detected_specialty
+                # Directly reload DataFrame from Excel for fallback
                 try:
-                    df_fallback = self.build_ranking_dataframe_with_distances(prompt, relevant_file, detected_specialty)
-                    if df_fallback is not None and "Catégorie" in df_fallback.columns:
-                        filtered_fallback = df_fallback[df_fallback["Catégorie"] == fallback_type]
+                    # Generate a fresh DataFrame for fallback type
+                    fallback_df = self.data_processor.generate_data_response()
+                    if fallback_df is not None and "Catégorie" in fallback_df.columns:
+                        filtered_fallback = fallback_df[fallback_df["Catégorie"] == fallback_type]
                         if filtered_fallback is not None and not filtered_fallback.empty and "Note / 20" in filtered_fallback.columns:
                             top_fallback = filtered_fallback.nlargest(self.number_institutions, "Note / 20")
                             if fallback_type == 'Public':
