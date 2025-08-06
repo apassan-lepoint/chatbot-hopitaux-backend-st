@@ -393,13 +393,13 @@ class PipelineOrchestrator:
                 logger.debug("No public institution for this specialty, trying private institutions as fallback")
                 fallback_type = 'Privé'
             if fallback_type:
-                # Set fallback type and specialty, then fully recalculate the query pipeline
+                # Only update institution_type and specialty for fallback
                 self.data_processor.specialty = detected_specialty
                 self.data_processor.institution_type = fallback_type
                 self.institution_type = fallback_type
+                self.specialty = detected_specialty
                 self.data_processor.specialty_ranking_unavailable = False
                 self.data_processor.df_gen = None
-                self.specialty = detected_specialty
                 try:
                     # Recalculate the DataFrame and all query logic with the fallback institution type
                     fallback_df = self.build_ranking_dataframe_with_distances(prompt, self.ranking_file_path, detected_specialty)
