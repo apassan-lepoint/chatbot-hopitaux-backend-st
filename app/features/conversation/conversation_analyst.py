@@ -1,7 +1,8 @@
 from app.features.conversation.llm_responder import LLMResponder
 from app.features.conversation.multi_turn import MultiTurn
+from app.features.sanity_checks.sanity_checks_analyst import SanityChecksAnalyst
 from app.utility.logging import get_logger
-from app.config.features_config import ENABLE_MULTI_TURN
+from app.config.features_config import ENABLE_MULTI_TURN, WARNING_MESSAGES, CHECKS_TO_RUN_MULTI_TURN
 
 logger = get_logger(__name__)
 
@@ -29,6 +30,18 @@ class ConversationAnalyst:
         - 'modification_result': Result of detecting query modification.
         - 'multi_turn_result': Result of analyzing subsequent messages in a multi-turn conversation (if enabled).
         """
+        # Run sanity checks first
+        sanity_analyst = SanityChecksAnalyst(self.model)
+        results = sanity_analyst.run_checks(prompt, conv_history, conv_history, checks_to_run=CHECKS_TO_RUN_MULTI_TURN)
+        failed = next((k for k, v in results.items() if not v["passed"]), None)
+        if failed:
+            return {
+                "continued_response": None,
+                "modification_result": None,
+                "multi_turn_result": None,
+                "sanity_check_failed": True,
+                "warning_message": WARNING_MESSAGES.get(failed, "Votre message n'est pas accepté.")
+            }
         # Run Conversation methods
         continued_response = self.conversation.continue_conversation(prompt, conv_history)
         modification_result = self.conversation.detect_query_modification(prompt, conv_history)
@@ -42,6 +55,8 @@ class ConversationAnalyst:
         consolidated = {
             "continued_response": continued_response,
             "modification_result": modification_result,
-            "multi_turn_result": multi_turn_result
+            "multi_turn_result": multi_turn_result,
+            "sanity_check_failed": False,
+            "warning_message": None
         }
         return consolidated
