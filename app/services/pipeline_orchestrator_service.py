@@ -403,10 +403,10 @@ class PipelineOrchestrator:
                 self.data_processor.specialty_ranking_unavailable = False
                 self.data_processor.df_gen = None
                 self.specialty = detected_specialty
-                # Directly reload DataFrame from Excel for fallback
+                # Explicitly reload the original Excel file for fallback
                 try:
-                    # Generate a fresh DataFrame for fallback type
-                    fallback_df = self.data_processor.generate_data_response()
+                    excel_path = self.ranking_file_path
+                    fallback_df = pd.read_excel(excel_path)
                     if fallback_df is not None and "Catégorie" in fallback_df.columns:
                         filtered_fallback = fallback_df[fallback_df["Catégorie"] == fallback_type]
                         if filtered_fallback is not None and not filtered_fallback.empty and "Note / 20" in filtered_fallback.columns:
