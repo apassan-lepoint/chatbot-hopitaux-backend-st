@@ -388,28 +388,17 @@ class PipelineOrchestrator:
             # Fallback logic for both directions
             if self.data_processor.institution_type == 'Privé':
                 logger.debug("No private institution for this specialty, trying public institutions as fallback")
-                fallback_type = 'Public'
-                fallback_msg = NO_PRIVATE_INSTITUTION_MSG + "\nCependant, voici les établissements publics disponibles :"
-            elif self.data_processor.institution_type == 'Public':
-                logger.debug("No public institution for this specialty, trying private institutions as fallback")
-                fallback_type = 'Privé'
-                fallback_msg = NO_PUBLIC_INSTITUTION_MSG + "\nCependant, voici les établissements privés disponibles :"
-            else:
-                # If neither, do not fallback
-                fallback_type = None
-                fallback_msg = None
             if fallback_type:
-                # Force fallback DataFrame to reload from the original Excel source
+                # Set fallback type and specialty, then fully recalculate the query pipeline
                 self.data_processor.specialty = detected_specialty
                 self.data_processor.institution_type = fallback_type
                 self.institution_type = fallback_type
                 self.data_processor.specialty_ranking_unavailable = False
                 self.data_processor.df_gen = None
                 self.specialty = detected_specialty
-                # Explicitly reload the original Excel file for fallback
                 try:
-                    excel_path = self.ranking_file_path
-                    fallback_df = pd.read_excel(excel_path)
+                    # Recalculate the DataFrame and all query logic with the fallback institution type
+                    fallback_df = self.build_ranking_dataframe_with_distances(prompt, self.ranking_file_path, detected_specialty)
                     if fallback_df is not None and "Catégorie" in fallback_df.columns:
                         filtered_fallback = fallback_df[fallback_df["Catégorie"] == fallback_type]
                         if filtered_fallback is not None and not filtered_fallback.empty and "Note / 20" in filtered_fallback.columns:
@@ -423,24 +412,23 @@ class PipelineOrchestrator:
                                 message = self._format_response_with_specialty(NO_PUBLIC_INSTITUTION_MSG + "\nCependant, voici les établissements privés disponibles :", self.number_institutions, max_radius_km, self.city)
                             return self._create_response_and_log(message, res_str, prompt), self.link
                         else:
-                            logger.warning(f"No fallback results found for type {fallback_type} and specialty {detected_specialty}.")
+                            # Check if both institution types are unavailable
+                            other_type = 'Public' if fallback_type == 'Privé' else 'Privé'
+                            other_fallback = fallback_df[fallback_df["Catégorie"] == other_type]
+                            if other_fallback is None or other_fallback.empty:
+                                return "Aucun établissement (ni public ni privé) est disponible pour votre query.", self.link
                             # Return correct error message for direction
                             if fallback_type == 'Privé':
-                                return NO_PUBLIC_INSTITUTION_MSG, self.link
-                            else:
                                 return NO_PRIVATE_INSTITUTION_MSG, self.link
+                            else:
+                                return NO_PUBLIC_INSTITUTION_MSG, self.link
                     else:
                         logger.warning("Fallback DataFrame missing 'Catégorie' column. Returning fallback error message.")
-                        if fallback_type == 'Privé':
-                            return NO_PUBLIC_INSTITUTION_MSG, self.link
-                        else:
-                            return NO_PRIVATE_INSTITUTION_MSG, self.link
+                        return "Aucun établissement (ni public ni privé) est disponible pour votre query.", self.link
                 except Exception as e:
                     logger.exception(f"Exception in fallback to {fallback_type} institutions: {e}")
-                    if fallback_type == 'Privé':
-                        return NO_PUBLIC_INSTITUTION_MSG, self.link
-                    else:
-                        return NO_PRIVATE_INSTITUTION_MSG, self.link
+                    return "Aucun établissement (ni public ni privé) est disponible pour votre query.", self.link
+                # ...existing code...
             # If no fallback type, return as before
             if self.data_processor.institution_type == 'Public':
                 return NO_PUBLIC_INSTITUTION_MSG, self.link
