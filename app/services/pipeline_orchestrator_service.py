@@ -385,14 +385,16 @@ class PipelineOrchestrator:
             logger.warning("Ranking not found for requested specialty/type, suggesting alternative")
             fallback_type = None
             fallback_msg = None
-            if self.data_processor.institution_type == 'Public':
-                logger.debug("No public institution for this specialty, trying private institutions as fallback")
-                fallback_type = 'Privé'
-                fallback_msg = NO_PUBLIC_INSTITUTION_MSG + "\nCependant, voici les établissements privés disponibles :"
-            elif self.data_processor.institution_type == 'Privé':
+            # If user asked for private, but only public exists
+            if self.data_processor.institution_type == 'Privé':
                 logger.debug("No private institution for this specialty, trying public institutions as fallback")
                 fallback_type = 'Public'
                 fallback_msg = NO_PRIVATE_INSTITUTION_MSG + "\nCependant, voici les établissements publics disponibles :"
+            # If user asked for public, but only private exists
+            elif self.data_processor.institution_type == 'Public':
+                logger.debug("No public institution for this specialty, trying private institutions as fallback")
+                fallback_type = 'Privé'
+                fallback_msg = NO_PUBLIC_INSTITUTION_MSG + "\nCependant, voici les établissements privés disponibles :"
             if fallback_type:
                 # Set fallback type and reset flag
                 self.data_processor.institution_type = fallback_type
@@ -403,21 +405,25 @@ class PipelineOrchestrator:
                 try:
                     df_fallback = self.build_ranking_dataframe_with_distances(prompt, relevant_file, detected_specialty)
                     # Ensure DataFrame has expected columns even if empty
-                    if df_fallback is not None:
-                        if "Catégorie" not in df_fallback.columns:
-                            logger.warning("Fallback DataFrame missing 'Catégorie' column. Returning fallback error message.")
-                            return (NO_PUBLIC_INSTITUTION_MSG if fallback_type == 'Privé' else NO_PRIVATE_INSTITUTION_MSG), self.link
+                    if df_fallback is not None and "Catégorie" in df_fallback.columns:
                         filtered_fallback = df_fallback[df_fallback["Catégorie"] == fallback_type]
                         if not filtered_fallback.empty:
                             if fallback_type == 'Public':
                                 res_str = format_response(filtered_fallback.nlargest(self.number_institutions, "Note / 20"), None, self.number_institutions, not self.data_processor.city_detected)
                             else:
                                 res_str = format_response(None, filtered_fallback.nlargest(self.number_institutions, "Note / 20"), self.number_institutions, not self.data_processor.city_detected)
-                            return self._create_response_and_log(fallback_msg, res_str, prompt), self.link
-                    # If fallback also fails, return original message
+                            # Add specialty context to message
+                            message = self._format_response_with_specialty(fallback_msg, self.number_institutions, max_radius_km, self.city)
+                            return self._create_response_and_log(message, res_str, prompt), self.link
+                        else:
+                            # Fallback also fails, return original message
+                            return (NO_PUBLIC_INSTITUTION_MSG if fallback_type == 'Privé' else NO_PRIVATE_INSTITUTION_MSG), self.link
+                    else:
+                        logger.warning("Fallback DataFrame missing 'Catégorie' column. Returning fallback error message.")
+                        return (NO_PUBLIC_INSTITUTION_MSG if fallback_type == 'Privé' else NO_PRIVATE_INSTITUTION_MSG), self.link
                 except Exception as e:
                     logger.exception(f"Exception in fallback to {fallback_type} institutions: {e}")
-                return (NO_PUBLIC_INSTITUTION_MSG if fallback_type == 'Privé' else NO_PRIVATE_INSTITUTION_MSG), self.link
+                    return (NO_PUBLIC_INSTITUTION_MSG if fallback_type == 'Privé' else NO_PRIVATE_INSTITUTION_MSG), self.link
             # If no fallback type, return as before
             if self.data_processor.institution_type == 'Public':
                 return NO_PUBLIC_INSTITUTION_MSG, self.link
