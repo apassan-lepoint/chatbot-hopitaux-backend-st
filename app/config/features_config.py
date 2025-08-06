@@ -2,9 +2,6 @@
 Configuration constants for the chatbot hopitaux.
 """
 
-# Feature toggles
-ENABLE_MULTI_TURN = False  # Set to False to disable multiturn logic
-
 
 # Default OpenAI model name
 OPENAI_MODEL = "gpt-4o-mini"
@@ -62,8 +59,9 @@ STATUS_DESCRIPTIONS_DICT = {
 
 
 # Constants for checks
-MAX_MESSAGES = 5
+MAX_MESSAGES = 2
 MAX_LENGTH = 200
+ENABLE_MULTI_TURN = False  # Set to False to disable multiturn logic
 
 
 
