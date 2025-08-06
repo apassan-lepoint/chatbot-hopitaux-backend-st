@@ -393,17 +393,26 @@ class PipelineOrchestrator:
                 logger.debug("No public institution for this specialty, trying private institutions as fallback")
                 fallback_type = 'Privé'
             if fallback_type:
-                # Only update institution_type and specialty for fallback
+                # Reset DataProcessor state for fallback
                 self.data_processor.specialty = detected_specialty
                 self.data_processor.institution_type = fallback_type
                 self.institution_type = fallback_type
                 self.specialty = detected_specialty
                 self.data_processor.specialty_ranking_unavailable = False
                 self.data_processor.df_gen = None
+                # Clear any cached detection results if present
+                if hasattr(self.data_processor, 'city_detected'):
+                    self.data_processor.city_detected = False
+                if hasattr(self.data_processor, 'city'):
+                    self.data_processor.city = None
+                if hasattr(self.data_processor, 'institution_name'):
+                    self.data_processor.institution_name = None
+                if hasattr(self.data_processor, 'institution_mentioned'):
+                    self.data_processor.institution_mentioned = None
                 try:
                     # Recalculate the DataFrame and all query logic with the fallback institution type
                     fallback_df = self.build_ranking_dataframe_with_distances(prompt, self.ranking_file_path, detected_specialty)
-                    if fallback_df is not None and "Catégorie" in fallback_df.columns:
+                    if fallback_df is not None and hasattr(fallback_df, 'columns') and "Catégorie" in fallback_df.columns:
                         filtered_fallback = fallback_df[fallback_df["Catégorie"] == fallback_type]
                         if filtered_fallback is not None and not filtered_fallback.empty and "Note / 20" in filtered_fallback.columns:
                             top_fallback = filtered_fallback.nlargest(self.number_institutions, "Note / 20")
