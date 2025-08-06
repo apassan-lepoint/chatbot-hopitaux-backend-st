@@ -403,20 +403,24 @@ class PipelineOrchestrator:
                 # Reset DataProcessor's DataFrame cache to force reload for new institution type
                 self.data_processor.df_gen = None
                 try:
+                    # Force DataProcessor to reload and filter for fallback institution type
+                    self.data_processor.df_gen = None
+                    self.data_processor.specialty_ranking_unavailable = False
+                    self.institution_type = fallback_type
+                    self.data_processor.institution_type = fallback_type
                     df_fallback = self.build_ranking_dataframe_with_distances(prompt, relevant_file, detected_specialty)
-                    # Ensure DataFrame has expected columns even if empty
                     if df_fallback is not None and "Catégorie" in df_fallback.columns:
                         filtered_fallback = df_fallback[df_fallback["Catégorie"] == fallback_type]
-                        if not filtered_fallback.empty:
+                        if filtered_fallback is not None and not filtered_fallback.empty and "Note / 20" in filtered_fallback.columns:
+                            top_fallback = filtered_fallback.nlargest(self.number_institutions, "Note / 20")
                             if fallback_type == 'Public':
-                                res_str = format_response(filtered_fallback.nlargest(self.number_institutions, "Note / 20"), None, self.number_institutions, not self.data_processor.city_detected)
+                                res_str = format_response(top_fallback, None, self.number_institutions, not self.data_processor.city_detected)
                             else:
-                                res_str = format_response(None, filtered_fallback.nlargest(self.number_institutions, "Note / 20"), self.number_institutions, not self.data_processor.city_detected)
-                            # Add specialty context to message
+                                res_str = format_response(None, top_fallback, self.number_institutions, not self.data_processor.city_detected)
                             message = self._format_response_with_specialty(fallback_msg, self.number_institutions, max_radius_km, self.city)
                             return self._create_response_and_log(message, res_str, prompt), self.link
                         else:
-                            # Fallback also fails, return original message
+                            logger.warning(f"No fallback results found for type {fallback_type} and specialty {detected_specialty}.")
                             return (NO_PUBLIC_INSTITUTION_MSG if fallback_type == 'Privé' else NO_PRIVATE_INSTITUTION_MSG), self.link
                     else:
                         logger.warning("Fallback DataFrame missing 'Catégorie' column. Returning fallback error message.")
