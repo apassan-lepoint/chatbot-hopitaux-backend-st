@@ -26,7 +26,7 @@ FOREIGN_CITY_CHECK_EXCEPTION_MSG = "Je ne peux pas répondre aux questions conce
 AMBIGUOUS_CITY_CHECK_EXCEPTION_MSG = "Je ne parviens pas à détecter votre localisation, merci de reformuler avec une autre ville."
 NO_PRIVATE_INSTITUTION_MSG = "Nous n'avons pas d'établissement privé pour cette pathologie, mais un classement des établissements publics existe."
 NO_PUBLIC_INSTITUTION_MSG = "Nous n'avons pas d'établissement public pour cette pathologie, mais un classement des établissements privés existe."
-NO_RESULTS_FOUND_IN_LOCATION_MSG = "Aucun résultat trouvé dans votre localisation."
+NO_RESULTS_FOUND_IN_LOCATION_MSG = "Aucun résultat trouvé dans un rayon de 100 km autour de votre localisation."
 
 WARNING_MESSAGES = {
     "message_length": "Votre message est trop long. Merci de le raccourcir.",

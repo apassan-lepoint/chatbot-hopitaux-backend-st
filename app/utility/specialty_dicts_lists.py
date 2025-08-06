@@ -1,7 +1,7 @@
 # Dictionary mapping main specialties to their sub-specialties or procedures
 specialty_categories_dict = {
         "Maternités": ["Accouchements normaux", "Accouchements à risques"],
-        "Cardiologie": ["Angioplastie coronaire", "Cardiologie interventionnelle", "Chirurgie cardiaque adulte", "Chirurgie cardiaque de l’enfant et de l’adolescent", "Infarctus du myocarde", "Insuffisance cardiaque", "Rythmologie"],
+        "Cardiologie": ["Angioplastie coronaire", "Cardiologie interventionnelle", "Chirurgie cardiaque adulte", "Chirurgie cardiaque pédiatrique", "Infarctus du myocarde", "Insuffisance cardiaque", "Rythmologie"],
         "Veines et artères": ["Ablation des varices", "Chirurgie des artères", "Chirurgie des carotides", "Hypertension artérielle", "Médecine vasculaire"],
         "Orthopédie": ["Arthrose de la main", "Chirurgie de l'épaule", "Chirurgie de la cheville", "Chirurgie du canal carpien", "Chirurgie du dos de l'adulte", "Chirurgie du dos de l'enfant et de l’adolescent", "Chirurgie du pied", "Ligaments du genou", "Prothèse de genou", "Prothèse de hanche"],
         "Ophtalmologie": ["Cataracte", "Chirurgie de la cornée", "Chirurgie de la rétine", "Glaucome", "Strabisme"],

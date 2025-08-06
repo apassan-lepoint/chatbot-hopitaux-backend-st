@@ -65,7 +65,7 @@ class CityDetector:
         return city_name.strip()
     
 
-    def _get_city_response_description(city_status) -> str:
+    def _get_city_response_description(self, city_status) -> str:
         """
         Gets a human-readable description of the city response.
         """

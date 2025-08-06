@@ -215,6 +215,10 @@ class PipelineOrchestrator:
         detections = self.extract_query_parameters(prompt, detected_specialty, conv_history)
         # Generate main DataFrame
         self.df_gen = self.data_processor.generate_data_response()
+        # Debug: Log unique specialties and institution types in the loaded DataFrame
+        if self.df_gen is not None:
+            logger.debug(f"[DEBUG] Unique specialties in DataFrame: {self.df_gen['Spécialité'].unique() if 'Spécialité' in self.df_gen.columns else 'N/A'}")
+            logger.debug(f"[DEBUG] Unique institution types in DataFrame: {self.df_gen['Catégorie'].unique() if 'Catégorie' in self.df_gen.columns else 'N/A'}")
         # If ranking unavailable for specialty/type, return general DataFrame
         if self.data_processor.specialty_ranking_unavailable:
             logger.warning("Ranking not found for requested specialty/type")
@@ -379,11 +383,71 @@ class PipelineOrchestrator:
         logger.debug("Checking for specialty_ranking_unavailable")
         if self.data_processor.specialty_ranking_unavailable:
             logger.warning("Ranking not found for requested specialty/type, suggesting alternative")
+            fallback_type = None
+            fallback_msg = None
+            # Fallback logic for both directions
+            if self.data_processor.institution_type == 'Privé':
+                logger.debug("No private institution for this specialty, trying public institutions as fallback")
+                fallback_type = 'Public'
+            elif self.data_processor.institution_type == 'Public':
+                logger.debug("No public institution for this specialty, trying private institutions as fallback")
+                fallback_type = 'Privé'
+            if fallback_type:
+                # Robust fallback: fully reset DataProcessor state
+                self.data_processor.specialty = detected_specialty
+                self.data_processor.institution_type = fallback_type
+                self.institution_type = fallback_type
+                self.specialty = detected_specialty
+                self.data_processor.specialty_ranking_unavailable = False
+                self.data_processor.df_gen = None
+                # Clear cached detection results
+                for attr in ["city_detected", "city", "institution_name", "institution_mentioned"]:
+                    if hasattr(self.data_processor, attr):
+                        setattr(self.data_processor, attr, None)
+                try:
+                    # Re-run detection for fallback type
+                    fallback_detections = self.extract_query_parameters(
+                        prompt,
+                        detected_specialty,
+                        conv_history=None
+                    )
+                    self.data_processor.institution_type = fallback_type
+                    self.institution_type = fallback_type
+                    # Build DataFrame for fallback type
+                    fallback_df = self.data_processor.generate_data_response()
+                    # Defensive: check DataFrame validity
+                    if fallback_df is not None and hasattr(fallback_df, 'columns') and "Catégorie" in fallback_df.columns:
+                        filtered_fallback = fallback_df[fallback_df["Catégorie"] == fallback_type]
+                        if filtered_fallback is not None and not filtered_fallback.empty and "Note / 20" in filtered_fallback.columns:
+                            top_fallback = filtered_fallback.nlargest(self.number_institutions, "Note / 20")
+                            if fallback_type == 'Public':
+                                res_str = format_response(top_fallback, None, self.number_institutions, not self.data_processor.city_detected)
+                                message = self._format_response_with_specialty(NO_PRIVATE_INSTITUTION_MSG + "\nCependant, voici les établissements publics disponibles :", self.number_institutions, max_radius_km, self.city)
+                            else:
+                                res_str = format_response(None, top_fallback, self.number_institutions, not self.data_processor.city_detected)
+                                message = self._format_response_with_specialty(NO_PUBLIC_INSTITUTION_MSG + "\nCependant, voici les établissements privés disponibles :", self.number_institutions, max_radius_km, self.city)
+                            return self._create_response_and_log(message, res_str, prompt), self.link
+                        else:
+                            # Check if any institutions exist for the specialty
+                            public_exists = not fallback_df[fallback_df["Catégorie"] == "Public"].empty if "Catégorie" in fallback_df.columns else False
+                            private_exists = not fallback_df[fallback_df["Catégorie"] == "Privé"].empty if "Catégorie" in fallback_df.columns else False
+                            if not public_exists and not private_exists:
+                                return "Aucun établissement (ni public ni privé) est disponible pour votre query.", self.link
+                            elif fallback_type == 'Privé' and not private_exists:
+                                return NO_PRIVATE_INSTITUTION_MSG, self.link
+                            elif fallback_type == 'Public' and not public_exists:
+                                return NO_PUBLIC_INSTITUTION_MSG, self.link
+                    else:
+                        logger.warning("Fallback DataFrame missing 'Catégorie' column or is malformed. Returning fallback error message.")
+                        return "Aucun établissement (ni public ni privé) est disponible pour votre query.", self.link
+                except Exception as e:
+                    logger.exception(f"Exception in fallback to {fallback_type} institutions: {e}")
+                    return "Aucun établissement (ni public ni privé) est disponible pour votre query.", self.link
+                # ...existing code...
+            # If no fallback type, return as before
             if self.data_processor.institution_type == 'Public':
-                logger.debug("No public institution for this specialty")
                 return NO_PUBLIC_INSTITUTION_MSG, self.link
             elif self.data_processor.institution_type == 'Privé':
-                logger.debug("No private institution for this specialty")
                 return NO_PRIVATE_INSTITUTION_MSG, self.link
 
         # If institution is mentioned, return its ranking and link

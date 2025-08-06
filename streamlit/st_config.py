@@ -83,7 +83,8 @@ UI_CHAT_INPUT_PLACEHOLDER = "Votre message"
 UI_INVALID_SELECTION_ERROR = "Sélection invalide. Veuillez choisir une option dans la liste."
 EXAMPLE_QUESTIONS = ["Quel est le meilleur hôpital de Paris pour cancer de la vessie?",
                      "Où puis-je aller à Lille pour me faire soigner ?",
-                     "Quels sont les 10 meilleurs hôpitaux publics à Bordeaux pour les maladies cardiaques ?"
+                     "Quels sont les 10 meilleurs hôpitaux publics à Bordeaux pour les maladies cardiaques ?",
+                     "Quels sont les meilleurs 3 hôpitaux privés pour la cancer du foie ?"
                      ]
 
 ## CSS Styling 
