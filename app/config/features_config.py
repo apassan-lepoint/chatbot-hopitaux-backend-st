@@ -59,7 +59,7 @@ STATUS_DESCRIPTIONS_DICT = {
 
 
 # Constants for checks
-MAX_MESSAGES = 2
+MAX_MESSAGES = 1
 MAX_LENGTH = 200
 ENABLE_MULTI_TURN = False  # Set to False to disable multiturn logic
 
