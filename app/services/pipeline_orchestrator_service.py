@@ -412,10 +412,10 @@ class PipelineOrchestrator:
                                 message = self._format_response_with_specialty(NO_PUBLIC_INSTITUTION_MSG + "\nCependant, voici les établissements privés disponibles :", self.number_institutions, max_radius_km, self.city)
                             return self._create_response_and_log(message, res_str, prompt), self.link
                         else:
-                            # Check if both institution types are unavailable
-                            other_type = 'Public' if fallback_type == 'Privé' else 'Privé'
-                            other_fallback = fallback_df[fallback_df["Catégorie"] == other_type]
-                            if other_fallback is None or other_fallback.empty:
+                            # Check if both institution types are unavailable (both DataFrames empty)
+                            public_empty = fallback_df[fallback_df["Catégorie"] == "Public"].empty if "Catégorie" in fallback_df.columns else True
+                            private_empty = fallback_df[fallback_df["Catégorie"] == "Privé"].empty if "Catégorie" in fallback_df.columns else True
+                            if public_empty and private_empty:
                                 return "Aucun établissement (ni public ni privé) est disponible pour votre query.", self.link
                             # Return correct error message for direction
                             if fallback_type == 'Privé':
