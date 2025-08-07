@@ -87,6 +87,11 @@ BackendChatbotHopitaux/
 If you want to launch the Streamlit app, you should create a python environnement with the packages from the "requirement.txt" file and then run the main.py file. 
 Additionally, you will need an API Key from Open AI and paste it in the '.env' file  to use our model: "gpt-4o-mini".
 
+# Running the app locally in your python terminal. 
+1. To get FastAPI up and running : uvicorn main:app --reload
+2. To start testing once the application is started up: python test_api.py
+3. 
+
 # Code organization
 UPDATE!!!! - give high level overview of how code works
 
