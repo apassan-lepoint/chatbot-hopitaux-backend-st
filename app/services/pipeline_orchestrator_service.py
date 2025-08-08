@@ -346,6 +346,12 @@ class PipelineOrchestrator:
             logger.debug(f"[FILTER] Public: raw count={public_raw.shape[0]}, specialty count={public_specialty.shape[0]}, city+specialty count={public_city.shape[0]}")
             logger.debug(f"[FILTER] Public: specialty match rows: {public_specialty}")
             logger.debug(f"[FILTER] Public: city+specialty match rows: {public_city}")
+            # Log the actual rows and their distance for public_city
+            if not public_city.empty:
+               logger.debug(f"[RESULT] Public city+specialty match rows (head): {public_city.head(10)}")
+               logger.debug(f"[RESULT] Public city+specialty match distances: {public_city['Distance'].tolist() if 'Distance' in public_city.columns else 'N/A'}")
+            else:
+               logger.debug("[RESULT] No public city+specialty match rows found.")
             # Private filtering
             private_raw = filtered_df[filtered_df["Catégorie"] == "Privé"]
             private_specialty = private_raw[private_raw['Spécialité'].str.lower().str.strip() == str(self.specialty).lower().strip()]
@@ -353,6 +359,12 @@ class PipelineOrchestrator:
             logger.debug(f"[FILTER] Private: raw count={private_raw.shape[0]}, specialty count={private_specialty.shape[0]}, city+specialty count={private_city.shape[0]}")
             logger.debug(f"[FILTER] Private: specialty match rows: {private_specialty}")
             logger.debug(f"[FILTER] Private: city+specialty match rows: {private_city}")
+            # Log the actual rows and their distance for private_city
+            if not private_city.empty:
+               logger.debug(f"[RESULT] Private city+specialty match rows (head): {private_city.head(10)}")
+               logger.debug(f"[RESULT] Private city+specialty match distances: {private_city['Distance'].tolist() if 'Distance' in private_city.columns else 'N/A'}")
+            else:
+               logger.debug("[RESULT] No private city+specialty match rows found.")
         if institution_type == 'Public':
             public_df = filtered_df[filtered_df["Catégorie"] == "Public"].nlargest(number_institutions, "Note / 20")
             logger.debug(f"Filtered public_df shape: {public_df.shape}")
