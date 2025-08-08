@@ -343,10 +343,10 @@ class PipelineOrchestrator:
             # Public filtering (accent-insensitive)
             public_raw = filtered_df[filtered_df["Catégorie"] == "Public"]
             public_specialty = public_raw[
-                public_raw['Spécialité'].apply(lambda x: unidecode(str(x)).lower().strip()) == unidecode(str(self.specialty)).lower().strip()
+                public_raw['Spécialité'] == self.specialty
             ]
             public_city = public_specialty[
-                public_specialty['Ville'].apply(lambda x: unidecode(str(x)).lower().strip()) == unidecode(str(self.city)).lower().strip()
+                public_specialty['Ville'] == self.city
             ]
             logger.debug(f"[FILTER] Public: raw count={public_raw.shape[0]}, specialty count={public_specialty.shape[0]}, city+specialty count={public_city.shape[0]}")
             logger.debug(f"[FILTER] Public: specialty match rows: {public_specialty}")
@@ -360,10 +360,10 @@ class PipelineOrchestrator:
             # Private filtering (accent-insensitive)
             private_raw = filtered_df[filtered_df["Catégorie"] == "Privé"]
             private_specialty = private_raw[
-                private_raw['Spécialité'].apply(lambda x: unidecode(str(x)).lower().strip()) == unidecode(str(self.specialty)).lower().strip()
+                private_raw['Spécialité'] == self.specialty
             ]
             private_city = private_specialty[
-                private_specialty['Ville'].apply(lambda x: unidecode(str(x)).lower().strip()) == unidecode(str(self.city)).lower().strip()
+                private_specialty['Ville'] == self.city
             ]
             logger.debug(f"[FILTER] Private: raw count={private_raw.shape[0]}, specialty count={private_specialty.shape[0]}, city+specialty count={private_city.shape[0]}")
             logger.debug(f"[FILTER] Private: specialty match rows: {private_specialty}")
