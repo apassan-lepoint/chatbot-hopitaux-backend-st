@@ -14,8 +14,7 @@ from app.utility.formatting_helpers import format_links
 from app.services.pipeline_orchestrator_service import PipelineOrchestrator
 from st_config import (DEFAULT_CHECKS_TO_RUN, SESSION_STATE_KEYS, SESSION_STATE_DEFAULTS, MAX_MESSAGES, UI_CHAT_INPUT_PLACEHOLDER, ERROR_MESSAGES, SPINNER_MESSAGES)
 from st_utility import (append_to_conversation, display_conversation_history, get_conversation_list, get_conversation_length, get_session_state_value, execute_with_spinner)
-from st_message_handler import MessageHandler
-from st_specialty_handler import SpecialtyHandler
+from st_utility import handle_specialty_selection, process_message
 from st_ui_components import UIComponents
 
 
@@ -30,9 +29,6 @@ class StreamlitChatbot:
     def __init__(self) -> None:
         logger.info("Initializing StreamlitChatbot")
         from app.services.llm_handler_service import LLMHandler ## Import LLMHandler locally to avoid circular import
-        self.llm_handler = LLMHandler()
-        self.specialty_handler = SpecialtyHandler(self.llm_handler)
-        self.message_handler = MessageHandler(self.llm_handler, self.specialty_handler)
         self.ui_components = UIComponents(self._reset_session_state)
         self.max_messages = MAX_MESSAGES
     
@@ -97,110 +93,44 @@ class StreamlitChatbot:
     
     
     def _handle_first_message(self):
-        """        
-        This method handles the first message from the user.
-        It retrieves the user input, performs sanity checks, detects the specialty, and appends the answer to the conversation history.
-        If the user input is empty, it returns without doing anything.
-        If the user has selected a specialty, it appends the answer accordingly.
-        If the user input is not empty, it performs sanity checks and detects the specialty.
-        If the specialty is detected, it appends the answer to the conversation history.
-        If an error occurs during any of these steps, it logs the error and displays an error message to the user.  
         """
-        # Get user input
+        Handles the first message from the user: gets input, performs sanity checks, and calls MessageHandler to process.
+        """
         user_input = st.chat_input(UI_CHAT_INPUT_PLACEHOLDER)
         if not user_input and st.session_state.prompt:
             user_input = st.session_state.prompt
         if not user_input:
-            return  # No input, nothing to do
+            return
         logger.info(f"First message user_input: '{user_input}'")
-        logger.info(f"Received first message - Prompt length: {len(user_input)} chars")
         st.session_state.prompt = user_input
-        
         try:
             self._perform_sanity_checks(user_input)
-            logger.debug("Sanity checks completed for first message")
         except Exception as e:
             logger.error(f"Sanity check failed for first message: {e}")
             return
-        
         prompt = get_session_state_value(SESSION_STATE_KEYS["prompt"], "")
-        
-        # Handle specialty selection
-        selected_specialty = self.specialty_handler.handle_specialty_selection(prompt)
-        if selected_specialty:
-            original_prompt = get_session_state_value(SESSION_STATE_KEYS["original_prompt"], prompt)
-            self._append_answer(original_prompt, selected_specialty)
-            return
-        
-        # Handle specialty selection UI if needed
-        if get_session_state_value(SESSION_STATE_KEYS["multiple_specialties"], None) is not None:
-            return
-        
-        # If prompt exists, handle answer generation
-        if not prompt:
-            return
-
-        try:
-            # Use previously selected specialty if available
-            prev_specialty = get_session_state_value(SESSION_STATE_KEYS["selected_specialty"], None)
-            if prev_specialty is not None:
-                logger.info(f"Using previously selected specialty: {prev_specialty}")
-                self._append_answer(prompt, st.session_state.selected_specialty)
-                return
-
-            # Detect specialty
-            specialty, needs_rerun = self.specialty_handler.detect_and_handle_specialty(prompt)
-            if needs_rerun:
-                st.rerun()
-                return
-
-            self._append_answer(prompt, specialty)
-        except Exception as e:
-            logger.error(f"Error processing first message: {e}")
-            st.error(ERROR_MESSAGES["general_processing"])
+        process_message(prompt)
     
     
     def _handle_subsequent_messages(self):
         """
-        This method handles subsequent messages from the user.
-        It retrieves the user input, checks if a specialty has been selected, and appends the answer to the conversation history.
-        If a specialty is selected, it appends the answer accordingly.
-        If the user input is empty, it returns without doing anything.
-        If the user has selected a specialty, it appends the answer accordingly.
-        If the user input is not empty, it performs sanity checks and appends the answer to the conversation history.
-        If an error occurs during any of these steps, it logs the error and displays an error message to the user.
+        Handles subsequent messages from the user: gets input, performs sanity checks, and calls MessageHandler to process.
         """
-        # Handle specialty selection for subsequent messages
-        selected_specialty = self.specialty_handler.handle_specialty_selection(
-            get_session_state_value(SESSION_STATE_KEYS["prompt"], ""), 
-            "_subsequent"
-        )
-        if selected_specialty:
-            current_prompt = get_session_state_value(SESSION_STATE_KEYS["prompt"], "")
-            self._append_answer(current_prompt, selected_specialty)
-            return
-        
-        # Handle specialty selection UI if needed
-        if get_session_state_value(SESSION_STATE_KEYS["multiple_specialties"], None) is not None:
-            return
-        
         user_input = st.chat_input(UI_CHAT_INPUT_PLACEHOLDER)
-        if user_input:
-            logger.info(f"Subsequent message user_input: '{user_input}'")
-            logger.info(f"Received subsequent message - Prompt length: {len(user_input)} chars, "
-                        f"Conversation history: {get_conversation_length()} turns")
-            st.session_state.prompt = user_input
-            try:
-                # Perform sanity checks
-                current_conversation = get_conversation_list()
-                self._perform_sanity_checks(user_input, current_conversation)
-                logger.debug("Sanity checks completed for subsequent message")
-                # Prepare conversation history
-                # Pass conversation history to backend for multi-turn support
-                self.message_handler.analyze_and_handle_message(user_input, current_conversation)
-            except Exception as e:
-                logger.error(f"Error processing subsequent message: {str(e)}")
-                st.error(ERROR_MESSAGES["general_processing"])
+        if not user_input and st.session_state.prompt:
+            user_input = st.session_state.prompt
+        if not user_input:
+            return
+        logger.info(f"Subsequent message user_input: '{user_input}'")
+        st.session_state.prompt = user_input
+        try:
+            current_conversation = get_conversation_list()
+            self._perform_sanity_checks(user_input, current_conversation)
+        except Exception as e:
+            logger.error(f"Sanity check failed for subsequent message: {e}")
+            return
+        prompt = get_session_state_value(SESSION_STATE_KEYS["prompt"], "")
+        self.message_handler.process_message(prompt)
 
 
     def run(self):
