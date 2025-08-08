@@ -423,27 +423,14 @@ class PipelineOrchestrator:
                 logger.debug("No public institution for this specialty, trying private institutions as fallback")
                 fallback_type = 'Privé'
             if fallback_type:
-                # Robust fallback: fully reset DataProcessor state
-                self.data_processor.specialty = detected_specialty
+                # Only change institution type, preserve specialty and city
                 self.data_processor.institution_type = fallback_type
                 self.institution_type = fallback_type
-                self.specialty = detected_specialty
+                # Do NOT overwrite specialty or city
                 self.data_processor.specialty_ranking_unavailable = False
                 self.data_processor.df_gen = None
-                # Clear cached detection results
-                for attr in ["city_detected", "city", "institution_name", "institution_mentioned"]:
-                    if hasattr(self.data_processor, attr):
-                        setattr(self.data_processor, attr, None)
                 try:
-                    # Re-run detection for fallback type
-                    fallback_detections = self.extract_query_parameters(
-                        prompt,
-                        detected_specialty,
-                        conv_history=None
-                    )
-                    self.data_processor.institution_type = fallback_type
-                    self.institution_type = fallback_type
-                    # Build DataFrame for fallback type
+                    # Build DataFrame for fallback type (no parameter re-extraction)
                     fallback_df = self.data_processor.generate_data_response()
                     # Defensive: check DataFrame validity
                     if fallback_df is not None and hasattr(fallback_df, 'columns') and "Catégorie" in fallback_df.columns:
