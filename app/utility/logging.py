@@ -1,7 +1,3 @@
-"""
-Logging utilities for the chatbot backend.
-"""
-
 import logging
 import os
 
