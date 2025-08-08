@@ -162,8 +162,7 @@ class SpecialtyHandler:
 
         # If no specialty detected yet, use SpecialtyDetector to detect
         if specialty == "":
-            detected_specialty_result = self.specialty_detector.detect_specialty(prompt)
-            detected_specialty = detected_specialty_result.specialty
+            detected_specialty, _ = self.specialty_detector.detect_specialty(prompt)
             specialty = self.normalize_specialty_format(detected_specialty)
             st.session_state.specialty = specialty
 

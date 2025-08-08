@@ -1,7 +1,3 @@
-"""
-Logging utilities for the chatbot backend.
-"""
-
 import logging
 import os
 
@@ -13,7 +9,7 @@ LOG_FILE = os.path.join(os.path.dirname(__file__), "app.log")
 # - Define the log message format
 # - Log messages will be written both to a file and to the console
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     handlers=[
         logging.FileHandler(LOG_FILE, encoding="utf-8"),

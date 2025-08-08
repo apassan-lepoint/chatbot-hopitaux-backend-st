@@ -3,7 +3,8 @@ from .city.city_validation import CityCheckException
 from .institution_name.institution_name_analyst import InstitutionNameAnalyst
 from .institution_type.institution_type_analyst import InstitutionTypeAnalyst
 from .number_institutions.number_institutions_analyst import NumberInstitutionsAnalyst
-from .specialty.specialty_detection import SpecialtyDetector
+from .specialty.specialty_analyst import SpecialtyAnalyst
+from app.utility.specialty_dicts_lists import specialty_categories_dict
 from app.utility.logging import get_logger
 
 logger = get_logger(__name__)
@@ -29,7 +30,10 @@ class QueryAnalyst:
         self.city_service = CityAnalyst(llm_handler_service, model)
         self.institution_name_service = InstitutionNameAnalyst(model, institution_list or "")
         self.institution_type_service = InstitutionTypeAnalyst(model, institution_list or "")
-        self.specialty_detector = SpecialtyDetector(model)
+        # Use SpecialtyAnalyst instead of SpecialtyDetector
+        # You may want to pass a specialty_list from config or data, here we use all specialties from the dict
+        all_specialties = [s for specs in specialty_categories_dict.values() for s in specs]
+        self.specialty_analyst = SpecialtyAnalyst(model, all_specialties, specialty_categories_dict)
         self.number_institutions_service = NumberInstitutionsAnalyst(model)
 
 
@@ -37,17 +41,8 @@ class QueryAnalyst:
         logger.debug(f"run_all_detections called: text={text}, conv_history={conv_history}, institution_list={institution_list}")
         """
         Consolidate results from all prompt detection classes into a dictionary.
-        Returns:
-            dict: {
-                'city': ...,
-                'institution_name': ...,
-                'institution_type': ...,
-                'specialty': ...,
-                'number_institutions': ...
-            }
         """
-        specialty_result = self.specialty_detector.detect_specialty(text, conv_history)
-        specialty = specialty_result.get_primary_specialty() if hasattr(specialty_result, 'get_primary_specialty') else specialty_result
+        specialty_result = self.specialty_analyst.detect_and_validate_specialty(text, conv_history)
         number_institutions = self.number_institutions_service.process_number_institutions(text, conv_history)
 
         try:
@@ -69,8 +64,10 @@ class QueryAnalyst:
         return {
             "city": city_info["city"],
             "city_detected": city_info["city_detected"],
-            "institution_name": institution_name_result.get("institution_name"),
-            "institution_type": institution_type_result.get("institution_type"),
-            "specialty": specialty,
+            "institution_name": institution_name_result["institution_name"],
+            "institution_type": institution_type_result["institution_type"],
+            "specialty": specialty_result["specialty"],
+            "detection_method": specialty_result["detection_method"],
+            "original_detected_specialty": specialty_result["original_detected_specialty"],
             "number_institutions": number_institutions
         }
