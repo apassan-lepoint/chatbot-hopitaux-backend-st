@@ -19,7 +19,7 @@ BackendChatbotHopitaux/
 │   ├── config/
 │   │   ├── features_config.py
 │   │   └── file_paths_config.py
-│   ├── features/
+│   ├── features/==
 │   │   ├── conversation/
 │   │   │  ├── conversation_analyst.py
 │   │   │  ├── llm_responder.py
