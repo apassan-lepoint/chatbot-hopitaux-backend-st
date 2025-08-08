@@ -16,6 +16,7 @@ from st_config import (DEFAULT_CHECKS_TO_RUN, SESSION_STATE_KEYS, SESSION_STATE_
 from st_utility import (append_to_conversation, display_conversation_history, get_conversation_list, get_conversation_length, get_session_state_value, execute_with_spinner)
 from st_utility import handle_specialty_selection, process_message
 from st_ui_components import UIComponents
+from app.services.llm_handler_service import LLMHandler 
 
 
 logger = get_logger(__name__)
@@ -28,11 +29,11 @@ class StreamlitChatbot:
     """
     def __init__(self) -> None:
         logger.info("Initializing StreamlitChatbot")
-        from app.services.llm_handler_service import LLMHandler ## Import LLMHandler locally to avoid circular import
         self.ui_components = UIComponents(self._reset_session_state)
         self.max_messages = MAX_MESSAGES
-    
-    
+        self.llm_handler = LLMHandler()
+
+
     def _reset_session_state(self) -> None:
         """
         Reset the session state to its default values and remove any extra keys.
