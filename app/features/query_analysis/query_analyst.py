@@ -41,14 +41,6 @@ class QueryAnalyst:
         logger.debug(f"run_all_detections called: text={text}, conv_history={conv_history}, institution_list={institution_list}")
         """
         Consolidate results from all prompt detection classes into a dictionary.
-        Returns:
-            dict: {
-                'city': ...,
-                'institution_name': ...,
-                'institution_type': ...,
-                'specialty': ...,
-                'number_institutions': ...
-            }
         """
         specialty_result = self.specialty_analyst.detect_and_validate_specialty(text, conv_history)
         number_institutions = self.number_institutions_service.process_number_institutions(text, conv_history)
@@ -74,6 +66,8 @@ class QueryAnalyst:
             "city_detected": city_info["city_detected"],
             "institution_name": institution_name_result.get("institution_name"),
             "institution_type": institution_type_result.get("institution_type"),
-            "specialty": specialty_result,  # returns full dict from SpecialtyAnalyst
+            "specialty": specialty_result.get("specialty"),
+            "detection_method": specialty_result.get("detection_method"),
+            "original_detected_specialty": specialty_result.get("original_detected_specialty"),
             "number_institutions": number_institutions
         }
