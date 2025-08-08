@@ -335,6 +335,24 @@ class PipelineOrchestrator:
         institution_type = self.institution_type
         public_df = None
         private_df = None
+        # Enhanced debug logging for specialty/city filtering in public/private DataFrames
+        logger.debug(f"[FILTER] Institution type requested: {institution_type}")
+        logger.debug(f"[FILTER] Specialty: '{self.specialty}', City: '{self.city}'")
+        if 'Spécialité' in filtered_df.columns and 'Ville' in filtered_df.columns:
+            # Public filtering
+            public_raw = filtered_df[filtered_df["Catégorie"] == "Public"]
+            public_specialty = public_raw[public_raw['Spécialité'].str.lower().str.strip() == str(self.specialty).lower().strip()]
+            public_city = public_specialty[public_specialty['Ville'].str.lower().str.strip() == str(self.city).lower().strip()]
+            logger.debug(f"[FILTER] Public: raw count={public_raw.shape[0]}, specialty count={public_specialty.shape[0]}, city+specialty count={public_city.shape[0]}")
+            logger.debug(f"[FILTER] Public: specialty match rows: {public_specialty}")
+            logger.debug(f"[FILTER] Public: city+specialty match rows: {public_city}")
+            # Private filtering
+            private_raw = filtered_df[filtered_df["Catégorie"] == "Privé"]
+            private_specialty = private_raw[private_raw['Spécialité'].str.lower().str.strip() == str(self.specialty).lower().strip()]
+            private_city = private_specialty[private_specialty['Ville'].str.lower().str.strip() == str(self.city).lower().strip()]
+            logger.debug(f"[FILTER] Private: raw count={private_raw.shape[0]}, specialty count={private_specialty.shape[0]}, city+specialty count={private_city.shape[0]}")
+            logger.debug(f"[FILTER] Private: specialty match rows: {private_specialty}")
+            logger.debug(f"[FILTER] Private: city+specialty match rows: {private_city}")
         if institution_type == 'Public':
             public_df = filtered_df[filtered_df["Catégorie"] == "Public"].nlargest(number_institutions, "Note / 20")
             logger.debug(f"Filtered public_df shape: {public_df.shape}")
