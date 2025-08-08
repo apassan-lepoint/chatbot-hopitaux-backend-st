@@ -10,7 +10,6 @@ from app.utility.specialty_dicts_lists import specialty_categories_dict, categor
 logger = get_logger(__name__)
 
 
-
 class SpecialtyDetector:
     """
     Only detects specialty string and detection method.
@@ -38,6 +37,54 @@ class SpecialtyDetector:
         """Build default keyword mappings from specialty categories."""
         return "\n".join(f"{cat}: {', '.join(specialties)}" for cat, specialties in self.specialty_categories_dict.items())
 
+
+    def _detect_specialty_keywords(self, prompt: str) -> Tuple[str, str]:
+        """
+        Returns (specialty_string, method)
+        """
+        keyword_result = self.extract_specialty_keywords(prompt)
+        if keyword_result:
+            if keyword_result.startswith("multiple matches:") and self.detect_general_cancer_query(prompt):
+                logger.info("General cancer query detected")
+                return keyword_result, "keyword"
+            return keyword_result, "keyword"
+        return "no specialty match", "keyword"
+    
+    def _detect_specialty_llm(self, prompt: str, conv_history: str = "") -> Tuple[str, str]:
+        """
+        Returns (specialty_string, method)
+        """
+        formatted_prompt = prompt_formatting(
+            "second_detect_specialty_prompt",
+            mapping_words=self.key_words,
+            prompt=prompt,
+            conv_history=conv_history
+        )
+        raw_specialty = invoke_llm_with_error_handling(
+            self.model, 
+            formatted_prompt, 
+            "detect_specialty_llm"
+        )
+        return raw_specialty, "llm"
+    
+    def _format_specialty_status_prompt(self, prompt: str, conv_history: str = "") -> str:
+        """
+
+        """
+        formatted_history = f"Historique de la conversation:\n{conv_history}\n\n" if conv_history.strip() else ""
+        
+        return f"""
+{formatted_history}Voici une liste de spécialité pour laquelle tu vas devoir choisir la spécialité qui correspond le plus à mon message : 
+liste des spécialités: '{self.specialty_list}'. 
+
+Analysez le message de l'utilisateur et déterminez si une ou plusieurs spécialités médicales dans la liste des spécialités sont mentionnées:
+0 - Aucune spécialité médicale mentionnée
+1 - Une spécialité médicale mentionnée
+2 - Plusieurs spécialités médicales mentionnées
+
+MESSAGE À ANALYSER: '{prompt}'
+"""
+    
     def get_all_cancer_specialties(self):
         """Return all cancer specialties, excluding surgical ones."""
         if self._all_cancer_specialties is not None:
@@ -94,12 +141,6 @@ class SpecialtyDetector:
         logger.info(f"Specialty detection result: {specialty}, method: {method}")
         return specialty, method
     
-    def detect_specialty_with_context(self, prompt: str, conv_history: str = "", detected_specialty: str = None) -> Tuple[str, str]:
-        """Return context specialty if given, else detect."""
-        if detected_specialty:
-            logger.info(f"Using provided specialty from context: {detected_specialty}")
-            return detected_specialty, "context"
-        return self.detect_specialty(prompt, conv_history)
     
     def detect_specialty_keyword_only(self, prompt: str) -> Tuple[str, str]:
         """Keyword-only specialty detection."""
@@ -109,66 +150,6 @@ class SpecialtyDetector:
         """LLM-only specialty detection."""
         return self._detect_specialty_llm(prompt, conv_history)
     
-    def detect_specialty_status(self, prompt: str, conv_history: str = ""):
-        """
-
-        """
-        # Use a simple LLM call to determine status
-        formatted_prompt = self._format_specialty_status_prompt(prompt, conv_history)
-        raw_response = invoke_llm_with_error_handling(
-            self.model, 
-            formatted_prompt, 
-            "detect_specialty_status"
-        )
-        
-        return parse_llm_response(raw_response, "specialty")
-    
-    def _detect_specialty_keywords(self, prompt: str) -> Tuple[str, str]:
-        """
-        Returns (specialty_string, method)
-        """
-        keyword_result = self.extract_specialty_keywords(prompt)
-        if keyword_result:
-            if keyword_result.startswith("multiple matches:") and self.detect_general_cancer_query(prompt):
-                logger.info("General cancer query detected")
-                return keyword_result, "keyword"
-            return keyword_result, "keyword"
-        return "no specialty match", "keyword"
-    
-    def _detect_specialty_llm(self, prompt: str, conv_history: str = "") -> Tuple[str, str]:
-        """
-        Returns (specialty_string, method)
-        """
-        formatted_prompt = prompt_formatting(
-            "second_detect_specialty_prompt",
-            mapping_words=self.key_words,
-            prompt=prompt,
-            conv_history=conv_history
-        )
-        raw_specialty = invoke_llm_with_error_handling(
-            self.model, 
-            formatted_prompt, 
-            "detect_specialty_llm"
-        )
-        return raw_specialty, "llm"
-    
-    def _format_specialty_status_prompt(self, prompt: str, conv_history: str = "") -> str:
-        """
-
-        """
-        formatted_history = f"Historique de la conversation:\n{conv_history}\n\n" if conv_history.strip() else ""
-        
-        return f"""
-{formatted_history}Voici une liste de spécialité pour laquelle tu vas devoir choisir la spécialité qui correspond le plus à mon message : 
-liste des spécialités: '{self.specialty_list}'. 
-
-Analysez le message de l'utilisateur et déterminez si une ou plusieurs spécialités médicales dans la liste des spécialités sont mentionnées:
-0 - Aucune spécialité médicale mentionnée
-1 - Une spécialité médicale mentionnée
-2 - Plusieurs spécialités médicales mentionnées
-
-MESSAGE À ANALYSER: '{prompt}'
-"""
     
     @property
     def all_cancer_specialties(self) -> List[str]:
@@ -186,5 +167,3 @@ MESSAGE À ANALYSER: '{prompt}'
         if self.detect_general_cancer_query(prompt):
             return self.all_cancer_specialties
         return []
-
-    # Remove extract_specialty_list_from_result, all parsing is now in validator

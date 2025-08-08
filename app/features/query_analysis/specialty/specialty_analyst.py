@@ -7,8 +7,6 @@ class SpecialtyAnalyst:
         self.detector = SpecialtyDetector(model)
         self.validator = SpecialtyValidator(specialty_list, specialty_categories_dict)
 
-    def set_specialty_list(self, specialty_list: List[str]):
-        self.validator.specialty_list = specialty_list
 
     def _specialty_list_to_string(self, validated):
         """Convert a specialty list or string to the expected string format."""
@@ -24,27 +22,22 @@ class SpecialtyAnalyst:
         else:
             return "no specialty match"
 
+    
     def detect_and_validate_specialty(self, prompt: str, conv_history: str = "") -> Dict[str, Optional[str]]:
         # Step 1: Detect specialty
-        raw_specialty, detection_method = self.detector.detect_specialty(prompt, conv_history)
-        # Step 2: Normalize specialty
-        normalized_specialty = self.validator.normalize_specialty_format(raw_specialty)
-        # Step 3: Extract specialty list
-        specialty_list = self.validator.extract_specialty_list(normalized_specialty)
-        # Step 4: Validate specialty
-        is_valid = self.validator.is_specialty_valid(normalized_specialty)
-        # Step 5: Calculate confidence
-        confidence = self.validator.calculate_confidence(normalized_specialty, detection_method)
-        # Step 6: Format for pipeline (string for downstream)
-        specialty_str = self._specialty_list_to_string(specialty_list)
-        # Step 7: Return all relevant info
+        detected_specialty, detection_method = self.detector.detect_specialty(prompt, conv_history)
+        # Step 2: Validate specialty (returns dict)
+        validated_specialty = self.validator.validate_specialty(detected_specialty)
+        # Step 3: Format for pipeline (string for downstream)
+        detected_validated_specialty = self._specialty_list_to_string(validated_specialty["specialty_list"])
+        # Step 4: Return all relevant info
         return {
-            "specialty": specialty_str,
-            "normalized_specialty": normalized_specialty,
-            "specialty_list": specialty_list,
-            "is_valid": is_valid,
-            "confidence": confidence,
+            "specialty": detected_validated_specialty,
             "detection_method": detection_method,
-            "raw_specialty": raw_specialty,
-            # ...other fields as needed...
+            "original_detected_specialty": detected_specialty
         }
+    
+    ## Following function kept in case of future need
+    # def set_specialty_list(self, specialty_list: List[str]):
+    #     self.validator.specialty_list = specialty_list
+    
