@@ -453,8 +453,6 @@ class PipelineOrchestrator:
         if self.data_processor.specialty_ranking_unavailable:
             logger.warning("Ranking not found for requested specialty/type, suggesting alternative")
             fallback_type = None
-            fallback_msg = None
-            # Fallback logic for both directions
             if self.data_processor.institution_type == 'Privé':
                 logger.debug("No private institution for this specialty, trying public institutions as fallback")
                 fallback_type = 'Public'
@@ -465,7 +463,6 @@ class PipelineOrchestrator:
                 # Only change institution type, preserve specialty and city
                 self.data_processor.institution_type = fallback_type
                 self.institution_type = fallback_type
-                # Do NOT overwrite specialty or city
                 self.data_processor.specialty_ranking_unavailable = False
                 self.data_processor.df_gen = None
                 try:
@@ -484,7 +481,6 @@ class PipelineOrchestrator:
                                 message = self._format_response_with_specialty(NO_PUBLIC_INSTITUTION_MSG + "\nCependant, voici les établissements privés disponibles :", self.number_institutions, max_radius_km, self.city)
                             return self._create_response_and_log(message, res_str, prompt), self.link
                         else:
-                            # Check if any institutions exist for the specialty
                             public_exists = not fallback_df[fallback_df["Catégorie"] == "Public"].empty if "Catégorie" in fallback_df.columns else False
                             private_exists = not fallback_df[fallback_df["Catégorie"] == "Privé"].empty if "Catégorie" in fallback_df.columns else False
                             if not public_exists and not private_exists:
@@ -499,8 +495,6 @@ class PipelineOrchestrator:
                 except Exception as e:
                     logger.exception(f"Exception in fallback to {fallback_type} institutions: {e}")
                     return "Aucun établissement (ni public ni privé) est disponible pour votre query.", self.link
-                # ...existing code...
-            # If no fallback type, return as before
             if self.data_processor.institution_type == 'Public':
                 return NO_PUBLIC_INSTITUTION_MSG, self.link
             elif self.data_processor.institution_type == 'Privé':
