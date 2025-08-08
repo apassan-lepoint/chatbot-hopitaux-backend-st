@@ -219,6 +219,18 @@ class PipelineOrchestrator:
         if self.df_gen is not None:
             logger.debug(f"[DEBUG] Unique specialties in DataFrame: {self.df_gen['Spécialité'].unique() if 'Spécialité' in self.df_gen.columns else 'N/A'}")
             logger.debug(f"[DEBUG] Unique institution types in DataFrame: {self.df_gen['Catégorie'].unique() if 'Catégorie' in self.df_gen.columns else 'N/A'}")
+            logger.debug(f"[DEBUG] DataFrame columns: {self.df_gen.columns}")
+            logger.debug(f"[DEBUG] DataFrame head: {self.df_gen.head(10)}")
+            logger.debug(f"[DEBUG] Filtering for specialty: '{self.specialty}' and city: '{self.city}'")
+            specialty_matches = self.df_gen[self.df_gen['Spécialité'].str.lower().str.strip() == str(self.specialty).lower().strip()] if 'Spécialité' in self.df_gen.columns else None
+            logger.debug(f"[DEBUG] Specialty match count: {specialty_matches.shape[0] if specialty_matches is not None else 'N/A'}")
+            if specialty_matches is not None:
+                logger.debug(f"[DEBUG] Specialty match rows: {specialty_matches}")
+            if self.city:
+                city_matches = self.df_gen[self.df_gen['Ville'].str.lower().str.strip() == str(self.city).lower().strip()] if 'Ville' in self.df_gen.columns else None
+                logger.debug(f"[DEBUG] City match count: {city_matches.shape[0] if city_matches is not None else 'N/A'}")
+                if city_matches is not None:
+                    logger.debug(f"[DEBUG] City match rows: {city_matches}")
         # If ranking unavailable for specialty/type, return general DataFrame
         if self.data_processor.specialty_ranking_unavailable:
             logger.warning("Ranking not found for requested specialty/type")
@@ -297,10 +309,28 @@ class PipelineOrchestrator:
                 filtered_df = filtered_df[filtered_df["Distance"] <= max_radius_km].reset_index(drop=True)
                 logger.info(f"[RadiusFilter] DataFrame shape after radius filter: {filtered_df.shape}")
                 logger.info(f"[RadiusFilter] Distance values after radius filter: {filtered_df['Distance'].tolist()}")
+            logger.debug(f"[DEBUG] Filtering for specialty: '{self.specialty}' and city: '{self.city}' in filtered_df")
+            if 'Spécialité' in filtered_df.columns:
+                specialty_matches = filtered_df[filtered_df['Spécialité'].str.lower().str.strip() == str(self.specialty).lower().strip()]
+                logger.debug(f"[DEBUG] Specialty match count after radius filter: {specialty_matches.shape[0]}")
+                logger.debug(f"[DEBUG] Specialty match rows after radius filter: {specialty_matches}")
+            if self.city and 'Ville' in filtered_df.columns:
+                city_matches = filtered_df[filtered_df['Ville'].str.lower().str.strip() == str(self.city).lower().strip()]
+                logger.debug(f"[DEBUG] City match count after radius filter: {city_matches.shape[0]}")
+                logger.debug(f"[DEBUG] City match rows after radius filter: {city_matches}")
         else:
             # If no city, skip distance filtering
             logger.info("No city specified or Distance column missing, skipping distance filtering.")
             filtered_df = df
+            logger.debug(f"[DEBUG] Filtering for specialty: '{self.specialty}' and city: '{self.city}' in unfiltered_df")
+            if 'Spécialité' in filtered_df.columns:
+                specialty_matches = filtered_df[filtered_df['Spécialité'].str.lower().str.strip() == str(self.specialty).lower().strip()]
+                logger.debug(f"[DEBUG] Specialty match count in unfiltered_df: {specialty_matches.shape[0]}")
+                logger.debug(f"[DEBUG] Specialty match rows in unfiltered_df: {specialty_matches}")
+            if self.city and 'Ville' in filtered_df.columns:
+                city_matches = filtered_df[filtered_df['Ville'].str.lower().str.strip() == str(self.city).lower().strip()]
+                logger.debug(f"[DEBUG] City match count in unfiltered_df: {city_matches.shape[0]}")
+                logger.debug(f"[DEBUG] City match rows in unfiltered_df: {city_matches}")
         # Only filter and format the DataFrame(s) for the institution type(s) requested by the user
         institution_type = self.institution_type
         public_df = None
