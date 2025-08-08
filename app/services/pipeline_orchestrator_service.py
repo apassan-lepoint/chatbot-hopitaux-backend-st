@@ -1,5 +1,5 @@
 import pandas as pd
-from unidecode import unidecode
+## Accent-insensitive matching removed
 from app.services.data_processing_service import DataProcessor
 from app.features.query_analysis.query_analyst import QueryAnalyst
 from app.config.file_paths_config import PATHS
@@ -66,7 +66,7 @@ class PipelineOrchestrator:
         """
         logger.debug(f"Normalizing specialty for display: {specialty}")
         # Handle empty or no-match specialty cases
-        if not specialty or specialty.lower() in ["no specialty match", "aucune correspondance", "no match", ""]:
+        if not specialty or specialty in ["no specialty match", "aucune correspondance", "no match", ""]:
             return "aucune correspondance", True
         # Handle multiple matches case (for UI selection)
         if specialty.startswith(("multiple matches:", "plusieurs correspondances:")):
@@ -223,12 +223,12 @@ class PipelineOrchestrator:
             logger.debug(f"[DEBUG] DataFrame columns: {self.df_gen.columns}")
             logger.debug(f"[DEBUG] DataFrame head: {self.df_gen.head(10)}")
             logger.debug(f"[DEBUG] Filtering for specialty: '{self.specialty}' and city: '{self.city}'")
-            specialty_matches = self.df_gen[self.df_gen['Spécialité'].str.lower().str.strip() == str(self.specialty).lower().strip()] if 'Spécialité' in self.df_gen.columns else None
+            specialty_matches = self.df_gen[self.df_gen['Spécialité'] == self.specialty] if 'Spécialité' in self.df_gen.columns else None
             logger.debug(f"[DEBUG] Specialty match count: {specialty_matches.shape[0] if specialty_matches is not None else 'N/A'}")
             if specialty_matches is not None:
                 logger.debug(f"[DEBUG] Specialty match rows: {specialty_matches}")
             if self.city:
-                city_matches = self.df_gen[self.df_gen['Ville'].str.lower().str.strip() == str(self.city).lower().strip()] if 'Ville' in self.df_gen.columns else None
+                city_matches = self.df_gen[self.df_gen['Ville'] == self.city] if 'Ville' in self.df_gen.columns else None
                 logger.debug(f"[DEBUG] City match count: {city_matches.shape[0] if city_matches is not None else 'N/A'}")
                 if city_matches is not None:
                     logger.debug(f"[DEBUG] City match rows: {city_matches}")
@@ -312,7 +312,7 @@ class PipelineOrchestrator:
                 logger.info(f"[RadiusFilter] Distance values after radius filter: {filtered_df['Distance'].tolist()}")
             logger.debug(f"[DEBUG] Filtering for specialty: '{self.specialty}' and city: '{self.city}' in filtered_df")
             if 'Spécialité' in filtered_df.columns:
-                specialty_matches = filtered_df[filtered_df['Spécialité'].str.lower().str.strip() == str(self.specialty).lower().strip()]
+                specialty_matches = filtered_df[filtered_df['Spécialité'] == self.specialty]
                 logger.debug(f"[DEBUG] Specialty match count after radius filter: {specialty_matches.shape[0]}")
                 logger.debug(f"[DEBUG] Specialty match rows after radius filter: {specialty_matches}")
             if self.city and 'Ville' in filtered_df.columns:
