@@ -29,7 +29,7 @@ class SpecialtyAnalyst:
         # Step 2: Validate specialty (returns dict)
         validated_specialty = self.validator.validate_specialty(detected_specialty)
         # Step 3: Format for pipeline (string for downstream)
-        detected_validated_specialty = self._specialty_list_to_string(validated_specialty["specialty_list"])
+        detected_validated_specialty = self._specialty_list_to_string(validated_specialty)
         # Step 4: Return all relevant info
         return {
             "specialty": detected_validated_specialty,
