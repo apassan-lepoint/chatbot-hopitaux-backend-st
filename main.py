@@ -1,11 +1,14 @@
 """
 Entry point for the FastAPI application.
 """
-
+import uvicorn
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import router
 from app.utility.logging import get_logger
+
+
 
 
 logger = get_logger(__name__)
@@ -43,3 +46,9 @@ def create_app() -> FastAPI:
 
 # Instantiate the FastAPI app
 app = create_app()
+if __name__ == "__main__":
+    logger.info("Starting server process...")
+    port = int(os.getenv("PORT", 8000))
+    logger.info(f"Running app on port {port}")
+    # Run the application using uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=port)
