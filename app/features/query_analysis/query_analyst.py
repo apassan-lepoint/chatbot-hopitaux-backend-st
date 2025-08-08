@@ -64,10 +64,10 @@ class QueryAnalyst:
         return {
             "city": city_info["city"],
             "city_detected": city_info["city_detected"],
-            "institution_name": institution_name_result.get("institution_name"),
-            "institution_type": institution_type_result.get("institution_type"),
-            "specialty": specialty_result.get("specialty"),
-            "detection_method": specialty_result.get("detection_method"),
-            "original_detected_specialty": specialty_result.get("original_detected_specialty"),
+            "institution_name": institution_name_result["institution_name"],
+            "institution_type": institution_type_result["institution_type"],
+            "specialty": specialty_result["specialty"],
+            "detection_method": specialty_result["detection_method"],
+            "original_detected_specialty": specialty_result["original_detected_specialty"],
             "number_institutions": number_institutions
         }
