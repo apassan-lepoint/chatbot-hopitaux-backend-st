@@ -1,4 +1,5 @@
 import pandas as pd
+from unidecode import unidecode
 from app.services.data_processing_service import DataProcessor
 from app.features.query_analysis.query_analyst import QueryAnalyst
 from app.config.file_paths_config import PATHS
@@ -339,10 +340,14 @@ class PipelineOrchestrator:
         logger.debug(f"[FILTER] Institution type requested: {institution_type}")
         logger.debug(f"[FILTER] Specialty: '{self.specialty}', City: '{self.city}'")
         if 'Spécialité' in filtered_df.columns and 'Ville' in filtered_df.columns:
-            # Public filtering
+            # Public filtering (accent-insensitive)
             public_raw = filtered_df[filtered_df["Catégorie"] == "Public"]
-            public_specialty = public_raw[public_raw['Spécialité'].str.lower().str.strip() == str(self.specialty).lower().strip()]
-            public_city = public_specialty[public_specialty['Ville'].str.lower().str.strip() == str(self.city).lower().strip()]
+            public_specialty = public_raw[
+                public_raw['Spécialité'].apply(lambda x: unidecode(str(x)).lower().strip()) == unidecode(str(self.specialty)).lower().strip()
+            ]
+            public_city = public_specialty[
+                public_specialty['Ville'].apply(lambda x: unidecode(str(x)).lower().strip()) == unidecode(str(self.city)).lower().strip()
+            ]
             logger.debug(f"[FILTER] Public: raw count={public_raw.shape[0]}, specialty count={public_specialty.shape[0]}, city+specialty count={public_city.shape[0]}")
             logger.debug(f"[FILTER] Public: specialty match rows: {public_specialty}")
             logger.debug(f"[FILTER] Public: city+specialty match rows: {public_city}")
@@ -352,10 +357,14 @@ class PipelineOrchestrator:
                logger.debug(f"[RESULT] Public city+specialty match distances: {public_city['Distance'].tolist() if 'Distance' in public_city.columns else 'N/A'}")
             else:
                logger.debug("[RESULT] No public city+specialty match rows found.")
-            # Private filtering
+            # Private filtering (accent-insensitive)
             private_raw = filtered_df[filtered_df["Catégorie"] == "Privé"]
-            private_specialty = private_raw[private_raw['Spécialité'].str.lower().str.strip() == str(self.specialty).lower().strip()]
-            private_city = private_specialty[private_specialty['Ville'].str.lower().str.strip() == str(self.city).lower().strip()]
+            private_specialty = private_raw[
+                private_raw['Spécialité'].apply(lambda x: unidecode(str(x)).lower().strip()) == unidecode(str(self.specialty)).lower().strip()
+            ]
+            private_city = private_specialty[
+                private_specialty['Ville'].apply(lambda x: unidecode(str(x)).lower().strip()) == unidecode(str(self.city)).lower().strip()
+            ]
             logger.debug(f"[FILTER] Private: raw count={private_raw.shape[0]}, specialty count={private_specialty.shape[0]}, city+specialty count={private_city.shape[0]}")
             logger.debug(f"[FILTER] Private: specialty match rows: {private_specialty}")
             logger.debug(f"[FILTER] Private: city+specialty match rows: {private_city}")
