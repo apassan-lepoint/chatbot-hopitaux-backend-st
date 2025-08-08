@@ -128,7 +128,10 @@ MESSAGE À ANALYSER: '{prompt}'
     
     def detect_specialty(self, prompt: str, conv_history: str = "") -> Tuple[str, str]:
         """
-        Returns (raw_specialty_string, detection_method)
+        Returns a tuple: (raw_specialty_string, detection_method)
+        Always unpack the result as:
+            specialty, method = detector.detect_specialty(...)
+        Never use .specialty on the result, as it is a tuple.
         """
         logger.info(f"Detecting specialty from prompt: '{prompt[:50]}...'")
         # Step 1: Try keyword-based detection first
