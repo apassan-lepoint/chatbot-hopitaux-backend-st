@@ -1,16 +1,74 @@
-"""
-Utility functions for Streamlit session state management.
-
-This module provides helper functions for common Streamlit patterns
-used in the chatbot UI.
-"""
-
 import streamlit as st
+from typing import Any, Callable
+from datetime import datetime
+import logging
 
-from typing import Dict, Any, Optional, Callable
+from st_config import (SESSION_STATE_KEYS, UI_SPECIALTY_SELECTION_PROMPT, UI_INVALID_SELECTION_ERROR, SPINNER_MESSAGES, ERROR_MESSAGES)
 from app.utility.logging import get_logger
+from app.utility.formatting_helpers import format_links
+from app.services.pipeline_orchestrator_service import PipelineOrchestrator
+
 
 logger = get_logger(__name__)
+
+
+def handle_specialty_selection(prompt: str, key_suffix: str = "") -> str:
+    """
+    Displays a radio button for the user to select a specialty from a list (provided by backend).
+    Updates session state with the selected specialty.
+    """
+    multiple_specialties = get_session_state_value(SESSION_STATE_KEYS["multiple_specialties"], None)
+    if multiple_specialties is not None:
+        selected_specialty = st.radio(
+            UI_SPECIALTY_SELECTION_PROMPT,
+            multiple_specialties,
+            index=None,
+            key=f"specialty_radio{key_suffix}"
+        )
+        if selected_specialty and selected_specialty in multiple_specialties:
+            st.session_state.selected_specialty = selected_specialty
+            st.session_state.specialty_context = {
+                'original_query': prompt,
+                'selected_specialty': selected_specialty,
+                'timestamp': datetime.now().isoformat()
+            }
+            st.session_state.multiple_specialties = None
+            logger.info(f"User selected valid specialty: {selected_specialty}")
+            return selected_specialty
+        elif selected_specialty:
+            st.error(UI_INVALID_SELECTION_ERROR)
+    return None
+
+def process_message(prompt: str) -> None:
+    """
+    Sends the user query (and selected specialty if present) to backend and displays the response.
+    If multiple specialties are present, calls specialty selection UI.
+    """
+    selected_specialty = handle_specialty_selection(prompt)
+    if selected_specialty:
+        result, links = PipelineOrchestrator().generate_response(prompt=prompt, detected_specialty=selected_specialty)
+        formatted_result = format_links(result, links)
+        result = execute_with_spinner(SPINNER_MESSAGES["loading"], lambda: formatted_result)
+        append_to_conversation(prompt, result)
+        return
+    if st.session_state.get("multiple_specialties") is not None:
+        return
+    prev_specialty = st.session_state.get("selected_specialty")
+    if prev_specialty:
+        result, links = PipelineOrchestrator().generate_response(prompt=prompt, detected_specialty=prev_specialty)
+        formatted_result = format_links(result, links)
+        result = execute_with_spinner(SPINNER_MESSAGES["loading"], lambda: formatted_result)
+        append_to_conversation(prompt, result)
+        return
+    try:
+        result, links = PipelineOrchestrator().generate_response(prompt=prompt)
+        formatted_result = format_links(result, links)
+        result = execute_with_spinner(SPINNER_MESSAGES["loading"], lambda: formatted_result)
+        append_to_conversation(prompt, result)
+    except Exception as e:
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error processing message: {e}")
+        st.error(ERROR_MESSAGES["general_processing"])
 
 
 def append_to_conversation(user_input: str, bot_response: str) -> None:

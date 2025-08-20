@@ -213,6 +213,8 @@ class DataProcessor:
         # Normalize the Spécialité column once if not already present
         if 'Spécialité_norm' not in self.ranking_df.columns:
             self.ranking_df['Spécialité_norm'] = self.ranking_df['Spécialité'].apply(self._normalize_str)
+        # Debug: Show all normalized specialties in the DataFrame
+        logger.debug(f"Normalized specialties in DataFrame: {[repr(s) for s in self.ranking_df['Spécialité_norm'].unique()]}")
         matching_rows = pd.DataFrame()
         # Handle multiple specialties
         if ',' in specialty or specialty.startswith(('plusieurs correspondances:', 'multiple matches:')):
@@ -222,6 +224,7 @@ class DataProcessor:
                 if not self._is_no_specialty(individual_specialty):
                     try:
                         norm_spec = self._normalize_str(individual_specialty)
+                        logger.debug(f"Normalized specialty from query (multiple): '{repr(norm_spec)}'")
                         specialty_matches = self.ranking_df[self.ranking_df['Spécialité_norm'] == norm_spec]
                         if len(specialty_matches) > 0:
                             matching_rows = pd.concat([matching_rows, specialty_matches], ignore_index=True)
@@ -235,6 +238,7 @@ class DataProcessor:
             # Single specialty matching with normalization
             try:
                 specialty_norm = self._normalize_str(specialty)
+                logger.debug(f"Normalized specialty from query: '{repr(specialty_norm)}'")
                 matching_rows = self.ranking_df[self.ranking_df['Spécialité_norm'] == specialty_norm]
                 logger.debug(f"Found {len(matching_rows)} rows matching single specialty '{specialty}' (normalized: '{specialty_norm}')")
                 logger.debug(f"Specialties found after specialty filtering: {matching_rows['Spécialité'].unique()}")
@@ -282,8 +286,12 @@ class DataProcessor:
             None
         """
         logger.debug(f"set_detection_results: specialty={specialty!r}, city={city!r}, city_detected={city_detected!r}, institution_type={institution_type!r}, number_institutions={number_institutions!r}, institution_name={institution_name!r}, institution_mentioned={institution_mentioned!r}")
-        self.specialty = specialty
-        logger.debug(f"DataProcessor.specialty set to: {self.specialty!r}")
+        invalid_specialties = ["no match", "no specialty match", "aucune correspondance", ""]
+        if specialty not in invalid_specialties and specialty is not None:
+            self.specialty = specialty
+            logger.debug(f"DataProcessor.specialty set to: {self.specialty!r}")
+        else:
+            logger.debug(f"Specialty value '{specialty}' is invalid, not overwriting existing specialty: {getattr(self, 'specialty', None)!r}")
         self.city = city
         logger.debug(f"DataProcessor.city set to: {self.city!r}")
         self.city_detected = city_detected

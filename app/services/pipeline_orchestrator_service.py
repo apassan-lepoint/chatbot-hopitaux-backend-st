@@ -1,4 +1,5 @@
 import pandas as pd
+## Accent-insensitive matching removed
 from app.services.data_processing_service import DataProcessor
 from app.features.query_analysis.query_analyst import QueryAnalyst
 from app.config.file_paths_config import PATHS
@@ -65,7 +66,7 @@ class PipelineOrchestrator:
         """
         logger.debug(f"Normalizing specialty for display: {specialty}")
         # Handle empty or no-match specialty cases
-        if not specialty or specialty.lower() in ["no specialty match", "aucune correspondance", "no match", ""]:
+        if not specialty or specialty in ["no specialty match", "aucune correspondance", "no match", ""]:
             return "aucune correspondance", True
         # Handle multiple matches case (for UI selection)
         if specialty.startswith(("multiple matches:", "plusieurs correspondances:")):
@@ -170,9 +171,17 @@ class PipelineOrchestrator:
         conv_history_str = "".join(conv_history) if conv_history else ""
         detections = prompt_manager.run_all_detections(prompt, conv_history=conv_history_str, institution_list=institution_list)
         logger.debug(f"Full detections dict: {detections}")
-        # Set all detection results in DataProcessor
+        # Only use a valid specialty for assignment
+        invalid_specialties = ["no match", "no specialty match", "aucune correspondance", ""]
+        specialty_to_set = None
+        # Prefer detected_specialty if valid
+        if detected_specialty and detected_specialty not in invalid_specialties:
+            specialty_to_set = detected_specialty
+        elif detections.get('specialty') and detections.get('specialty') not in invalid_specialties:
+            specialty_to_set = detections.get('specialty')
+        # Otherwise, keep existing value (do not overwrite)
         self.data_processor.set_detection_results(
-            specialty=detected_specialty if detected_specialty else detections.get('specialty'),
+            specialty=specialty_to_set,
             city=detections.get('city'),
             city_detected=detections.get('city_detected', False),
             institution_type=detections.get('institution_type'),
@@ -219,6 +228,18 @@ class PipelineOrchestrator:
         if self.df_gen is not None:
             logger.debug(f"[DEBUG] Unique specialties in DataFrame: {self.df_gen['Spécialité'].unique() if 'Spécialité' in self.df_gen.columns else 'N/A'}")
             logger.debug(f"[DEBUG] Unique institution types in DataFrame: {self.df_gen['Catégorie'].unique() if 'Catégorie' in self.df_gen.columns else 'N/A'}")
+            logger.debug(f"[DEBUG] DataFrame columns: {self.df_gen.columns}")
+            logger.debug(f"[DEBUG] DataFrame head: {self.df_gen.head(10)}")
+            logger.debug(f"[DEBUG] Filtering for specialty: '{self.specialty}' and city: '{self.city}'")
+            specialty_matches = self.df_gen[self.df_gen['Spécialité'] == self.specialty] if 'Spécialité' in self.df_gen.columns else None
+            logger.debug(f"[DEBUG] Specialty match count: {specialty_matches.shape[0] if specialty_matches is not None else 'N/A'}")
+            if specialty_matches is not None:
+                logger.debug(f"[DEBUG] Specialty match rows: {specialty_matches}")
+            if self.city:
+                city_matches = self.df_gen[self.df_gen['Ville'] == self.city] if 'Ville' in self.df_gen.columns else None
+                logger.debug(f"[DEBUG] City match count: {city_matches.shape[0] if city_matches is not None else 'N/A'}")
+                if city_matches is not None:
+                    logger.debug(f"[DEBUG] City match rows: {city_matches}")
         # If ranking unavailable for specialty/type, return general DataFrame
         if self.data_processor.specialty_ranking_unavailable:
             logger.warning("Ranking not found for requested specialty/type")
@@ -297,14 +318,70 @@ class PipelineOrchestrator:
                 filtered_df = filtered_df[filtered_df["Distance"] <= max_radius_km].reset_index(drop=True)
                 logger.info(f"[RadiusFilter] DataFrame shape after radius filter: {filtered_df.shape}")
                 logger.info(f"[RadiusFilter] Distance values after radius filter: {filtered_df['Distance'].tolist()}")
+            logger.debug(f"[DEBUG] Filtering for specialty: '{self.specialty}' and city: '{self.city}' in filtered_df")
+            if 'Spécialité' in filtered_df.columns:
+                specialty_matches = filtered_df[filtered_df['Spécialité'] == self.specialty]
+                logger.debug(f"[DEBUG] Specialty match count after radius filter: {specialty_matches.shape[0]}")
+                logger.debug(f"[DEBUG] Specialty match rows after radius filter: {specialty_matches}")
+            if self.city and 'Ville' in filtered_df.columns:
+                city_matches = filtered_df[filtered_df['Ville'].str.lower().str.strip() == str(self.city).lower().strip()]
+                logger.debug(f"[DEBUG] City match count after radius filter: {city_matches.shape[0]}")
+                logger.debug(f"[DEBUG] City match rows after radius filter: {city_matches}")
         else:
             # If no city, skip distance filtering
             logger.info("No city specified or Distance column missing, skipping distance filtering.")
             filtered_df = df
+            logger.debug(f"[DEBUG] Filtering for specialty: '{self.specialty}' and city: '{self.city}' in unfiltered_df")
+            if 'Spécialité' in filtered_df.columns:
+                specialty_matches = filtered_df[filtered_df['Spécialité'].str.lower().str.strip() == str(self.specialty).lower().strip()]
+                logger.debug(f"[DEBUG] Specialty match count in unfiltered_df: {specialty_matches.shape[0]}")
+                logger.debug(f"[DEBUG] Specialty match rows in unfiltered_df: {specialty_matches}")
+            if self.city and 'Ville' in filtered_df.columns:
+                city_matches = filtered_df[filtered_df['Ville'].str.lower().str.strip() == str(self.city).lower().strip()]
+                logger.debug(f"[DEBUG] City match count in unfiltered_df: {city_matches.shape[0]}")
+                logger.debug(f"[DEBUG] City match rows in unfiltered_df: {city_matches}")
         # Only filter and format the DataFrame(s) for the institution type(s) requested by the user
         institution_type = self.institution_type
         public_df = None
         private_df = None
+        # Enhanced debug logging for specialty/city filtering in public/private DataFrames
+        logger.debug(f"[FILTER] Institution type requested: {institution_type}")
+        logger.debug(f"[FILTER] Specialty: '{self.specialty}', City: '{self.city}'")
+        if 'Spécialité' in filtered_df.columns and 'Ville' in filtered_df.columns:
+            # Public filtering (accent-insensitive)
+            public_raw = filtered_df[filtered_df["Catégorie"] == "Public"]
+            public_specialty = public_raw[
+                public_raw['Spécialité'] == self.specialty
+            ]
+            public_city = public_specialty[
+                public_specialty['Ville'] == self.city
+            ]
+            logger.debug(f"[FILTER] Public: raw count={public_raw.shape[0]}, specialty count={public_specialty.shape[0]}, city+specialty count={public_city.shape[0]}")
+            logger.debug(f"[FILTER] Public: specialty match rows: {public_specialty}")
+            logger.debug(f"[FILTER] Public: city+specialty match rows: {public_city}")
+            # Log the actual rows and their distance for public_city
+            if not public_city.empty:
+               logger.debug(f"[RESULT] Public city+specialty match rows (head): {public_city.head(10)}")
+               logger.debug(f"[RESULT] Public city+specialty match distances: {public_city['Distance'].tolist() if 'Distance' in public_city.columns else 'N/A'}")
+            else:
+               logger.debug("[RESULT] No public city+specialty match rows found.")
+            # Private filtering (accent-insensitive)
+            private_raw = filtered_df[filtered_df["Catégorie"] == "Privé"]
+            private_specialty = private_raw[
+                private_raw['Spécialité'] == self.specialty
+            ]
+            private_city = private_specialty[
+                private_specialty['Ville'] == self.city
+            ]
+            logger.debug(f"[FILTER] Private: raw count={private_raw.shape[0]}, specialty count={private_specialty.shape[0]}, city+specialty count={private_city.shape[0]}")
+            logger.debug(f"[FILTER] Private: specialty match rows: {private_specialty}")
+            logger.debug(f"[FILTER] Private: city+specialty match rows: {private_city}")
+            # Log the actual rows and their distance for private_city
+            if not private_city.empty:
+               logger.debug(f"[RESULT] Private city+specialty match rows (head): {private_city.head(10)}")
+               logger.debug(f"[RESULT] Private city+specialty match distances: {private_city['Distance'].tolist() if 'Distance' in private_city.columns else 'N/A'}")
+            else:
+               logger.debug("[RESULT] No private city+specialty match rows found.")
         if institution_type == 'Public':
             public_df = filtered_df[filtered_df["Catégorie"] == "Public"].nlargest(number_institutions, "Note / 20")
             logger.debug(f"Filtered public_df shape: {public_df.shape}")
@@ -384,8 +461,6 @@ class PipelineOrchestrator:
         if self.data_processor.specialty_ranking_unavailable:
             logger.warning("Ranking not found for requested specialty/type, suggesting alternative")
             fallback_type = None
-            fallback_msg = None
-            # Fallback logic for both directions
             if self.data_processor.institution_type == 'Privé':
                 logger.debug("No private institution for this specialty, trying public institutions as fallback")
                 fallback_type = 'Public'
@@ -393,27 +468,13 @@ class PipelineOrchestrator:
                 logger.debug("No public institution for this specialty, trying private institutions as fallback")
                 fallback_type = 'Privé'
             if fallback_type:
-                # Robust fallback: fully reset DataProcessor state
-                self.data_processor.specialty = detected_specialty
+                # Only change institution type, preserve specialty and city
                 self.data_processor.institution_type = fallback_type
                 self.institution_type = fallback_type
-                self.specialty = detected_specialty
                 self.data_processor.specialty_ranking_unavailable = False
                 self.data_processor.df_gen = None
-                # Clear cached detection results
-                for attr in ["city_detected", "city", "institution_name", "institution_mentioned"]:
-                    if hasattr(self.data_processor, attr):
-                        setattr(self.data_processor, attr, None)
                 try:
-                    # Re-run detection for fallback type
-                    fallback_detections = self.extract_query_parameters(
-                        prompt,
-                        detected_specialty,
-                        conv_history=None
-                    )
-                    self.data_processor.institution_type = fallback_type
-                    self.institution_type = fallback_type
-                    # Build DataFrame for fallback type
+                    # Build DataFrame for fallback type (no parameter re-extraction)
                     fallback_df = self.data_processor.generate_data_response()
                     # Defensive: check DataFrame validity
                     if fallback_df is not None and hasattr(fallback_df, 'columns') and "Catégorie" in fallback_df.columns:
@@ -428,7 +489,6 @@ class PipelineOrchestrator:
                                 message = self._format_response_with_specialty(NO_PUBLIC_INSTITUTION_MSG + "\nCependant, voici les établissements privés disponibles :", self.number_institutions, max_radius_km, self.city)
                             return self._create_response_and_log(message, res_str, prompt), self.link
                         else:
-                            # Check if any institutions exist for the specialty
                             public_exists = not fallback_df[fallback_df["Catégorie"] == "Public"].empty if "Catégorie" in fallback_df.columns else False
                             private_exists = not fallback_df[fallback_df["Catégorie"] == "Privé"].empty if "Catégorie" in fallback_df.columns else False
                             if not public_exists and not private_exists:
@@ -443,8 +503,6 @@ class PipelineOrchestrator:
                 except Exception as e:
                     logger.exception(f"Exception in fallback to {fallback_type} institutions: {e}")
                     return "Aucun établissement (ni public ni privé) est disponible pour votre query.", self.link
-                # ...existing code...
-            # If no fallback type, return as before
             if self.data_processor.institution_type == 'Public':
                 return NO_PUBLIC_INSTITUTION_MSG, self.link
             elif self.data_processor.institution_type == 'Privé':
