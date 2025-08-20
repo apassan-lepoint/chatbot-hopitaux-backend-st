@@ -286,8 +286,12 @@ class DataProcessor:
             None
         """
         logger.debug(f"set_detection_results: specialty={specialty!r}, city={city!r}, city_detected={city_detected!r}, institution_type={institution_type!r}, number_institutions={number_institutions!r}, institution_name={institution_name!r}, institution_mentioned={institution_mentioned!r}")
-        self.specialty = specialty
-        logger.debug(f"DataProcessor.specialty set to: {self.specialty!r}")
+        invalid_specialties = ["no match", "no specialty match", "aucune correspondance", ""]
+        if specialty not in invalid_specialties and specialty is not None:
+            self.specialty = specialty
+            logger.debug(f"DataProcessor.specialty set to: {self.specialty!r}")
+        else:
+            logger.debug(f"Specialty value '{specialty}' is invalid, not overwriting existing specialty: {getattr(self, 'specialty', None)!r}")
         self.city = city
         logger.debug(f"DataProcessor.city set to: {self.city!r}")
         self.city_detected = city_detected

@@ -171,9 +171,17 @@ class PipelineOrchestrator:
         conv_history_str = "".join(conv_history) if conv_history else ""
         detections = prompt_manager.run_all_detections(prompt, conv_history=conv_history_str, institution_list=institution_list)
         logger.debug(f"Full detections dict: {detections}")
-        # Set all detection results in DataProcessor
+        # Only use a valid specialty for assignment
+        invalid_specialties = ["no match", "no specialty match", "aucune correspondance", ""]
+        specialty_to_set = None
+        # Prefer detected_specialty if valid
+        if detected_specialty and detected_specialty not in invalid_specialties:
+            specialty_to_set = detected_specialty
+        elif detections.get('specialty') and detections.get('specialty') not in invalid_specialties:
+            specialty_to_set = detections.get('specialty')
+        # Otherwise, keep existing value (do not overwrite)
         self.data_processor.set_detection_results(
-            specialty=detected_specialty if detected_specialty else detections.get('specialty'),
+            specialty=specialty_to_set,
             city=detections.get('city'),
             city_detected=detections.get('city_detected', False),
             institution_type=detections.get('institution_type'),
