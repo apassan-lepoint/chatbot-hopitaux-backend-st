@@ -46,7 +46,7 @@ class MessagePertinenceChecker:
         )
         from app.utility.llm_helpers import invoke_llm_with_error_handling
         logger = get_logger(__name__)
-        logger.debug(f"Sanity check medical pertinence prompt sent to LLM:\n{formatted_prompt}")
+        logger.debug(f"Sanity check medical pertinence prompt sent to LLM.")
         raw_response = invoke_llm_with_error_handling(self.llm_handler_service.model, formatted_prompt, "sanity_check_medical_pertinence")
         logger.debug(f"Raw LLM response for medical pertinence:\n{raw_response}")
         from app.utility.wrappers import parse_llm_response
@@ -65,7 +65,7 @@ class MessagePertinenceChecker:
         )
         from app.utility.llm_helpers import invoke_llm_with_error_handling
         logger = get_logger(__name__)
-        logger.debug(f"Sanity check chatbot pertinence prompt sent to LLM:\n{formatted_prompt}")
+        logger.debug(f"Sanity check chatbot pertinence prompt sent to LLM.")
         raw_response = invoke_llm_with_error_handling(self.llm_handler_service.model, formatted_prompt, "sanity_check_chatbot_pertinence")
         logger.debug(f"Raw LLM response for chatbot pertinence:\n{raw_response}")
         from app.utility.wrappers import parse_llm_response

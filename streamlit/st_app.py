@@ -14,7 +14,7 @@ from app.utility.formatting_helpers import format_links
 from app.services.pipeline_orchestrator_service import PipelineOrchestrator
 from st_config import (DEFAULT_CHECKS_TO_RUN, SESSION_STATE_KEYS, SESSION_STATE_DEFAULTS, MAX_MESSAGES, UI_CHAT_INPUT_PLACEHOLDER, ERROR_MESSAGES, SPINNER_MESSAGES)
 from st_utility import (append_to_conversation, display_conversation_history, get_conversation_list, get_conversation_length, get_session_state_value, execute_with_spinner)
-from st_utility import handle_specialty_selection, process_message
+from st_utility import process_message
 from st_ui_components import UIComponents
 from app.services.llm_handler_service import LLMHandler 
 
