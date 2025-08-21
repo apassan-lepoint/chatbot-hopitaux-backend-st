@@ -108,6 +108,13 @@ Exemples pour messages standalone:
 - 'Les hôpitaux privés sont ils meilleurs que les publiques?' → 1
 - 'Comment le classement est-il calculé ?' → 1
 - 'Quels sont les critères du classement ?' → 1
+- "Quels experts participent à l'élaboration du classement ?"' → 1
+- "Le classement est-il influencé par des partenariats ou des sponsors ?"' → 1
+- "Comment sont traitées les données manquantes dans le classement ?"' → 1
+- "Le classement est-il le même pour toutes les spécialités ?"' → 1
+- "Comment sont comparés les hôpitaux publics et privés dans le classement ?"' → 1
+- "Quels sont les changements dans la méthodologie cette année ?"' → 1
+- "Comment puis-je accéder au détail de la méthodologie ?"' → 1
 - 'Je mange des frites' → 0
 
 Exemples pour messages avec contexte conversationnel (TRÈS IMPORTANT):
