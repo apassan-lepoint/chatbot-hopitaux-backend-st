@@ -1,9 +1,6 @@
-from app.config.features_config import MAX_MESSAGES, MESSAGE_LIMIT_REACHED_RESPONSE
+from app.config.features_config import MAX_MESSAGES, WARNING_MESSAGES
 
 class ConversationLimitCheckException(Exception):
-    """
-    Exception raised when the conversation exceeds the maximum number of messages allowed.
-    """
     pass
 class ConversationLimitChecker:
     """
@@ -18,4 +15,4 @@ class ConversationLimitChecker:
         Checks if the conversation has reached the maximum number of messages allowed.
         """
         if len(conversation) > self.max_messages:
-            raise ConversationLimitCheckException(MESSAGE_LIMIT_REACHED_RESPONSE)
+            raise ConversationLimitCheckException(WARNING_MESSAGES["conversation_limit"])

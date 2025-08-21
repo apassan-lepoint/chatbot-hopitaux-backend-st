@@ -1,5 +1,3 @@
-# Lien vers le classement web du palmarès des hôpitaux
-METHODOLOGY_WEB_LINK = "https://www.lepoint.fr/sante/la-methodologie-du-palmares-des-hopitaux-et-cliniques-du-point-2024--04-12-2024-2577146_40.php"
 """
 Configuration constants for the chatbot hopitaux.
 """
@@ -17,25 +15,32 @@ INSTITUTION_TYPE_URL_MAPPING = {
     "Privé": "prive",
     "aucune correspondance": "aucune correspondance"
 }
+METHODOLOGY_WEB_LINK = "https://www.lepoint.fr/sante/la-methodologie-du-palmares-des-hopitaux-et-cliniques-du-point-2024--04-12-2024-2577146_40.php"
 
 # User messages for different scenarios
-OFF_TOPIC_RESPONSE = "Je n'ai pas bien saisi la nature de votre demande. Merci de reformuler une question relative aux classements des hôpitaux."
+GENERAL_ERROR_MSG = "Je ne peux pas traiter votre demande. Merci de reformuler une question relative aux classements des hôpitaux."
+# OFF_TOPIC_RESPONSE = "Je n'ai pas bien saisi la nature de votre demande. Merci de reformuler une question relative aux classements des hôpitaux."
 INTERNAL_SERVER_ERROR_MSG = "Internal server error"
-AMBIGUOUS_RESPONSE = "Je ne suis pas sûr si votre message est une nouvelle question ou une modification de la précédente. Veuillez préciser."
-MESSAGE_LIMIT_REACHED_RESPONSE = "La limite de messages a été atteinte. La conversation va redémarrer."
-MESSAGE_LENGTH_RESPONSE = "Votre message est trop long. Merci de reformuler."
-FOREIGN_CITY_CHECK_EXCEPTION_MSG = "Je ne peux pas répondre aux questions concernant les hôpitaux situés hors du territoire français, merci de consulter la page du palmarès. [🔗 Page du classements par pathologie](https://www.lepoint.fr/hopitaux/classements)"
-AMBIGUOUS_CITY_CHECK_EXCEPTION_MSG = "Je ne parviens pas à détecter votre localisation, merci de reformuler avec une autre ville."
-NO_PRIVATE_INSTITUTION_MSG = "Nous n'avons pas d'établissement privé pour cette pathologie, mais un classement des établissements publics existe."
-NO_PUBLIC_INSTITUTION_MSG = "Nous n'avons pas d'établissement public pour cette pathologie, mais un classement des établissements privés existe."
-NO_RESULTS_FOUND_IN_LOCATION_MSG = "Aucun résultat trouvé dans un rayon de 100 km autour de votre localisation."
+# AMBIGUOUS_RESPONSE = "Je ne suis pas sûr si votre message est une nouvelle question ou une modification de la précédente. Veuillez préciser."
+# MESSAGE_LIMIT_REACHED_RESPONSE = "La limite de messages a été atteinte. La conversation va redémarrer."
+# MESSAGE_LENGTH_RESPONSE = "Votre message est trop long. Merci de reformuler."
+# FOREIGN_CITY_CHECK_EXCEPTION_MSG = "Je ne peux pas répondre aux questions concernant les hôpitaux situés hors du territoire français, merci de consulter la page du palmarès. [🔗 Page du classements par pathologie](https://www.lepoint.fr/hopitaux/classements)"
+# AMBIGUOUS_CITY_CHECK_EXCEPTION_MSG = "Je ne parviens pas à détecter votre localisation, merci de reformuler avec une autre ville."
+# NO_PRIVATE_INSTITUTION_MSG = "Nous n'avons pas d'établissement privé pour cette pathologie, mais un classement des établissements publics existe."
+# NO_PUBLIC_INSTITUTION_MSG = "Nous n'avons pas d'établissement public pour cette pathologie, mais un classement des établissements privés existe."
+# NO_RESULTS_FOUND_IN_LOCATION_MSG = "Aucun résultat trouvé dans un rayon de 100 km autour de votre localisation."
 
 WARNING_MESSAGES = {
     "message_length": "Votre message est trop long. Merci de le raccourcir.",
-    "message_pertinence":"Cet assistant a pour but de fournir des informations sur les classements des établissements de soins de cette année. Merci de reformuler.",
+    "message_pertinence":"Cet assistant a pour but de fournir des informations sur les classements des établissements de soins de cette année. Merci de reformuler une question relative aux classements des hôpitaux.",
     "non_french_cities": "Je ne peux pas traiter les demandes concernant des villes étrangères. Merci de reformuler votre question en mentionnant une ville française.",
-    "conversation_limit": "La conversation est trop longue. Merci de commencer une nouvelle conversation."
-}  
+    "conversation_limit": "La conversation est trop longue. Merci de commencer une nouvelle conversation.",
+    "methodology_questions": "Les questions sur la méthodologie du classement sont hors périmètre du chatbot. Vous pouvez consulter la méthodologie complète <a href=\"{METHODOLOGY_WEB_LINK}\" target=\"_blank\">ici</a>.",
+    "ambiguous_city": "Je ne parviens pas à détecter votre localisation, merci de reformuler avec une autre ville.",
+    "no_private_institution": "Nous n'avons pas d'établissement privé pour cette pathologie, mais un classement des établissements publics existe.",
+    "no_public_institution": "Nous n'avons pas d'établissement public pour cette pathologie, mais un classement des établissements privés existe.",
+    "no_results_found_in_location": "Aucun résultat trouvé dans un rayon de 100 km autour de votre localisation."
+}
 
 # Error messages
 ERROR_GENERAL_RANKING_MSG = "Erreur: Exception lors de la génération du classement général."

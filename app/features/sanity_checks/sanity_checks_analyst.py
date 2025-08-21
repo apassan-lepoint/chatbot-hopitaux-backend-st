@@ -45,5 +45,7 @@ class SanityChecksAnalyst:
                 all_checks[check_name]()
                 results[check_name] = {"passed": True}
             except (ConversationLimitCheckException, MessageLengthCheckException, MessagePertinenceCheckException) as e:
-                results[check_name] = {"passed": False, "error": str(e)}
+                # Immediately return the standardized response and stop further checks
+                logger.info(f"Sanity check exception caught: {str(e)}. Stopping pipeline.")
+                return {"passed": False, "error": str(e)}
         return results

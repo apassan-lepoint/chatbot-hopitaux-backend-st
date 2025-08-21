@@ -1,9 +1,6 @@
-from app.config.features_config import MAX_LENGTH, MESSAGE_LENGTH_RESPONSE
+from app.config.features_config import MAX_LENGTH, WARNING_MESSAGES
 
 class MessageLengthCheckException(Exception):
-    """
-    Exception raised when a message exceeds the maximum allowed length.
-    """
     pass
 
 class MessageLengthChecker:
@@ -18,4 +15,4 @@ class MessageLengthChecker:
         Checks if the message exceeds the maximum allowed length.
         """
         if len(message) > self.max_length:
-            raise MessageLengthCheckException(MESSAGE_LENGTH_RESPONSE)
+            raise MessageLengthCheckException(WARNING_MESSAGES["message_length"])
