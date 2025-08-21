@@ -39,6 +39,13 @@ def ask_question(query: UserQuery) -> AskResponse:
     try:
         result, links = pipeline.generate_response(prompt=query.prompt, detected_specialty=query.detected_specialty)
         logger.info(f"Response generated for /ask endpoint - Links found: {len(links) if links else 0}")
+        # If multiple specialties, return a custom dict for client to handle selection
+        if isinstance(result, dict) and "multiple_specialties" in result:
+            return {
+                "result": result["message"],
+                "links": [],
+                "multiple_specialties": result["multiple_specialties"]
+            }
         return AskResponse(result=result, links=links)
     except Exception as e:
         logger.error(f"Error processing /ask request - Prompt: '{query.prompt[:100]}...', Error: {str(e)}")
@@ -108,6 +115,14 @@ def chat(request: ChatRequest) -> ChatResponse:
         elif case == "case5":
             logger.debug("Processing Case 5: new question with search")
             result, links = pipeline.generate_response(prompt=request.prompt)
+            # If multiple specialties, return a custom dict for client to handle selection
+            if isinstance(result, dict) and "multiple_specialties" in result:
+                return {
+                    "response": result["message"],
+                    "conversation": conv_history + [[request.prompt, result["message"]]],
+                    "ambiguous": True,
+                    "multiple_specialties": result["multiple_specialties"]
+                }
             result = format_links(result, links)
             updated_conversation = conv_history + [[request.prompt, result]]
             return ChatResponse(response=result, conversation=updated_conversation, ambiguous=False)

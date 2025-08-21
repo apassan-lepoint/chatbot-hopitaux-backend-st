@@ -455,10 +455,14 @@ class PipelineOrchestrator:
         extracted_specialty = detected_specialty if detected_specialty and detected_specialty != "no specialty match" else self.extract_query_parameters(prompt)
         if extracted_specialty and str(extracted_specialty).startswith("multiple matches:"):
             logger.info("Multiple specialty matches detected, returning for UI selection")
-            specialty_list = extracted_specialty.replace("multiple matches:", "").strip()
-            formatted_response = f"Plusieurs spécialités sont disponibles. Veuillez préciser laquelle vous intéresse:\n- {specialty_list.replace(',', '\n- ')}"
+            specialty_list = [s.strip() for s in extracted_specialty.replace("multiple matches:", "").split(',') if s.strip()]
+            formatted_response = f"Plusieurs spécialités sont disponibles. Veuillez préciser laquelle vous intéresse:\n- {'\n- '.join(specialty_list)}"
             logger.debug(f"Returning multiple matches response: {formatted_response}")
-            return formatted_response, None
+            # Return a dict for API/Streamlit to handle selection UI
+            return {
+                "message": formatted_response,
+                "multiple_specialties": specialty_list
+            }, None
         # Build DataFrame with ranking and distances
         logger.debug("Calling build_ranking_dataframe_with_distances")
         try:

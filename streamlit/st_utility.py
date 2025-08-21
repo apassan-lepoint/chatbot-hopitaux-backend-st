@@ -47,6 +47,11 @@ def process_message(prompt: str) -> None:
     selected_specialty = handle_specialty_selection(prompt)
     if selected_specialty:
         result, links = PipelineOrchestrator().generate_response(prompt=prompt, detected_specialty=selected_specialty)
+        # Handle multiple_specialties dict response
+        if isinstance(result, dict) and "multiple_specialties" in result:
+            st.session_state["multiple_specialties"] = result["multiple_specialties"]
+            st.info(result["message"])
+            return
         formatted_result = format_links(result, links)
         result = execute_with_spinner(SPINNER_MESSAGES["loading"], lambda: formatted_result)
         append_to_conversation(prompt, result)
@@ -56,12 +61,20 @@ def process_message(prompt: str) -> None:
     prev_specialty = st.session_state.get("selected_specialty")
     if prev_specialty:
         result, links = PipelineOrchestrator().generate_response(prompt=prompt, detected_specialty=prev_specialty)
+        if isinstance(result, dict) and "multiple_specialties" in result:
+            st.session_state["multiple_specialties"] = result["multiple_specialties"]
+            st.info(result["message"])
+            return
         formatted_result = format_links(result, links)
         result = execute_with_spinner(SPINNER_MESSAGES["loading"], lambda: formatted_result)
         append_to_conversation(prompt, result)
         return
     try:
         result, links = PipelineOrchestrator().generate_response(prompt=prompt)
+        if isinstance(result, dict) and "multiple_specialties" in result:
+            st.session_state["multiple_specialties"] = result["multiple_specialties"]
+            st.info(result["message"])
+            return
         formatted_result = format_links(result, links)
         result = execute_with_spinner(SPINNER_MESSAGES["loading"], lambda: formatted_result)
         append_to_conversation(prompt, result)
