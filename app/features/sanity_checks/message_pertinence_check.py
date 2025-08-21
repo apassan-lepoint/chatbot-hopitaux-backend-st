@@ -5,9 +5,6 @@ from app.utility.wrappers import prompt_formatting, parse_llm_response
 from app.utility.llm_helpers import invoke_llm_with_error_handling
 
 class MessagePertinenceCheckException(Exception):
-    """
-    Exception raised when a message fails the pertinence check.
-    """
     pass
 
 class MessagePertinenceChecker:

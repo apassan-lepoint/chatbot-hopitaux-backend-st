@@ -13,7 +13,7 @@ from app.utility.formatting_helpers import format_links
 from app.features.sanity_checks.sanity_checks_analyst import SanityChecksAnalyst
 from app.features.conversation.conversation_analyst import ConversationAnalyst
 from app.utility.logging import get_logger
-from app.config.features_config import (MAX_MESSAGES, CHECKS_TO_RUN_Q1, CHECKS_TO_RUN_MULTI_TURN, OFF_TOPIC_RESPONSE, INTERNAL_SERVER_ERROR_MSG)
+from app.config.features_config import (MAX_MESSAGES, CHECKS_TO_RUN_Q1, CHECKS_TO_RUN_MULTI_TURN, WARNING_MESSAGES, INTERNAL_SERVER_ERROR_MSG)
 
 # Initialize logger for this module
 logger = get_logger(__name__)
@@ -28,24 +28,25 @@ llm_handler_service = LLMHandler()
 conv_manager = ConversationAnalyst(llm_handler_service.model)
 logger.info("Core services initialized successfully")
 
-def perform_sanity_checks(prompt: str, conversation: list = None, checks_to_run=None) -> None:
-    """
-    Perform selected sanity checks on user input to ensure request validity.
-    """
-    logger.debug("Starting sanity checks for user input")
-    conv_history = ""
-    if conversation is not None and len(conversation) > 0:
-        conv_history = "\n".join([f"Utilisateur: {q}\nAssistant: {r}" for q, r in conversation])
-        logger.debug("Checking pertinence with full conversation context")
-    else:
-        logger.debug("Checking pertinence without conversation context")
-
-    sanity_checks_manager = SanityChecksAnalyst(llm_handler_service, max_messages=MAX_MESSAGES)
-    results = sanity_checks_manager.run_checks(prompt, conversation, conv_history, checks_to_run=checks_to_run)
-    for check, result in results.items():
-        if not result["passed"]:
-            raise HTTPException(status_code=400, detail=result["error"])
-    logger.debug("All sanity checks passed successfully")
+## Sanity checks are now handled in the pipeline. The following function is redundant and commented out.
+# def perform_sanity_checks(prompt: str, conversation: list = None, checks_to_run=None) -> None:
+#     """
+#     Perform selected sanity checks on user input to ensure request validity.
+#     """
+#     logger.debug("Starting sanity checks for user input")
+#     conv_history = ""
+#     if conversation is not None and len(conversation) > 0:
+#         conv_history = "\n".join([f"Utilisateur: {q}\nAssistant: {r}" for q, r in conversation])
+#         logger.debug("Checking pertinence with full conversation context")
+#     else:
+#         logger.debug("Checking pertinence without conversation context")
+#
+#     sanity_checks_manager = SanityChecksAnalyst(llm_handler_service, max_messages=MAX_MESSAGES)
+#     results = sanity_checks_manager.run_checks(prompt, conversation, conv_history, checks_to_run=checks_to_run)
+#     for check, result in results.items():
+#         if not result["passed"]:
+#             raise HTTPException(status_code=400, detail=result["error"])
+#     logger.debug("All sanity checks passed successfully")
 
 
 @router.post("/ask", response_model=AskResponse)
@@ -57,8 +58,8 @@ def ask_question(query: UserQuery) -> AskResponse:
     """
     logger.info(f"Received /ask request with prompt length: {len(query.prompt)} chars, specialty: {query.detected_specialty}")
     try:
-        perform_sanity_checks(query.prompt, checks_to_run=CHECKS_TO_RUN_Q1)
-        logger.debug("Sanity checks completed for /ask request")
+        # perform_sanity_checks(query.prompt, checks_to_run=CHECKS_TO_RUN_Q1)  # Redundant, handled in pipeline
+        # logger.debug("Sanity checks completed for /ask request")
         # For consistency, pass conv_history (empty for single-turn) to pipeline
         result, links = pipeline.generate_response(prompt=query.prompt, detected_specialty=query.detected_specialty)
         logger.info(f"Response generated for /ask endpoint - Links found: {len(links) if links else 0}")
@@ -89,8 +90,8 @@ def chat(request: ChatRequest) -> ChatResponse:
     logger.info(f"Received /chat request - Prompt length: {len(request.prompt)} chars, "
                 f"Conversation history: {len(request.conversation) if request.conversation else 0} turns")
     try:
-        perform_sanity_checks(request.prompt, request.conversation, checks_to_run=CHECKS_TO_RUN_MULTI_TURN)
-        logger.debug("Sanity checks completed for /chat request")
+        # perform_sanity_checks(request.prompt, request.conversation, checks_to_run=CHECKS_TO_RUN_MULTI_TURN)  # Redundant, handled in pipeline
+        # logger.debug("Sanity checks completed for /chat request")
         conv_history = request.conversation if request.conversation else []
         # Use ConversationAnalyst for consolidated conversation logic
         conv_results = conv_manager.run_all_conversation_checks(request.prompt, conv_history)
@@ -104,7 +105,7 @@ def chat(request: ChatRequest) -> ChatResponse:
             case = llm_handler_service.determine_case(analysis)
         logger.info(f"Determined case: {case}, Analysis: {multi_turn_result}")
         if case == "case1":
-            result = OFF_TOPIC_RESPONSE
+            result = WARNING_MESSAGES["message_pertinence"]
             updated_conversation = conv_history + [[request.prompt, result]]
             return ChatResponse(response=result, conversation=updated_conversation, ambiguous=False)
         elif case == "case2":
