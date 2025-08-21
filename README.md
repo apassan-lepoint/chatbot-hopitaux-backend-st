@@ -104,6 +104,7 @@ Additionally, you will need an API Key from Open AI and paste it in the '.env' f
 
 **Note:** if you get an error about not having SSL certificates, run the following command in the terminal where you activated your python virtual environment: python -m pip install --upgrade certifi
 
+
 # Code organization
 This code base serves as the backend for the hospital ranking chatbot assistant for Le Point (chatbot hôpitaux). It includes the code to run the chat bot via a Streamlit application and FastAPI application. The Streamlit application is solely for functional testing purposes. The FastAPI application will be used in production. 
 
