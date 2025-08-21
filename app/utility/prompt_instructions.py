@@ -97,7 +97,7 @@ MESSAGE À ÉVALUER: '{prompt}'
 Si un historique de conversation est fourni ci-dessus, analysez le nouveau message en tenant compte du contexte conversationnel. Un message peut être pertinent même s'il semble incomplet ou ambigu, si le contexte de la conversation montre qu'il s'agit d'une suite logique d'une discussion sur la santé.
 
 ATTENTION: Les questions de suivi sur les hôpitaux publics/privés sont TOUJOURS pertinentes. Les mots comme "privé", "public", "et privé?", "et public?" dans le contexte d'une discussion sur les hôpitaux sont des continuations légitimes de discussions médicales.
-ATTENTION: Les questions sur la méthodologie du classement des hôpitaux (exemples : "Comment le classement est-il calculé ?", "Quels sont les critères du classement ?", "Comment sont déterminés les scores ?", etc.) sont également PERTINENTES et doivent recevoir la réponse 1.
+ATTENTION: Toute question sur la méthodologie, la fréquence de mise à jour, les critères, ou le fonctionnement du classement des hôpitaux doit TOUJOURS être considérée comme pertinente, même si elle ne concerne pas directement une maladie ou un service de soins.
 
 Répondez UNIQUEMENT avec 1 si pertinent, 0 si non pertinent.
 
