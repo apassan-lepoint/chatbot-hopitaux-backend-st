@@ -48,7 +48,7 @@ class MessagePertinenceChecker:
         logger.debug(f"Sanity check medical pertinence prompt sent to LLM.")
         raw_response = invoke_llm_with_error_handling(self.llm_handler_service.model, formatted_prompt, "sanity_check_medical_pertinence")
         logger.debug(f"Raw LLM response for medical pertinence:\n{raw_response}")
-        return parse_llm_response(raw_response, "string")
+        return parse_llm_response(raw_response, "numeric")
 
     def sanity_check_chatbot_pertinence(self, prompt: str, conv_history: str = "") -> str:
         """
@@ -67,7 +67,7 @@ class MessagePertinenceChecker:
         logger.debug(f"Sanity check chatbot pertinence prompt sent to LLM.")
         raw_response = invoke_llm_with_error_handling(self.llm_handler_service.model, formatted_prompt, "sanity_check_chatbot_pertinence")
         logger.debug(f"Raw LLM response for chatbot pertinence:\n{raw_response}")
-        return parse_llm_response(raw_response, "string")
+        return parse_llm_response(raw_response, "numeric")
     
     def check(self, user_input, conv_history=""):
         """
