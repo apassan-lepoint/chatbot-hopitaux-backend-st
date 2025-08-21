@@ -78,10 +78,9 @@ class MessagePertinenceChecker:
         if medically_pertinent_result == '0':
             raise MessagePertinenceCheckException(WARNING_MESSAGES["message_pertinence"])
         elif medically_pertinent_result == '2':
-            return MessagePertinenceCheckException(WARNING_MESSAGES["methodology_questions"].format(METHODOLOGY_WEB_LINK=METHODOLOGY_WEB_LINK))
-        
+            raise MessagePertinenceCheckException(WARNING_MESSAGES["methodology_questions"].format(METHODOLOGY_WEB_LINK=METHODOLOGY_WEB_LINK))
+
         # Then, check chatbot pertinence
-        chatbot_pertinence_result = self.sanity_check_chatbot_pertinence(user_input, conv_history)    
+        chatbot_pertinence_result = self.sanity_check_chatbot_pertinence(user_input, conv_history)
         if chatbot_pertinence_result == "0":
-            # Standardized response for non-relevant questions
             raise MessagePertinenceCheckException(WARNING_MESSAGES["message_pertinence"])
