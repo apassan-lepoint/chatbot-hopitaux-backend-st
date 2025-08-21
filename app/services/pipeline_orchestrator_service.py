@@ -118,7 +118,7 @@ class PipelineOrchestrator:
         # Combine message and table for final response
         response = f"{message}\n{table_str}"
         if ranking_link:
-            response += f"\n\nConsultez la méthodologie de palmarès hopitaux <a href=\"{ranking_link}\" target=\"_blank\">ici</a>."
+            response += f"\n\n🔗 Consultez la méthodologie de palmarès hopitaux <a href=\"{ranking_link}\" target=\"_blank\">ici</a>."
         # Save response to CSV for history
         self.data_processor.create_csv(question=prompt, reponse=response)
         logger.debug(f"Formatted response: {response}")

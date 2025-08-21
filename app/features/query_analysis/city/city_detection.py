@@ -37,7 +37,6 @@ class CityDetector:
         """
         logger.debug(f"_detect_city_status called: prompt={prompt}, conv_history={conv_history}")
         formatted_prompt = prompt_formatting("detect_city_prompt", prompt=prompt, conv_history=conv_history)
-        logger.info(f"Formatted city status prompt: {formatted_prompt}")
         raw_response = invoke_llm_with_error_handling(
             self.model, 
             formatted_prompt, 
@@ -54,7 +53,6 @@ class CityDetector:
         """
         logger.debug(f"_detect_city_name called: prompt={prompt}, conv_history={conv_history}")
         formatted_prompt = prompt_formatting("second_detect_city_prompt", prompt=prompt, conv_history=conv_history)
-        logger.info(f"Formatted city name prompt: {formatted_prompt}")
         city_name = invoke_llm_with_error_handling(
             self.model, 
             formatted_prompt, 
@@ -83,7 +81,7 @@ class CityDetector:
         city is clearly mentioned, it makes a second call to extract the actual
         city name.
         """
-        logger.info(f"Detecting city from prompt: '{prompt[:50]}...'")
+        logger.info(f"Detecting city from prompt: '{prompt}'")
         
         # First call: detect city status
         city_status = self._detect_city_status(prompt, conv_history)

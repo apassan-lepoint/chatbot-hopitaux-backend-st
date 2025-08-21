@@ -133,7 +133,7 @@ MESSAGE À ANALYSER: '{prompt}'
             specialty, method = detector.detect_specialty(...)
         Never use .specialty on the result, as it is a tuple.
         """
-        logger.info(f"Detecting specialty from prompt: '{prompt[:50]}...'")
+        logger.info(f"Detecting specialty from prompt: '{prompt}'")
         # Step 1: Try keyword-based detection first
         specialty, method = self._detect_specialty_keywords(prompt)
         if specialty and specialty.lower() not in {"no specialty match", "aucune correspondance", "no match", ""}:

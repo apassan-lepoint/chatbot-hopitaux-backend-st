@@ -40,7 +40,7 @@ class MultiTurn:
         - search_needed: "TRUE" or "FALSE"
         - merge_query: "TRUE" or "FALSE" (only if continuity and search_needed
         """
-        logger.info(f"Analyzing subsequent message: {prompt[:50]}...")
+        logger.info(f"Analyzing subsequent message: {prompt}")
         
         # Check 1: Is message pertinent to chatbot?
         on_topic = self._check_pertinence(prompt, conv_history)
