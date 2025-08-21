@@ -61,7 +61,7 @@ SPINNER_MESSAGES = {
 }
 
 # Off-topic Response
-OFF_TOPIC_RESPONSE = "Je n'ai pas bien saisi la nature de votre demande. Merci de reformuler une question relative aux classements des hôpitaux."
+#OFF_TOPIC_RESPONSE = "Je n'ai pas bien saisi la nature de votre demande. Merci de reformuler une question relative aux classements des hôpitaux."
 
 # Error Messages
 ERROR_MESSAGES = {

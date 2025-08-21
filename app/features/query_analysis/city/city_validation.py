@@ -1,5 +1,5 @@
 from app.utility.logging import get_logger
-from app.config.features_config import FOREIGN_CITY_CHECK_EXCEPTION_MSG, AMBIGUOUS_CITY_CHECK_EXCEPTION_MSG
+from app.config.features_config import WARNING_MESSAGES
 
 logger = get_logger(__name__)
 
@@ -56,7 +56,7 @@ class CityChecker:
         city_result = self.detector.detect_city(user_input, conv_history)
         city_status_type = self.detector.get_city_status_type(city_result)
         if city_status_type == "foreign":
-            raise CityCheckException(FOREIGN_CITY_CHECK_EXCEPTION_MSG)
+            raise CityCheckException(WARNING_MESSAGES["non_french_cities"])
         if city_status_type == "ambiguous":
-            raise CityCheckException(AMBIGUOUS_CITY_CHECK_EXCEPTION_MSG)
+            raise CityCheckException(WARNING_MESSAGES["ambiguous_city"])
 

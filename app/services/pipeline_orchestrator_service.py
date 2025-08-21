@@ -3,10 +3,14 @@ import pandas as pd
 from app.services.data_processing_service import DataProcessor
 from app.features.query_analysis.query_analyst import QueryAnalyst
 from app.config.file_paths_config import PATHS
-from app.config.features_config import (SEARCH_RADIUS_KM, ERROR_GENERAL_RANKING_MSG, ERROR_INSTITUTION_RANKING_MSG,ERROR_GEOPY_MSG, ERROR_DATA_UNAVAILABLE_MSG, ERROR_IN_CREATING_TABLE_MSG, NO_PRIVATE_INSTITUTION_MSG, NO_PUBLIC_INSTITUTION_MSG, NO_RESULTS_FOUND_IN_LOCATION_MSG, METHODOLOGY_WEB_LINK)
+from app.config.features_config import (SEARCH_RADIUS_KM, ERROR_GENERAL_RANKING_MSG, ERROR_INSTITUTION_RANKING_MSG,ERROR_GEOPY_MSG, ERROR_DATA_UNAVAILABLE_MSG, ERROR_IN_CREATING_TABLE_MSG, WARNING_MESSAGES, METHODOLOGY_WEB_LINK, GENERAL_ERROR_MSG)
 from app.utility.logging import get_logger
 from app.utility.formatting_helpers import format_response
 from app.utility.distance_calc_helpers import multi_radius_search
+from app.features.sanity_checks.message_pertinence_check import MessagePertinenceCheckException
+from app.features.sanity_checks.message_length_check import MessageLengthCheckException
+from app.features.sanity_checks.conversation_limit_check import ConversationLimitCheckException
+from app.features.sanity_checks.sanity_checks_analyst import SanityChecksAnalyst
 
 logger = get_logger(__name__)
 
@@ -57,6 +61,7 @@ class PipelineOrchestrator:
         self.institution_mentioned=None
         self.institution_name=None
         self.data_processor=DataProcessor() # Instance of DataProcessor for data extraction and transformation
+        self.sanity_checks_analyst = SanityChecksAnalyst(self.data_processor.llm_handler_service)
 
 
     def _normalize_specialty_for_display(self, specialty: str) -> str:
@@ -404,7 +409,7 @@ class PipelineOrchestrator:
         )
         return self._create_response_and_log(message, res_str, prompt, METHODOLOGY_WEB_LINK)
 
-    def generate_response(self, prompt: str, max_radius_km: int = 5, detected_specialty: str=None) -> str:
+    def generate_response(self, prompt: str, max_radius_km: int = 5, detected_specialty: str=None, conversation=None, conv_history=None) -> str:
         """
         Main entry point: processes the user question and returns a formatted answer with ranking and links.
         Args:       
@@ -425,6 +430,27 @@ class PipelineOrchestrator:
         # Set specialty in data processor for downstream use
         self.data_processor.specialty = detected_specialty if self.specialty is not None else None
         relevant_file = self.ranking_file_path
+        # Run sanity checks before any further processing
+        if conversation is None:
+            conversation = []
+        if conv_history is None:
+            conv_history = ""
+        try:
+            sanity_result = self.sanity_checks_analyst.run_checks(prompt, conversation, conv_history)
+        except Exception as exc:
+            # Import exception classes
+            if isinstance(exc, (MessagePertinenceCheckException, MessageLengthCheckException, ConversationLimitCheckException)):
+                error_msg = str(exc)
+            else:
+                error_msg = getattr(exc, 'message', str(exc))
+                self.data_processor.create_csv(question=prompt, reponse=error_msg)
+                logger.info("Sanity check failed, returning error message and halting pipeline.")
+                return error_msg, None
+        if isinstance(sanity_result, dict) and not sanity_result.get("passed", True):
+            error_msg = sanity_result.get("error", GENERAL_ERROR_MSG)
+            self.data_processor.create_csv(question=prompt, reponse=error_msg)
+            logger.info("Sanity check failed, returning error message and halting pipeline.")
+            return error_msg, None
         # Handle multiple matches early (UI selection)
         extracted_specialty = detected_specialty if detected_specialty and detected_specialty != "no specialty match" else self.extract_query_parameters(prompt)
         if extracted_specialty and str(extracted_specialty).startswith("multiple matches:"):
@@ -486,10 +512,10 @@ class PipelineOrchestrator:
                             top_fallback = filtered_fallback.nlargest(self.number_institutions, "Note / 20")
                             if fallback_type == 'Public':
                                 res_str = format_response(top_fallback, None, self.number_institutions, not self.data_processor.city_detected)
-                                message = self._format_response_with_specialty(NO_PRIVATE_INSTITUTION_MSG + "\nCependant, voici les établissements publics disponibles :", self.number_institutions, max_radius_km, self.city)
+                                message = self._format_response_with_specialty(WARNING_MESSAGES["no_private_institution"] + "\nCependant, voici les établissements publics disponibles :", self.number_institutions, max_radius_km, self.city)
                             else:
                                 res_str = format_response(None, top_fallback, self.number_institutions, not self.data_processor.city_detected)
-                                message = self._format_response_with_specialty(NO_PUBLIC_INSTITUTION_MSG + "\nCependant, voici les établissements privés disponibles :", self.number_institutions, max_radius_km, self.city)
+                                message = self._format_response_with_specialty(WARNING_MESSAGES["no_public_institution"] + "\nCependant, voici les établissements privés disponibles :", self.number_institutions, max_radius_km, self.city)
                             return self._create_response_and_log(message, res_str, prompt, METHODOLOGY_WEB_LINK), self.link
                         else:
                             public_exists = not fallback_df[fallback_df["Catégorie"] == "Public"].empty if "Catégorie" in fallback_df.columns else False
@@ -497,9 +523,9 @@ class PipelineOrchestrator:
                             if not public_exists and not private_exists:
                                 return "Aucun établissement (ni public ni privé) est disponible pour votre query.", self.link
                             elif fallback_type == 'Privé' and not private_exists:
-                                return NO_PRIVATE_INSTITUTION_MSG, self.link
+                                return WARNING_MESSAGES["no_private_institution"], self.link
                             elif fallback_type == 'Public' and not public_exists:
-                                return NO_PUBLIC_INSTITUTION_MSG, self.link
+                                return WARNING_MESSAGES["no_public_institution"], self.link
                     else:
                         logger.warning("Fallback DataFrame missing 'Catégorie' column or is malformed. Returning fallback error message.")
                         return "Aucun établissement (ni public ni privé) est disponible pour votre query.", self.link
@@ -507,9 +533,9 @@ class PipelineOrchestrator:
                     logger.exception(f"Exception in fallback to {fallback_type} institutions: {e}")
                     return "Aucun établissement (ni public ni privé) est disponible pour votre query.", self.link
             if self.data_processor.institution_type == 'Public':
-                return NO_PUBLIC_INSTITUTION_MSG, self.link
+                return WARNING_MESSAGES["no_public_institution"], self.link
             elif self.data_processor.institution_type == 'Privé':
-                return NO_PRIVATE_INSTITUTION_MSG, self.link
+                return WARNING_MESSAGES["no_private_institution"], self.link
 
         # If institution is mentioned, return its ranking and link
         logger.debug("Checking if institution is mentioned")
@@ -538,7 +564,7 @@ class PipelineOrchestrator:
             # If no results at all, return not found message
             if (filtered_public_df is None or filtered_public_df.empty) and (filtered_private_df is None or filtered_private_df.empty):
                 logger.warning("No results found even at maximum radius (multi_radius_search)")
-                return NO_RESULTS_FOUND_IN_LOCATION_MSG, self.link
+                return WARNING_MESSAGES["no_results_found_in_location"], self.link
             institution_type = getattr(self, 'institution_type', None)
             if institution_type == 'Public':
                 res_str = format_response(filtered_public_df, None, self.number_institutions, not self.data_processor.city_detected)
