@@ -31,7 +31,7 @@ NO_RESULTS_FOUND_IN_LOCATION_MSG = "Aucun résultat trouvé dans un rayon de 100
 
 WARNING_MESSAGES = {
     "message_length": "Votre message est trop long. Merci de le raccourcir.",
-    "message_pertinence":"Cet assistant a pour but de fournir des informations sur les classements des établissements de soins de cette année. Merci de reformuler.",
+    "message_pertinence":"Cet assistant a pour but de fournir des informations sur les classements des établissements de soins de cette année. Merci de reformuler. ",
     "non_french_cities": "Je ne peux pas traiter les demandes concernant des villes étrangères. Merci de reformuler votre question en mentionnant une ville française.",
     "conversation_limit": "La conversation est trop longue. Merci de commencer une nouvelle conversation.",
     "methodology_questions": "Les questions sur la méthodologie du classement sont hors périmètre du chatbot. Vous pouvez consulter la méthodologie complète <a href=\"{METHODOLOGY_WEB_LINK}\" target=\"_blank\">ici</a>."

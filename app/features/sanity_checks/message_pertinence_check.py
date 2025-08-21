@@ -48,7 +48,7 @@ class MessagePertinenceChecker:
         logger.debug(f"Sanity check medical pertinence prompt sent to LLM.")
         raw_response = invoke_llm_with_error_handling(self.llm_handler_service.model, formatted_prompt, "sanity_check_medical_pertinence")
         logger.debug(f"Raw LLM response for medical pertinence:\n{raw_response}")
-        return parse_llm_response(raw_response, "boolean")
+        return parse_llm_response(raw_response, "string")
 
     def sanity_check_chatbot_pertinence(self, prompt: str, conv_history: str = "") -> str:
         """
@@ -74,15 +74,14 @@ class MessagePertinenceChecker:
         Checks if the user input is medically pertinent, then chatbot pertinent. Raises an exception if either is off-topic.
         """
         # First, check medical pertinence
-        is_medically_pertinent = self.sanity_check_medical_pertinence(user_input, conv_history)
-        if not is_medically_pertinent:
+        medically_pertinent_result = self.sanity_check_medical_pertinence(user_input, conv_history)
+        if medically_pertinent_result == '0':
             raise MessagePertinenceCheckException(WARNING_MESSAGES["message_pertinence"])
+        elif medically_pertinent_result == '2':
+            return MessagePertinenceCheckException(WARNING_MESSAGES["methodology_questions"].format(METHODOLOGY_WEB_LINK=METHODOLOGY_WEB_LINK))
         
         # Then, check chatbot pertinence
-        chatbot_pertinence_result = self.sanity_check_chatbot_pertinence(user_input, conv_history)
-        if chatbot_pertinence_result == "2":
-            # Standardized response for methodology questions
-            return MessagePertinenceCheckException(WARNING_MESSAGES["methodology_questions"].format(METHODOLOGY_WEB_LINK=METHODOLOGY_WEB_LINK))
-        elif chatbot_pertinence_result == "0":
+        chatbot_pertinence_result = self.sanity_check_chatbot_pertinence(user_input, conv_history)    
+        if chatbot_pertinence_result == "0":
             # Standardized response for non-relevant questions
             raise MessagePertinenceCheckException(WARNING_MESSAGES["message_pertinence"])
