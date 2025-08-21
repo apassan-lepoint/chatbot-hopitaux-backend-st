@@ -3,7 +3,7 @@ import pandas as pd
 from app.services.data_processing_service import DataProcessor
 from app.features.query_analysis.query_analyst import QueryAnalyst
 from app.config.file_paths_config import PATHS
-from app.config.features_config import (SEARCH_RADIUS_KM, ERROR_GENERAL_RANKING_MSG, ERROR_INSTITUTION_RANKING_MSG,ERROR_GEOPY_MSG, ERROR_DATA_UNAVAILABLE_MSG, ERROR_IN_CREATING_TABLE_MSG, NO_PRIVATE_INSTITUTION_MSG, NO_PUBLIC_INSTITUTION_MSG, NO_RESULTS_FOUND_IN_LOCATION_MSG)
+from app.config.features_config import (SEARCH_RADIUS_KM, ERROR_GENERAL_RANKING_MSG, ERROR_INSTITUTION_RANKING_MSG,ERROR_GEOPY_MSG, ERROR_DATA_UNAVAILABLE_MSG, ERROR_IN_CREATING_TABLE_MSG, NO_PRIVATE_INSTITUTION_MSG, NO_PUBLIC_INSTITUTION_MSG, NO_RESULTS_FOUND_IN_LOCATION_MSG, METHODOLOGY_WEB_LINK)
 from app.utility.logging import get_logger
 from app.utility.formatting_helpers import format_response
 from app.utility.distance_calc_helpers import multi_radius_search
@@ -102,13 +102,14 @@ class PipelineOrchestrator:
         return base_message.format(count=count, specialty=specialty_part, location=location_part)
 
 
-    def _create_response_and_log(self, message: str, table_str: str, prompt: str) -> str:
+    def _create_response_and_log(self, message: str, table_str: str, prompt: str, ranking_link: str = None) -> str:
         """
         Helper method to create final response, log it, and save to CSV.
         Args:
             message (str): The message to include in the response.
             table_str (str): The formatted table string to include in the response.         
             prompt (str): The original user prompt.
+            ranking_link (str, optional): The hyperlink to include in the response.
         Returns:
             str: The final formatted response string.   
         """
@@ -116,6 +117,8 @@ class PipelineOrchestrator:
 
         # Combine message and table for final response
         response = f"{message}\n{table_str}"
+        if ranking_link:
+            response += f"\n\n🔗 Consultez la méthodologie de palmarès hopitaux <a href=\"{ranking_link}\" target=\"_blank\">ici</a>."
         # Save response to CSV for history
         self.data_processor.create_csv(question=prompt, reponse=response)
         logger.debug(f"Formatted response: {response}")
@@ -399,7 +402,7 @@ class PipelineOrchestrator:
             "Voici les meilleurs établissements :",
             number_institutions, max_radius_km, self.city
         )
-        return self._create_response_and_log(message, res_str, prompt)
+        return self._create_response_and_log(message, res_str, prompt, METHODOLOGY_WEB_LINK)
 
     def generate_response(self, prompt: str, max_radius_km: int = 5, detected_specialty: str=None) -> str:
         """
@@ -487,7 +490,7 @@ class PipelineOrchestrator:
                             else:
                                 res_str = format_response(None, top_fallback, self.number_institutions, not self.data_processor.city_detected)
                                 message = self._format_response_with_specialty(NO_PUBLIC_INSTITUTION_MSG + "\nCependant, voici les établissements privés disponibles :", self.number_institutions, max_radius_km, self.city)
-                            return self._create_response_and_log(message, res_str, prompt), self.link
+                            return self._create_response_and_log(message, res_str, prompt, METHODOLOGY_WEB_LINK), self.link
                         else:
                             public_exists = not fallback_df[fallback_df["Catégorie"] == "Public"].empty if "Catégorie" in fallback_df.columns else False
                             private_exists = not fallback_df[fallback_df["Catégorie"] == "Privé"].empty if "Catégorie" in fallback_df.columns else False
@@ -547,7 +550,7 @@ class PipelineOrchestrator:
                 f"Voici les meilleurs établissements (rayon utilisé : {used_radius} km)",
                 self.number_institutions, used_radius, self.city
             )
-            return self._create_response_and_log(message, res_str, prompt), self.link
+            return self._create_response_and_log(message, res_str, prompt, METHODOLOGY_WEB_LINK), self.link
 
         # General ranking response if no city found
         logger.info("No city detected, returning general ranking")

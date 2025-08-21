@@ -123,7 +123,7 @@ class SpecialtyDetector:
         """
 
         """
-        logger.info(f"Detecting specialty from prompt: '{prompt[:50]}...'")
+        logger.info(f"Detecting specialty from prompt: '{prompt}'")
         
         # Step 1: Try keyword-based detection first
         keyword_result = self._detect_specialty_keywords(prompt)
