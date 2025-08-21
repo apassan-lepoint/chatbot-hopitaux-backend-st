@@ -74,13 +74,13 @@ class MessagePertinenceChecker:
         Checks if the user input is medically pertinent, then chatbot pertinent. Raises an exception if either is off-topic.
         """
         # First, check medical pertinence
-        medically_pertinent_result = self.sanity_check_medical_pertinence(user_input, conv_history)
+        medically_pertinent_result = str(self.sanity_check_medical_pertinence(user_input, conv_history)).strip()
         if medically_pertinent_result == '0':
             raise MessagePertinenceCheckException(WARNING_MESSAGES["message_pertinence"])
         elif medically_pertinent_result == '2':
             raise MessagePertinenceCheckException(WARNING_MESSAGES["methodology_questions"].format(METHODOLOGY_WEB_LINK=METHODOLOGY_WEB_LINK))
 
         # Then, check chatbot pertinence
-        chatbot_pertinence_result = self.sanity_check_chatbot_pertinence(user_input, conv_history)
+        chatbot_pertinence_result = str(self.sanity_check_chatbot_pertinence(user_input, conv_history)).strip()
         if chatbot_pertinence_result == "0":
             raise MessagePertinenceCheckException(WARNING_MESSAGES["message_pertinence"])
