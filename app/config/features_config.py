@@ -1,3 +1,5 @@
+# Lien vers le classement web du palmarès des hôpitaux
+METHODOLOGY_WEB_LINK = "https://www.lepoint.fr/sante/la-methodologie-du-palmares-des-hopitaux-et-cliniques-du-point-2024--04-12-2024-2577146_40.php"
 """
 Configuration constants for the chatbot hopitaux.
 """
