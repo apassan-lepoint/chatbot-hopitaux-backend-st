@@ -130,7 +130,12 @@ Si un historique de conversation est fourni ci-dessus, analysez le nouveau messa
 
 ATTENTION: Les questions de suivi sur les hôpitaux publics/privés sont TOUJOURS pertinentes. Les mots comme "privé", "public", "et privé?", "et public?" dans le contexte d'une discussion sur les hôpitaux sont des continuations légitimes.
 
-Répondez UNIQUEMENT avec 1 si pertinent, 0 si non pertinent.
+Répondez UNIQUEMENT avec:
+- 1 si la question est pertinente pour le chatbot (classement, recherche d'établissement, etc.)
+- 0 si la question n'est pas pertinente
+- 2 si la question concerne la méthodologie de calcul du classement (exemples : "Comment le classement est-il calculé ?", "Quelle est la méthode pour classer les hôpitaux ?", "Quels sont les critères du classement ?", "Comment sont déterminés les scores ?", etc.)
+
+ATTENTION: Si la question concerne la méthodologie, répondez 2 même si elle mentionne aussi des hôpitaux ou des spécialités.
 
 Une question est pertinente si elle concerne au moins un des cas suivants:
 - Une maladie, un symptôme ou une spécialité médicale  
@@ -154,6 +159,28 @@ Exemples de questions non pertinentes pour messages standalone (repondre 0):
 - Dois-je prendre du paracétamol pour ma fièvre ? #Il s'agit d'une demande d'expertise médical qui n'est pas dans le cadre de la recherche d'un établissement de soin
 - Puis-je perdre la vue si j'ai un glaucome? #Il s'agit d'une demande d'expertise médical qui n'est pas dans le cadre de la recherche d'un établissement de soin
 
+Exe;ples de questions qui concernent la méthodologie de classement (repondre 2):
+- "Comment le classement est-il calculé ?"
+- "Quels sont les critères du classement ?" 
+- "Pourquoi l'hôpital X est mieux classé que Y ?"
+- "Comment sont choisis les critères du classement ?"
+- "Qui réalise le classement des hôpitaux ?"
+- "Quelle est la source des données utilisées pour le classement ?"
+- "Le classement prend-il en compte la satisfaction des patients ?"
+- "Comment sont pondérés les différents critères ?"
+- "Est-ce que le classement est mis à jour chaque année ?"
+- "Pourquoi certains hôpitaux ne figurent pas dans le classement ?"
+- "Comment puis-je vérifier la fiabilité du classement ?"
+- "Quels experts participent à l'élaboration du classement ?"
+- "Le classement est-il influencé par des partenariats ou des sponsors ?"
+- "Comment sont traitées les données manquantes dans le classement ?"
+- "Le classement est-il le même pour toutes les spécialités ?"
+- "Comment sont comparés les hôpitaux publics et privés dans le classement ?"
+- "Quels sont les changements dans la méthodologie cette année ?"
+- "Comment puis-je accéder au détail de la méthodologie ?"
+
+
+
 Exemples avec contexte conversationnel (TRÈS IMPORTANT):
 - Avec historique sur les hôpitaux parisiens, 'Et à Lyon ?' → 1 (question de suivi sur les hôpitaux)
 - Avec historique sur les classements, 'Combien coûte une consultation ?' → 0 (question sur les coûts, pas sur les classements)
@@ -163,6 +190,7 @@ Exemples avec contexte conversationnel (TRÈS IMPORTANT):
 - Avec historique sur cardiologie publique, 'privé?' → 1 (question de suivi sur le secteur privé)
 - Avec historique mentionnant "privés", 'et privé?' → 1 (demande de précision sur le secteur privé)
 - Avec historique sur hôpitaux de Bordeaux, 'publics aussi?' → 1 (question de suivi sur le secteur public)
+- Avec historique sur les classements, "Comment sont déterminés les scores ?" → 2 (question sur la méthodologie de classement)
 """,
 
     "detect_city_prompt": """

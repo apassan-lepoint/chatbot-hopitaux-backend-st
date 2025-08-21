@@ -1,5 +1,3 @@
-# Lien vers le classement web du palmarès des hôpitaux
-METHODOLOGY_WEB_LINK = "https://www.lepoint.fr/sante/la-methodologie-du-palmares-des-hopitaux-et-cliniques-du-point-2024--04-12-2024-2577146_40.php"
 """
 Configuration constants for the chatbot hopitaux.
 """
@@ -17,6 +15,7 @@ INSTITUTION_TYPE_URL_MAPPING = {
     "Privé": "prive",
     "aucune correspondance": "aucune correspondance"
 }
+METHODOLOGY_WEB_LINK = "https://www.lepoint.fr/sante/la-methodologie-du-palmares-des-hopitaux-et-cliniques-du-point-2024--04-12-2024-2577146_40.php"
 
 # User messages for different scenarios
 OFF_TOPIC_RESPONSE = "Je n'ai pas bien saisi la nature de votre demande. Merci de reformuler une question relative aux classements des hôpitaux."
@@ -34,7 +33,9 @@ WARNING_MESSAGES = {
     "message_length": "Votre message est trop long. Merci de le raccourcir.",
     "message_pertinence":"Cet assistant a pour but de fournir des informations sur les classements des établissements de soins de cette année. Merci de reformuler.",
     "non_french_cities": "Je ne peux pas traiter les demandes concernant des villes étrangères. Merci de reformuler votre question en mentionnant une ville française.",
-    "conversation_limit": "La conversation est trop longue. Merci de commencer une nouvelle conversation."
+    "conversation_limit": "La conversation est trop longue. Merci de commencer une nouvelle conversation.",
+    "methodology_questions": "Les questions sur la méthodologie du classement sont hors périmètre du chatbot. Vous pouvez consulter la méthodologie complète <a href=\"{METHODOLOGY_WEB_LINK}\" target=\"_blank\">ici</a>."
+
 }  
 
 # Error messages
