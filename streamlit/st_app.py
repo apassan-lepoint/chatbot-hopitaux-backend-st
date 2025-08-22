@@ -106,24 +106,32 @@ class StreamlitChatbot:
             st.stop()
 
         if st.session_state.get("multiple_specialties") is not None:
+            st.write("[DEBUG] Entered specialty selection block")
             st.write("[DEBUG] multiple_specialties:", st.session_state["multiple_specialties"])
             st.write("[DEBUG] type(multiple_specialties):", type(st.session_state["multiple_specialties"]))
             multiple_specialties = st.session_state["multiple_specialties"]
             if not isinstance(multiple_specialties, list):
                 st.error("Erreur: la liste des spécialités n'est pas au format attendu. Type: {} Value: {}".format(type(multiple_specialties), multiple_specialties))
+                st.write("[DEBUG] Exiting due to invalid type for multiple_specialties")
                 return
             key_suffix = f"_{get_conversation_length()}"
+            st.write(f"[DEBUG] Rendering specialty form with key_suffix: {key_suffix}")
             with st.form("specialty_form"):
+                st.write("[DEBUG] Inside specialty_form context")
                 selected_specialty = st.radio(
                     "Veuillez sélectionner une spécialité pour continuer.",
                     multiple_specialties,
                     index=0,
                     key=f"specialty_radio{key_suffix}"
                 )
+                st.write(f"[DEBUG] Radio rendered, current value: {selected_specialty}")
                 submit = st.form_submit_button("Valider")
-                st.write("[DEBUG] selected_specialty:", selected_specialty)
+                st.write(f"[DEBUG] Form submit button pressed: {submit}")
+                st.write("[DEBUG] selected_specialty after submit:", selected_specialty)
                 if submit:
+                    st.write("[DEBUG] Form submitted, processing selection")
                     if selected_specialty:
+                        st.write(f"[DEBUG] Valid specialty selected: {selected_specialty}")
                         st.session_state.selected_specialty = selected_specialty
                         st.session_state.specialty_context = {
                             'original_query': st.session_state.get("prompt", ""),
@@ -131,9 +139,12 @@ class StreamlitChatbot:
                             'timestamp': datetime.now().isoformat()
                         }
                         st.session_state.multiple_specialties = None
+                        st.write("[DEBUG] Updated session_state after specialty selection:", st.session_state)
                         process_message(st.session_state.get("prompt", ""))
                     else:
+                        st.write("[DEBUG] No specialty selected, showing info message")
                         st.info("Veuillez sélectionner une spécialité avant de poursuivre.")
+            st.write("[DEBUG] Exiting specialty selection block, blocking further UI")
             # Return here to block further UI until specialty is selected
             return
         
