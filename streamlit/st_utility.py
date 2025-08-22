@@ -11,6 +11,24 @@ from app.services.pipeline_orchestrator_service import PipelineOrchestrator
 
 logger = get_logger(__name__)
 
+# --- Session state initialization: only set defaults if not already present ---
+def initialize_session_state():
+    defaults = {
+        'conversation': [],
+        'selected_option': None,
+        'prompt': '',
+        'specialty': '',
+        'selected_specialty': None,
+        'specialty_context': None,
+        'multiple_specialties': None,
+        'original_prompt': ''
+    }
+    for k, v in defaults.items():
+        if k not in st.session_state:
+            st.session_state[k] = v
+
+initialize_session_state()
+
 
 def handle_specialty_selection(prompt: str, key_suffix: str = "") -> str:
     """
