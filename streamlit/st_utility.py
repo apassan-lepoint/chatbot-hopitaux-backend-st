@@ -59,23 +59,24 @@ def handle_specialty_selection(prompt: str, key_suffix: str = "") -> str:
             key=radio_key
         )
         logger.info(f"[handle_specialty_selection] selected_specialty: {selected_specialty}")
-        # Only process if user actually interacted (radio selection is new this run)
-        if selected_specialty:
-            st.session_state.selected_specialty = selected_specialty
-            st.session_state.specialty_context = {
-                'original_query': prompt,
-                'selected_specialty': selected_specialty,
-                'timestamp': datetime.now().isoformat()
-            }
-            logger.info(f"[handle_specialty_selection] SAVED selection: {selected_specialty}")
-            logger.info(f"[handle_specialty_selection] Clearing multiple_specialties after selection: {selected_specialty}")
-            st.session_state.multiple_specialties = None
-            st.rerun()
-            return selected_specialty
-        else:
-            st.info("Veuillez sélectionner une spécialité pour continuer.")
-            logger.warning(f"[handle_specialty_selection] No specialty selected yet.")
-            st.stop()
+        confirm_key = f"specialty_confirm_{hash(str(multiple_specialties)+str(prompt))}"
+        confirmed = st.button("Valider", key=confirm_key)
+        if confirmed:
+            if selected_specialty:
+                st.session_state.selected_specialty = selected_specialty
+                st.session_state.specialty_context = {
+                    'original_query': prompt,
+                    'selected_specialty': selected_specialty,
+                    'timestamp': datetime.now().isoformat()
+                }
+                logger.info(f"[handle_specialty_selection] SAVED selection: {selected_specialty}")
+                logger.info(f"[handle_specialty_selection] Clearing multiple_specialties after selection: {selected_specialty}")
+                st.session_state.multiple_specialties = None
+                st.rerun()
+                return selected_specialty
+            else:
+                st.warning("Veuillez sélectionner une spécialité avant de valider.")
+        st.stop()
     return None
 
 def process_message(prompt: str) -> None:
