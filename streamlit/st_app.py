@@ -106,27 +106,27 @@ class StreamlitChatbot:
             st.stop()
 
         if st.session_state.get("multiple_specialties") is not None:
-            st.info("[DEBUG] Entered specialty selection block")
-            st.info(f"[DEBUG] multiple_specialties: {st.session_state['multiple_specialties']}")
-            st.info(f"[DEBUG] type(multiple_specialties): {type(st.session_state['multiple_specialties'])}")
+            logger.info("[DEBUG] Entered specialty selection block")
+            logger.info(f"[DEBUG] multiple_specialties: {st.session_state['multiple_specialties']}")
+            logger.info(f"[DEBUG] type(multiple_specialties): {type(st.session_state['multiple_specialties'])}")
             multiple_specialties = st.session_state["multiple_specialties"]
             if not isinstance(multiple_specialties, list):
                 st.error("Erreur: la liste des spécialités n'est pas au format attendu. Type: {} Value: {}".format(type(multiple_specialties), multiple_specialties))
-                st.info("[DEBUG] Exiting due to invalid type for multiple_specialties")
+                logger.info("[DEBUG] Exiting due to invalid type for multiple_specialties")
                 return
             key_suffix = f"_{get_conversation_length()}"
-            st.info(f"[DEBUG] Rendering specialty radio with key_suffix: {key_suffix}")
+            logger.info(f"[DEBUG] Rendering specialty radio with key_suffix: {key_suffix}")
             selected_specialty = st.radio(
                 "Veuillez sélectionner une spécialité pour continuer.",
                 multiple_specialties,
                 index=0,
                 key=f"specialty_radio{key_suffix}"
             )
-            st.info(f"[DEBUG] Radio rendered, current value: {selected_specialty}")
+            logger.info(f"[DEBUG] Radio rendered, current value: {selected_specialty}")
             # Process instantly when selection changes
             if selected_specialty:
                 if st.session_state.get("selected_specialty") != selected_specialty:
-                    st.info(f"[DEBUG] Valid specialty selected: {selected_specialty}")
+                    logger.info(f"[DEBUG] Valid specialty selected: {selected_specialty}")
                     st.session_state.selected_specialty = selected_specialty
                     st.session_state.specialty_context = {
                         'original_query': st.session_state.get("prompt", ""),
@@ -134,13 +134,13 @@ class StreamlitChatbot:
                         'timestamp': datetime.now().isoformat()
                     }
                     st.session_state.multiple_specialties = None
-                    st.info(f"[DEBUG] Updated session_state after specialty selection: {st.session_state}")
+                    logger.info(f"[DEBUG] Updated session_state after specialty selection: {st.session_state}")
                     process_message(st.session_state.get("prompt", ""))
                     st.rerun()
             else:
-                st.info("[DEBUG] No specialty selected, showing info message")
-                st.info("Veuillez sélectionner une spécialité avant de poursuivre.")
-            st.info("[DEBUG] Exiting specialty selection block, blocking further UI")
+                logger.info("[DEBUG] No specialty selected, showing info message")
+                logger.info("Veuillez sélectionner une spécialité avant de poursuivre.")
+            logger.info("[DEBUG] Exiting specialty selection block, blocking further UI")
             return
         
         # Handle messages
