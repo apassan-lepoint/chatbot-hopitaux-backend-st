@@ -94,7 +94,6 @@ def process_message(prompt: str) -> None:
         result = execute_with_spinner(SPINNER_MESSAGES["loading"], lambda: formatted_result)
         append_to_conversation(prompt, result)
     except Exception as e:
-        logger = logging.getLogger(__name__)
         logger.error(f"Error processing message: {e}")
         st.error(ERROR_MESSAGES["general_processing"])
 
