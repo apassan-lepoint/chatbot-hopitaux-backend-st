@@ -50,11 +50,13 @@ def handle_specialty_selection(prompt: str, key_suffix: str = "") -> str:
         if not multiple_specialties:
             st.error("Aucune spécialité à sélectionner.")
             return None
+        # Use a stable key based on the prompt and specialties to avoid UI confusion
+        radio_key = f"specialty_radio_{hash(str(multiple_specialties)+str(prompt))}"
         selected_specialty = st.radio(
             UI_SPECIALTY_SELECTION_PROMPT,
             multiple_specialties,
             index=0,
-            key=f"specialty_radio{key_suffix}"
+            key=radio_key
         )
         logger.info(f"[handle_specialty_selection] selected_specialty: {selected_specialty}")
         # Only process if user actually interacted (radio selection is new this run)
@@ -71,10 +73,13 @@ def handle_specialty_selection(prompt: str, key_suffix: str = "") -> str:
                 'selected_specialty': selected_specialty,
                 'timestamp': datetime.now().isoformat()
             }
+            logger.info(f"[handle_specialty_selection] SAVED selection: {selected_specialty}")
             logger.info(f"[handle_specialty_selection] Clearing multiple_specialties after selection: {selected_specialty}")
             st.session_state.multiple_specialties = None
             st.rerun()
             return selected_specialty
+        else:
+            logger.warning(f"[handle_specialty_selection] Specialty selection not captured. Current: {selected_specialty}, Session: {st.session_state.get('selected_specialty')}")
         # Otherwise, keep showing the radio UI and block
         st.stop()
     return None
