@@ -463,18 +463,20 @@ class PipelineOrchestrator:
             # Case 2: specialty is a list
             elif "specialty" in detections and isinstance(detections["specialty"], list) and len(detections["specialty"]) > 1:
                 specialty_list = detections["specialty"]
-            # Case 3: specialty is a string starting with 'multiple matches:'
-            elif "specialty" in detections and isinstance(detections["specialty"], str) and detections["specialty"].lower().startswith("multiple matches:"):
-                # Parse specialties from string
-                matches_str = detections["specialty"][len("multiple matches:"):].strip()
-                # Split by comma, strip whitespace
-                specialty_list = [s.strip() for s in matches_str.split(",") if s.strip()]
+            # Case 3: specialty is a string starting with 'multiple matches:' (robust to spaces)
+            elif "specialty" in detections and isinstance(detections["specialty"], str):
+                specialty_str = detections["specialty"].lower().replace(" ","")
+                if specialty_str.startswith("multiplematches:"):
+                    # Parse specialties from string (robust split)
+                    matches_str = detections["specialty"][detections["specialty"].find(":")+1:].strip()
+                    specialty_list = [s.strip() for s in matches_str.split(",") if s.strip()]
         # Defensive: also check detected_specialty
         if detected_specialty and isinstance(detected_specialty, list) and len(detected_specialty) > 1:
             specialty_list = detected_specialty
 
-        if specialty_list:
-            logger.info("Multiple specialty matches detected, returning for UI selection")
+        # Always block if specialty_list has more than one item
+        if specialty_list and len(specialty_list) > 1:
+            logger.info("Multiple specialty matches detected (robust), returning for UI selection")
             formatted_response = (
                 MULTIPLE_SPECIALTIES_MSG + "\n- " + "\n- ".join(specialty_list)
             )
