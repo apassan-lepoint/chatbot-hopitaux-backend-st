@@ -1,8 +1,7 @@
 import streamlit as st
 from typing import Any, Callable
 from datetime import datetime
-import logging
-
+import unidecode
 from st_config import (SESSION_STATE_KEYS, UI_SPECIALTY_SELECTION_PROMPT, UI_INVALID_SELECTION_ERROR, SPINNER_MESSAGES, ERROR_MESSAGES)
 from app.utility.logging import get_logger
 from app.utility.formatting_helpers import format_links
@@ -163,6 +162,9 @@ def process_message(prompt: str) -> None:
         append_to_conversation(st.session_state.prompt, result)
     except Exception as e:
         logger.error(f"Error processing message: {e}")
+        # Normalize specialty string (strip, lower, remove accents)
+        normalized_specialty = unidecode.unidecode(str(prev_specialty)).strip().lower()
+        logger.info(f"[process_message] Sending specialty to backend: '{prev_specialty}' (normalized: '{normalized_specialty}')")
         st.error(ERROR_MESSAGES["general_processing"])
 
 
@@ -179,7 +181,6 @@ def append_to_conversation(user_input: str, bot_response: str) -> None:
     if "conversation" not in st.session_state:
         st.session_state.conversation = []
     st.session_state.conversation.append((user_input, bot_response))
-
 
 def create_example_button(question: str, button_key: str, 
                         help_text: str = "Cliquez pour poser cette question") -> bool:
