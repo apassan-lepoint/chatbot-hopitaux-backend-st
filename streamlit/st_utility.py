@@ -49,7 +49,7 @@ def handle_specialty_selection(prompt: str, key_suffix: str = "") -> str:
             # Only clear multiple_specialties after a valid selection
             logger.info(f"[handle_specialty_selection] Clearing multiple_specialties after selection: {selected_specialty}")
             st.session_state.multiple_specialties = None
-            st.experimental_rerun()  # Force rerun to process selection
+            st.rerun()  # Force rerun to process selection
             return selected_specialty
         elif selected_specialty:
             st.error(UI_INVALID_SELECTION_ERROR)
@@ -78,7 +78,7 @@ def process_message(prompt: str) -> None:
             logger.info(f"[process_message] Backend returned multiple_specialties again: {result['multiple_specialties']}")
             st.session_state["multiple_specialties"] = result["multiple_specialties"]
             st.info(result["message"])
-            st.experimental_rerun()  # Force rerun so specialty selection UI is rendered immediately
+            st.rerun()  # Force rerun so specialty selection UI is rendered immediately
         formatted_result = format_links(result, links)
         result = execute_with_spinner(SPINNER_MESSAGES["loading"], lambda: formatted_result)
         append_to_conversation(prompt, result)
@@ -91,7 +91,7 @@ def process_message(prompt: str) -> None:
             logger.info(f"[process_message] Backend returned multiple_specialties again: {result['multiple_specialties']}")
             st.session_state["multiple_specialties"] = result["multiple_specialties"]
             st.info(result["message"])
-            st.experimental_rerun()  # Force rerun so specialty selection UI is rendered immediately
+            st.rerun()  # Force rerun so specialty selection UI is rendered immediately
             return
         formatted_result = format_links(result, links)
         result = execute_with_spinner(SPINNER_MESSAGES["loading"], lambda: formatted_result)
@@ -103,7 +103,7 @@ def process_message(prompt: str) -> None:
             logger.info(f"[process_message] Backend returned multiple_specialties: {result['multiple_specialties']}")
             st.session_state["multiple_specialties"] = result["multiple_specialties"]
             st.info(result["message"])
-            st.experimental_rerun()  # Force rerun so specialty selection UI is rendered immediately
+            st.rerun()  # Force rerun so specialty selection UI is rendered immediately
             return
         formatted_result = format_links(result, links)
         result = execute_with_spinner(SPINNER_MESSAGES["loading"], lambda: formatted_result)
