@@ -57,8 +57,14 @@ def handle_specialty_selection(prompt: str, key_suffix: str = "") -> str:
             key=f"specialty_radio{key_suffix}"
         )
         logger.info(f"[handle_specialty_selection] selected_specialty: {selected_specialty}")
-        # Process selection immediately when radio changes
-        if selected_specialty and selected_specialty in multiple_specialties:
+        # Only process if user actually interacted (radio selection is new this run)
+        if (
+            selected_specialty and selected_specialty in multiple_specialties and
+            (
+                st.session_state.get("selected_specialty") != selected_specialty or
+                st.session_state.get("specialty_context") is None
+            )
+        ):
             st.session_state.selected_specialty = selected_specialty
             st.session_state.specialty_context = {
                 'original_query': prompt,
@@ -69,8 +75,8 @@ def handle_specialty_selection(prompt: str, key_suffix: str = "") -> str:
             st.session_state.multiple_specialties = None
             st.rerun()
             return selected_specialty
-        elif selected_specialty:
-            st.error(UI_INVALID_SELECTION_ERROR)
+        # Otherwise, keep showing the radio UI and block
+        st.stop()
     return None
 
 def process_message(prompt: str) -> None:
