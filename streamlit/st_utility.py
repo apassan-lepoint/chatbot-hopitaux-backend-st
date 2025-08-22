@@ -85,14 +85,15 @@ def process_message(prompt: str) -> None:
     # Always preserve the prompt in session state
     if prompt:
         st.session_state.prompt = prompt
-    # If multiple_specialties is present, always show the specialty selection UI and block further processing until a valid selection
+    # If multiple_specialties is present, always show the specialty selection UI and block ALL further processing until a valid selection
     if st.session_state.get("multiple_specialties") is not None:
         selected_specialty = handle_specialty_selection(st.session_state.prompt)
+        # Block everything else until user selects
         if not selected_specialty:
             st.info("Veuillez sélectionner une spécialité avant de poursuivre.")
             logger.info("[process_message] Blocking further processing due to multiple_specialties.")
             st.stop()  # Ensures UI is rendered and blocks further code execution
-        # Specialty was just selected, rerun will happen, so return here
+        # If a specialty was selected, rerun will happen, so return here
         logger.info(f"[process_message] User selected specialty: {selected_specialty}")
         return
     # If specialty was just selected and multiple_specialties is now None, generate response
