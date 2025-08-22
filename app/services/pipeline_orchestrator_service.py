@@ -470,12 +470,11 @@ class PipelineOrchestrator:
                     # Parse specialties from string (robust split)
                     matches_str = detections["specialty"][detections["specialty"].find(":")+1:].strip()
                     specialty_list = [s.strip() for s in matches_str.split(",") if s.strip()]
-        # Defensive: also check detected_specialty
-        if detected_specialty and isinstance(detected_specialty, list) and len(detected_specialty) > 1:
-            specialty_list = detected_specialty
 
-        # SIMPLER LOGIC: If detected_specialty is present and is NOT a multiple matches string, skip blocking
-        if detected_specialty and isinstance(detected_specialty, str) and not detected_specialty.lower().replace(" ","").startswith("multiplematches:"):
+        # Only skip blocking if detected_specialty is a single, confirmed specialty (not ambiguous, not a list, not a multiple matches string)
+        if detected_specialty and isinstance(detected_specialty, str) \
+            and not detected_specialty.lower().replace(" ","").startswith("multiplematches:") \
+            and not (isinstance(detections.get('specialty'), list) and len(detections.get('specialty', [])) > 1):
             specialty_list = []
 
         # Always block if specialty_list has more than one item
