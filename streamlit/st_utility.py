@@ -35,7 +35,7 @@ def handle_specialty_selection(prompt: str, key_suffix: str = "") -> str:
         selected_specialty = st.radio(
             UI_SPECIALTY_SELECTION_PROMPT,
             multiple_specialties,
-            index=None,
+            index=0,  # Always select the first specialty by default
             key=f"specialty_radio{key_suffix}"
         )
         logger.info(f"[handle_specialty_selection] selected_specialty: {selected_specialty}")
