@@ -107,7 +107,11 @@ class StreamlitChatbot:
 
         if st.session_state.get("multiple_specialties") is not None:
             st.write("[DEBUG] multiple_specialties:", st.session_state["multiple_specialties"])
+            st.write("[DEBUG] type(multiple_specialties):", type(st.session_state["multiple_specialties"]))
             multiple_specialties = st.session_state["multiple_specialties"]
+            if not isinstance(multiple_specialties, list):
+                st.error("Erreur: la liste des spécialités n'est pas au format attendu. Type: {} Value: {}".format(type(multiple_specialties), multiple_specialties))
+                return
             key_suffix = f"_{get_conversation_length()}"
             with st.form("specialty_form"):
                 selected_specialty = st.radio(
