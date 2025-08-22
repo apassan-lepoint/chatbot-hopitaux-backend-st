@@ -105,9 +105,11 @@ class StreamlitChatbot:
             st.stop()
 
         if st.session_state.get("multiple_specialties") is not None:
+            st.write("[DEBUG] multiple_specialties:", st.session_state["multiple_specialties"])
             from st_utility import handle_specialty_selection
             key_suffix = f"_{get_conversation_length()}"
             selected_specialty = handle_specialty_selection(st.session_state.get("prompt", ""), key_suffix=key_suffix)
+            st.write("[DEBUG] selected_specialty:", selected_specialty)
             if not selected_specialty:
                 st.info("Veuillez sélectionner une spécialité avant de poursuivre.")
                 # Do NOT return here; let the rest of the UI render so Streamlit can process the selection
