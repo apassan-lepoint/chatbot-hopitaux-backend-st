@@ -69,7 +69,7 @@ def process_message(prompt: str) -> None:
         if not selected_specialty:
             st.info("Veuillez sélectionner une spécialité avant de poursuivre.")
             logger.info("[process_message] Blocking further processing due to multiple_specialties.")
-            return
+            st.stop()  # Ensures UI is rendered and blocks further code execution
         # Only after a valid selection, continue processing
         logger.info(f"[process_message] User selected specialty: {selected_specialty}")
         result, links = PipelineOrchestrator().generate_response(prompt=prompt, detected_specialty=selected_specialty)
@@ -77,7 +77,7 @@ def process_message(prompt: str) -> None:
             logger.info(f"[process_message] Backend returned multiple_specialties again: {result['multiple_specialties']}")
             st.session_state["multiple_specialties"] = result["multiple_specialties"]
             st.info(result["message"])
-            return
+            st.stop()  # Block until user selects again
         formatted_result = format_links(result, links)
         result = execute_with_spinner(SPINNER_MESSAGES["loading"], lambda: formatted_result)
         append_to_conversation(prompt, result)
