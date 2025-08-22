@@ -104,13 +104,15 @@ class StreamlitChatbot:
             st.warning(results["conversation_limit"]["error"])
             st.stop()
 
-        # Block everything if specialty selection is needed
         if st.session_state.get("multiple_specialties") is not None:
             from st_utility import handle_specialty_selection
             selected_specialty = handle_specialty_selection(st.session_state.get("prompt", ""))
             if not selected_specialty:
                 st.info("Veuillez sélectionner une spécialité avant de poursuivre.")
-                return
+                # Do NOT return here; let the rest of the UI render so Streamlit can process the selection
+            else:
+                # Optionally, you can process the message here if you want to auto-continue
+                pass
         
         # Handle messages
         if get_conversation_length() == 0:
