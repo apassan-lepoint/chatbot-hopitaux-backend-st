@@ -55,18 +55,12 @@ def handle_specialty_selection(prompt: str, key_suffix: str = "") -> str:
         selected_specialty = st.radio(
             UI_SPECIALTY_SELECTION_PROMPT,
             multiple_specialties,
-            index=0,
+            index=None,
             key=radio_key
         )
         logger.info(f"[handle_specialty_selection] selected_specialty: {selected_specialty}")
         # Only process if user actually interacted (radio selection is new this run)
-        if (
-            selected_specialty and selected_specialty in multiple_specialties and
-            (
-                st.session_state.get("selected_specialty") != selected_specialty or
-                st.session_state.get("specialty_context") is None
-            )
-        ):
+        if selected_specialty:
             st.session_state.selected_specialty = selected_specialty
             st.session_state.specialty_context = {
                 'original_query': prompt,
@@ -79,9 +73,9 @@ def handle_specialty_selection(prompt: str, key_suffix: str = "") -> str:
             st.rerun()
             return selected_specialty
         else:
-            logger.warning(f"[handle_specialty_selection] Specialty selection not captured. Current: {selected_specialty}, Session: {st.session_state.get('selected_specialty')}")
-        # Otherwise, keep showing the radio UI and block
-        st.stop()
+            st.info("Veuillez sélectionner une spécialité pour continuer.")
+            logger.warning(f"[handle_specialty_selection] No specialty selected yet.")
+            st.stop()
     return None
 
 def process_message(prompt: str) -> None:
