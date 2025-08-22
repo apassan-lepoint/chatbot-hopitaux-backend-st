@@ -97,50 +97,6 @@ class StreamlitChatbot:
         # Check conversation limit using SanityChecksAnalyst
         sanity_checks_manager = SanityChecksAnalyst(self.llm_handler)
         conversation = get_conversation_list()
-        results = sanity_checks_manager.run_checks("", conversation, checks_to_run=["conversation_limit"])
-        
-        if not results["conversation_limit"]["passed"]:
-            self._reset_session_state()
-            st.warning(results["conversation_limit"]["error"])
-            st.stop()
-
-        if st.session_state.get("multiple_specialties") is not None:
-            logger.info("[DEBUG] Entered specialty selection block")
-            logger.info(f"[DEBUG] multiple_specialties: {st.session_state['multiple_specialties']}")
-            logger.info(f"[DEBUG] type(multiple_specialties): {type(st.session_state['multiple_specialties'])}")
-            multiple_specialties = st.session_state["multiple_specialties"]
-            if not isinstance(multiple_specialties, list):
-                st.error("Erreur: la liste des spécialités n'est pas au format attendu. Type: {} Value: {}".format(type(multiple_specialties), multiple_specialties))
-                logger.info("[DEBUG] Exiting due to invalid type for multiple_specialties")
-                return
-            key_suffix = f"_{get_conversation_length()}"
-            logger.info(f"[DEBUG] Rendering specialty radio with key_suffix: {key_suffix}")
-            selected_specialty = st.radio(
-                "Veuillez sélectionner une spécialité pour continuer.",
-                multiple_specialties,
-                index=0,
-                key=f"specialty_radio{key_suffix}"
-            )
-            logger.info(f"[DEBUG] Radio rendered, current value: {selected_specialty}")
-            # Process instantly when selection changes
-            if selected_specialty:
-                if st.session_state.get("selected_specialty") != selected_specialty:
-                    logger.info(f"[DEBUG] Valid specialty selected: {selected_specialty}")
-                    st.session_state.selected_specialty = selected_specialty
-                    st.session_state.specialty_context = {
-                        'original_query': st.session_state.get("prompt", ""),
-                        'selected_specialty': selected_specialty,
-                        'timestamp': datetime.now().isoformat()
-                    }
-                    st.session_state.multiple_specialties = None
-                    logger.info(f"[DEBUG] Updated session_state after specialty selection: {st.session_state}")
-                    process_message(st.session_state.get("prompt", ""))
-                    st.rerun()
-            else:
-                logger.info("[DEBUG] No specialty selected, showing info message")
-                logger.info("Veuillez sélectionner une spécialité avant de poursuivre.")
-            logger.info("[DEBUG] Exiting specialty selection block, blocking further UI")
-            return
         
         # Handle messages
         if get_conversation_length() == 0:
