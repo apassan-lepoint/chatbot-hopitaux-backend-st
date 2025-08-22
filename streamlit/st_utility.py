@@ -101,15 +101,16 @@ def process_message(prompt: str) -> None:
             st.stop()  # Ensures UI is rendered and blocks further code execution
         # If a specialty was selected, rerun will happen, so return here
         logger.info(f"[process_message] User selected specialty: {selected_specialty}")
-        # After rerun, if multiple_specialties is now None, generate response and display conversation
-        if st.session_state.get("multiple_specialties") is None and st.session_state.get("selected_specialty"):
-            prev_specialty = st.session_state.get("selected_specialty")
-            logger.info(f"[process_message] Generating response after specialty selection: {prev_specialty}")
-            result, links = PipelineOrchestrator().generate_response(prompt=st.session_state.prompt, detected_specialty=prev_specialty)
-            formatted_result = format_links(result, links)
-            result = execute_with_spinner(SPINNER_MESSAGES["loading"], lambda: formatted_result)
-            append_to_conversation(st.session_state.prompt, result)
-            display_conversation_history()
+        return
+    # After rerun, if multiple_specialties is now None and selected_specialty is set, generate response and display conversation
+    if st.session_state.get("multiple_specialties") is None and st.session_state.get("selected_specialty"):
+        prev_specialty = st.session_state.get("selected_specialty")
+        logger.info(f"[process_message] Generating response after specialty selection: {prev_specialty}")
+        result, links = PipelineOrchestrator().generate_response(prompt=st.session_state.prompt, detected_specialty=prev_specialty)
+        formatted_result = format_links(result, links)
+        result = execute_with_spinner(SPINNER_MESSAGES["loading"], lambda: formatted_result)
+        append_to_conversation(st.session_state.prompt, result)
+        display_conversation_history()
         return
     # If specialty was just selected and multiple_specialties is now None, generate response
     prev_specialty = st.session_state.get("selected_specialty")
