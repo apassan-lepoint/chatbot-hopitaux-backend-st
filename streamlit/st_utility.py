@@ -44,10 +44,13 @@ def process_message(prompt: str) -> None:
     Sends the user query (and selected specialty if present) to backend and displays the response.
     If multiple specialties are present, calls specialty selection UI.
     """
+    # Always block further processing and prompt user if multiple_specialties is present
+    if st.session_state.get("multiple_specialties") is not None:
+        st.info("Veuillez sélectionner une spécialité avant de poursuivre.")
+        return
     selected_specialty = handle_specialty_selection(prompt)
     if selected_specialty:
         result, links = PipelineOrchestrator().generate_response(prompt=prompt, detected_specialty=selected_specialty)
-        # Handle multiple_specialties dict response
         if isinstance(result, dict) and "multiple_specialties" in result:
             st.session_state["multiple_specialties"] = result["multiple_specialties"]
             st.info(result["message"])
@@ -55,8 +58,6 @@ def process_message(prompt: str) -> None:
         formatted_result = format_links(result, links)
         result = execute_with_spinner(SPINNER_MESSAGES["loading"], lambda: formatted_result)
         append_to_conversation(prompt, result)
-        return
-    if st.session_state.get("multiple_specialties") is not None:
         return
     prev_specialty = st.session_state.get("selected_specialty")
     if prev_specialty:

@@ -39,11 +39,12 @@ def ask_question(query: UserQuery) -> AskResponse:
     try:
         result, links = pipeline.generate_response(prompt=query.prompt, detected_specialty=query.detected_specialty)
         logger.info(f"Response generated for /ask endpoint - Links found: {len(links) if links else 0}")
-        # If multiple specialties, return a custom dict for client to handle selection
+        # If multiple specialties, always return ambiguous=True and multiple_specialties for client enforcement
         if isinstance(result, dict) and "multiple_specialties" in result:
             return {
                 "result": result["message"],
                 "links": [],
+                "ambiguous": True,
                 "multiple_specialties": result["multiple_specialties"]
             }
         return AskResponse(result=result, links=links)
@@ -115,7 +116,7 @@ def chat(request: ChatRequest) -> ChatResponse:
         elif case == "case5":
             logger.debug("Processing Case 5: new question with search")
             result, links = pipeline.generate_response(prompt=request.prompt)
-            # If multiple specialties, return a custom dict for client to handle selection
+            # If multiple specialties, always return ambiguous=True and multiple_specialties for client enforcement
             if isinstance(result, dict) and "multiple_specialties" in result:
                 return {
                     "response": result["message"],
