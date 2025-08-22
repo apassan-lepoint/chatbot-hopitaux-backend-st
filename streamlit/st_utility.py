@@ -106,7 +106,14 @@ def process_message(prompt: str) -> None:
     if st.session_state.get("multiple_specialties") is None and st.session_state.get("selected_specialty"):
         prev_specialty = st.session_state.get("selected_specialty")
         logger.info(f"[process_message] Generating response after specialty selection: {prev_specialty}")
+        # Defensive: clear multiple_specialties before backend call
+        st.session_state["multiple_specialties"] = None
         result, links = PipelineOrchestrator().generate_response(prompt=st.session_state.prompt, detected_specialty=prev_specialty)
+        if isinstance(result, dict) and "multiple_specialties" in result:
+            logger.info(f"[process_message] Backend returned multiple_specialties again: {result['multiple_specialties']}")
+            st.warning("Le backend n'a pas pu traiter la spécialité sélectionnée. Veuillez reformuler votre question ou choisir une spécialité différente.")
+            # Do NOT rerun, just show warning and stop
+            return
         formatted_result = format_links(result, links)
         result = execute_with_spinner(SPINNER_MESSAGES["loading"], lambda: formatted_result)
         append_to_conversation(st.session_state.prompt, result)
@@ -116,16 +123,18 @@ def process_message(prompt: str) -> None:
     prev_specialty = st.session_state.get("selected_specialty")
     if prev_specialty and st.session_state.get("multiple_specialties") is None:
         logger.info(f"[process_message] Using previous selected_specialty: {prev_specialty}")
+        # Defensive: clear multiple_specialties before backend call
+        st.session_state["multiple_specialties"] = None
         result, links = PipelineOrchestrator().generate_response(prompt=st.session_state.prompt, detected_specialty=prev_specialty)
         if isinstance(result, dict) and "multiple_specialties" in result:
             logger.info(f"[process_message] Backend returned multiple_specialties again: {result['multiple_specialties']}")
-            st.session_state["multiple_specialties"] = result["multiple_specialties"]
-            st.info(result["message"])
-            st.rerun()  # Force rerun so specialty selection UI is rendered immediately
+            st.warning("Le backend n'a pas pu traiter la spécialité sélectionnée. Veuillez reformuler votre question ou choisir une spécialité différente.")
+            # Do NOT rerun, just show warning and stop
             return
         formatted_result = format_links(result, links)
         result = execute_with_spinner(SPINNER_MESSAGES["loading"], lambda: formatted_result)
         append_to_conversation(st.session_state.prompt, result)
+        display_conversation_history()
         return
     prev_specialty = st.session_state.get("selected_specialty")
     if prev_specialty:
