@@ -35,10 +35,11 @@ def handle_specialty_selection(prompt: str, key_suffix: str = "") -> str:
         selected_specialty = st.radio(
             UI_SPECIALTY_SELECTION_PROMPT,
             multiple_specialties,
-            index=0,  # Always select the first specialty by default
+            index=0,
             key=f"specialty_radio{key_suffix}"
         )
         logger.info(f"[handle_specialty_selection] selected_specialty: {selected_specialty}")
+        # Process selection immediately when radio changes
         if selected_specialty and selected_specialty in multiple_specialties:
             st.session_state.selected_specialty = selected_specialty
             st.session_state.specialty_context = {
@@ -46,10 +47,9 @@ def handle_specialty_selection(prompt: str, key_suffix: str = "") -> str:
                 'selected_specialty': selected_specialty,
                 'timestamp': datetime.now().isoformat()
             }
-            # Only clear multiple_specialties after a valid selection
             logger.info(f"[handle_specialty_selection] Clearing multiple_specialties after selection: {selected_specialty}")
             st.session_state.multiple_specialties = None
-            st.rerun()  # Force rerun to process selection
+            st.rerun()
             return selected_specialty
         elif selected_specialty:
             st.error(UI_INVALID_SELECTION_ERROR)
