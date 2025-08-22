@@ -65,7 +65,7 @@ class StreamlitChatbot:
     
     def _handle_subsequent_messages(self):
         """
-        Handles subsequent messages from the user: gets input and calls MessageHandler to process.
+        Handles subsequent messages from the user: gets input and calls process_message to handle specialty selection and backend response.
         """
         user_input = st.chat_input(UI_CHAT_INPUT_PLACEHOLDER)
         if not user_input and st.session_state.prompt:
@@ -75,7 +75,7 @@ class StreamlitChatbot:
         logger.info(f"Subsequent message user_input: '{user_input}'")
         st.session_state.prompt = user_input
         prompt = get_session_state_value(SESSION_STATE_KEYS["prompt"], "")
-        self.message_handler.process_message(prompt)
+        process_message(prompt)
 
 
 
