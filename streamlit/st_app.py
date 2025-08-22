@@ -98,11 +98,20 @@ class StreamlitChatbot:
         sanity_checks_manager = SanityChecksAnalyst(self.llm_handler)
         conversation = get_conversation_list()
         results = sanity_checks_manager.run_checks("", conversation, checks_to_run=["conversation_limit"])
+        
         if not results["conversation_limit"]["passed"]:
             self._reset_session_state()
             st.warning(results["conversation_limit"]["error"])
             st.stop()
 
+        # Block everything if specialty selection is needed
+        if st.session_state.get("multiple_specialties") is not None:
+            from st_utility import handle_specialty_selection
+            selected_specialty = handle_specialty_selection(st.session_state.get("prompt", ""))
+            if not selected_specialty:
+                st.info("Veuillez sélectionner une spécialité avant de poursuivre.")
+                return
+        
         # Handle messages
         if get_conversation_length() == 0:
             self._handle_first_message()
