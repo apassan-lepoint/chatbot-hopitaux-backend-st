@@ -49,6 +49,7 @@ def handle_specialty_selection(prompt: str, key_suffix: str = "") -> str:
             # Only clear multiple_specialties after a valid selection
             logger.info(f"[handle_specialty_selection] Clearing multiple_specialties after selection: {selected_specialty}")
             st.session_state.multiple_specialties = None
+            st.experimental_rerun()  # Force rerun to process selection
             return selected_specialty
         elif selected_specialty:
             st.error(UI_INVALID_SELECTION_ERROR)

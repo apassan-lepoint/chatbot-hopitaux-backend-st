@@ -11,10 +11,10 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 from app.features.sanity_checks.sanity_checks_analyst import SanityChecksAnalyst
 from app.utility.logging import get_logger
 from st_config import (SESSION_STATE_KEYS, SESSION_STATE_DEFAULTS, MAX_MESSAGES, UI_CHAT_INPUT_PLACEHOLDER)
-from st_utility import (display_conversation_history, get_conversation_list, get_conversation_length, get_session_state_value)
-from st_utility import process_message
+from st_utility import (display_conversation_history, get_conversation_list, get_conversation_length, get_session_state_value, handle_specialty_selection, process_message)
 from st_ui_components import UIComponents
-from app.services.llm_handler_service import LLMHandler 
+from app.services.llm_handler_service import LLMHandler
+
 
 
 logger = get_logger(__name__)
@@ -106,7 +106,6 @@ class StreamlitChatbot:
 
         if st.session_state.get("multiple_specialties") is not None:
             st.write("[DEBUG] multiple_specialties:", st.session_state["multiple_specialties"])
-            from st_utility import handle_specialty_selection
             key_suffix = f"_{get_conversation_length()}"
             selected_specialty = handle_specialty_selection(st.session_state.get("prompt", ""), key_suffix=key_suffix)
             st.write("[DEBUG] selected_specialty:", selected_specialty)
@@ -114,8 +113,8 @@ class StreamlitChatbot:
                 st.info("Veuillez sélectionner une spécialité avant de poursuivre.")
                 # Do NOT return here; let the rest of the UI render so Streamlit can process the selection
             else:
-                # Optionally, you can process the message here if you want to auto-continue
-                pass
+                # Automatically process the message after valid specialty selection
+                process_message(st.session_state.get("prompt", ""))
         
         # Handle messages
         if get_conversation_length() == 0:
