@@ -37,15 +37,14 @@ class StreamlitChatbot:
         """
         Reset the session state to its default values and remove any extra keys.
         """
-        logger.info("Resetting session state")
-        # Force clear conversation before setting defaults
+        logger.info("Resetting session state (safe)")
+        # Explicitly clear conversation
         st.session_state[SESSION_STATE_KEYS["conversation"]] = []
+        # Only set defaults for missing keys
         for key, value in SESSION_STATE_DEFAULTS.items():
-            st.session_state[key] = value
-        extra_keys = [k for k in st.session_state.keys() if k not in SESSION_STATE_DEFAULTS]
-        for k in extra_keys:
-            del st.session_state[k]
-        logger.info(f"Session state after reset: {st.session_state}")
+            if key not in st.session_state:
+                st.session_state[key] = value
+        logger.info(f"Session state after safe reset: {st.session_state}")
     
 
     def _handle_first_message(self):
