@@ -5,6 +5,7 @@ Main Streamlit-based user interface for the hospital ranking chatbot.
 import sys
 import os
 import streamlit as st
+from datetime import datetime
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -106,15 +107,31 @@ class StreamlitChatbot:
 
         if st.session_state.get("multiple_specialties") is not None:
             st.write("[DEBUG] multiple_specialties:", st.session_state["multiple_specialties"])
+            multiple_specialties = st.session_state["multiple_specialties"]
             key_suffix = f"_{get_conversation_length()}"
-            selected_specialty = handle_specialty_selection(st.session_state.get("prompt", ""), key_suffix=key_suffix)
-            st.write("[DEBUG] selected_specialty:", selected_specialty)
-            if not selected_specialty:
-                st.info("Veuillez sélectionner une spécialité avant de poursuivre.")
-                # Do NOT return here; let the rest of the UI render so Streamlit can process the selection
-            else:
-                # Automatically process the message after valid specialty selection
-                process_message(st.session_state.get("prompt", ""))
+            with st.form("specialty_form"):
+                selected_specialty = st.radio(
+                    "Veuillez sélectionner une spécialité pour continuer.",
+                    multiple_specialties,
+                    index=0,
+                    key=f"specialty_radio{key_suffix}"
+                )
+                submit = st.form_submit_button("Valider")
+                st.write("[DEBUG] selected_specialty:", selected_specialty)
+                if submit:
+                    if selected_specialty:
+                        st.session_state.selected_specialty = selected_specialty
+                        st.session_state.specialty_context = {
+                            'original_query': st.session_state.get("prompt", ""),
+                            'selected_specialty': selected_specialty,
+                            'timestamp': datetime.now().isoformat()
+                        }
+                        st.session_state.multiple_specialties = None
+                        process_message(st.session_state.get("prompt", ""))
+                    else:
+                        st.info("Veuillez sélectionner une spécialité avant de poursuivre.")
+            # Return here to block further UI until specialty is selected
+            return
         
         # Handle messages
         if get_conversation_length() == 0:
