@@ -107,8 +107,8 @@ class StreamlitChatbot:
 
         if st.session_state.get("multiple_specialties") is not None:
             st.info("[DEBUG] Entered specialty selection block")
-            st.info("[DEBUG] multiple_specialties:", st.session_state["multiple_specialties"])
-            st.info("[DEBUG] type(multiple_specialties):", type(st.session_state["multiple_specialties"]))
+            st.info(f"[DEBUG] multiple_specialties: {st.session_state['multiple_specialties']}")
+            st.info(f"[DEBUG] type(multiple_specialties): {type(st.session_state['multiple_specialties'])}")
             multiple_specialties = st.session_state["multiple_specialties"]
             if not isinstance(multiple_specialties, list):
                 st.error("Erreur: la liste des spécialités n'est pas au format attendu. Type: {} Value: {}".format(type(multiple_specialties), multiple_specialties))
@@ -127,7 +127,7 @@ class StreamlitChatbot:
                 st.info(f"[DEBUG] Radio rendered, current value: {selected_specialty}")
                 submit = st.form_submit_button("Valider")
                 st.info(f"[DEBUG] Form submit button pressed: {submit}")
-                st.info(f"[DEBUG] selected_specialty after submit:", selected_specialty)
+                st.info(f"[DEBUG] selected_specialty after submit: {selected_specialty}")
                 if submit:
                     st.info(f"[DEBUG] Form submitted, processing selection")
                     if selected_specialty:
@@ -139,7 +139,7 @@ class StreamlitChatbot:
                             'timestamp': datetime.now().isoformat()
                         }
                         st.session_state.multiple_specialties = None
-                        st.info(f"[DEBUG] Updated session_state after specialty selection:", st.session_state)
+                        st.info(f"[DEBUG] Updated session_state after specialty selection: {st.session_state}")
                         process_message(st.session_state.get("prompt", ""))
                     else:
                         st.info("[DEBUG] No specialty selected, showing info message")
