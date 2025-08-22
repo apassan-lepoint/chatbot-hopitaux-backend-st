@@ -474,6 +474,10 @@ class PipelineOrchestrator:
         if detected_specialty and isinstance(detected_specialty, list) and len(detected_specialty) > 1:
             specialty_list = detected_specialty
 
+        # SIMPLER LOGIC: If detected_specialty is present and is NOT a multiple matches string, skip blocking
+        if detected_specialty and isinstance(detected_specialty, str) and not detected_specialty.lower().replace(" ","").startswith("multiplematches:"):
+            specialty_list = []
+
         # Always block if specialty_list has more than one item
         if specialty_list and len(specialty_list) > 1:
             logger.info("Multiple specialty matches detected (robust), returning for UI selection")
