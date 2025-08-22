@@ -1,10 +1,11 @@
 from typing import Optional, List
 from app.utility.specialty_dicts_lists import specialty_categories_dict as default_dict
-
+import unidecode
 
 class SpecialtyValidator:
     def __init__(self, specialty_list: List[str], specialty_categories_dict=None):
-        self.specialty_list = specialty_list
+        # Normalize specialty list: lowercase, no accents, strip
+        self.specialty_list = [unidecode.unidecode(s).lower().strip() for s in specialty_list]
         self.specialty_categories_dict = specialty_categories_dict or default_dict
 
     def _is_no_match(self, specialty: str) -> bool:

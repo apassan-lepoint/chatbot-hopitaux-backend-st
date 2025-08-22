@@ -1,4 +1,5 @@
 import pandas as pd
+import unidecode
 from app.config.file_paths_config import PATHS
 from typing import Optional, List, Tuple
 from app.utility.logging import get_logger
@@ -19,7 +20,8 @@ class SpecialtyDetector:
         self.specialty_categories_dict = specialty_categories_dict
         self.category_variations = category_variations
         self.general_cancer_terms = general_cancer_terms
-        self.specialty_list = self._load_specialty_list()
+        # Normalize specialty list: lowercase, no accents, strip
+        self.specialty_list = [unidecode.unidecode(s).lower().strip() for s in self._load_specialty_list()]
         self.key_words = key_words or self._build_default_key_words()
         self._all_cancer_specialties = None
 
