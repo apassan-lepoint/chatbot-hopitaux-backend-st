@@ -74,9 +74,23 @@ def process_message(prompt: str) -> None:
             st.info("Veuillez sélectionner une spécialité avant de poursuivre.")
             logger.info("[process_message] Blocking further processing due to multiple_specialties.")
             st.stop()  # Ensures UI is rendered and blocks further code execution
-        # Only after a valid selection, continue processing
+        # Specialty was just selected, rerun will happen, so return here
         logger.info(f"[process_message] User selected specialty: {selected_specialty}")
-        # After rerun, this block will be skipped and the next block will use selected_specialty
+        return
+    # If specialty was just selected and multiple_specialties is now None, generate response
+    prev_specialty = st.session_state.get("selected_specialty")
+    if prev_specialty and st.session_state.get("multiple_specialties") is None:
+        logger.info(f"[process_message] Using previous selected_specialty: {prev_specialty}")
+        result, links = PipelineOrchestrator().generate_response(prompt=st.session_state.prompt, detected_specialty=prev_specialty)
+        if isinstance(result, dict) and "multiple_specialties" in result:
+            logger.info(f"[process_message] Backend returned multiple_specialties again: {result['multiple_specialties']}")
+            st.session_state["multiple_specialties"] = result["multiple_specialties"]
+            st.info(result["message"])
+            st.rerun()  # Force rerun so specialty selection UI is rendered immediately
+            return
+        formatted_result = format_links(result, links)
+        result = execute_with_spinner(SPINNER_MESSAGES["loading"], lambda: formatted_result)
+        append_to_conversation(st.session_state.prompt, result)
         return
     prev_specialty = st.session_state.get("selected_specialty")
     if prev_specialty:
