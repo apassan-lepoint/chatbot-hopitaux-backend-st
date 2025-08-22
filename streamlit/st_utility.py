@@ -19,7 +19,19 @@ def handle_specialty_selection(prompt: str, key_suffix: str = "") -> str:
     """
     multiple_specialties = get_session_state_value(SESSION_STATE_KEYS["multiple_specialties"], None)
     logger.info(f"[handle_specialty_selection] multiple_specialties in session: {multiple_specialties}")
+    # Defensive: ensure multiple_specialties is a list
     if multiple_specialties is not None:
+        if not isinstance(multiple_specialties, list):
+            # Try to convert to list if it's a string (comma separated)
+            if isinstance(multiple_specialties, str):
+                multiple_specialties = [s.strip() for s in multiple_specialties.split(",") if s.strip()]
+                st.session_state.multiple_specialties = multiple_specialties
+            else:
+                st.error("Erreur: la liste des spécialités n'est pas au format attendu.")
+                return None
+        if not multiple_specialties:
+            st.error("Aucune spécialité à sélectionner.")
+            return None
         selected_specialty = st.radio(
             UI_SPECIALTY_SELECTION_PROMPT,
             multiple_specialties,

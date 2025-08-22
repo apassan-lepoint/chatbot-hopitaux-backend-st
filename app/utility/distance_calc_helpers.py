@@ -9,6 +9,7 @@ import pandas as pd
 from geopy.geocoders import Nominatim  
 from geopy.distance import geodesic 
 from typing import List, Tuple
+import logging
 
 
 def multi_radius_search(public_df: pd.DataFrame, private_df: pd.DataFrame,number_institutions: int,city_not_specified: bool,radii: List[int]) -> Tuple[pd.DataFrame, pd.DataFrame, int]:
@@ -18,7 +19,6 @@ def multi_radius_search(public_df: pd.DataFrame, private_df: pd.DataFrame,number
     """
     if city_not_specified:
         return public_df, private_df, 0
-    import logging
     logger = logging.getLogger("multi_radius_search")
     logger.debug(f"[multi_radius_search] Called with radii: {radii}")
     logger.debug(f"[multi_radius_search] Initial public_df shape: {public_df.shape if public_df is not None else 'None'}")
@@ -109,12 +109,12 @@ def distance_to_query(query_coords: tuple, city: str, df_with_cities: pd.DataFra
     # Get coordinates for the target city
     from app.utility.logging import get_logger
     logger = get_logger(__name__)
-    logger.debug(f"distance_to_query called: query_coords={query_coords}, city={city}")
+    # logger.debug(f"distance_to_query called: query_coords={query_coords}, city={city}")
     city_coords = get_coordinates(df_with_cities, city)
     if city_coords:
         try:
             res = geodesic(query_coords, city_coords).kilometers
-            logger.debug(f"Calculated distance for city '{city}': {res} km (query_coords={query_coords}, city_coords={city_coords})")
+            # logger.debug(f"Calculated distance for city '{city}': {res} km (query_coords={query_coords}, city_coords={city_coords})")
             return res
         except Exception as e:
             geolocation_api_error = True
