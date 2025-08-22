@@ -167,7 +167,6 @@ def process_message(prompt: str) -> None:
 
 
 def append_to_conversation(user_input: str, bot_response: str) -> None:
-    logger.debug(f"Appending to conversation: user_input='{user_input}', bot_response='{bot_response[:50]}...")
     """
     Append a user-bot interaction to the conversation history.
     
@@ -175,6 +174,8 @@ def append_to_conversation(user_input: str, bot_response: str) -> None:
         user_input: The user's input message
         bot_response: The bot's response
     """
+    logger.debug(f"Appending to conversation: user_input='{user_input}', bot_response='{str(bot_response)[:50]}...")
+
     if "conversation" not in st.session_state:
         st.session_state.conversation = []
     st.session_state.conversation.append((user_input, bot_response))
