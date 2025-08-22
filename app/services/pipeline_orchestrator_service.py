@@ -467,9 +467,13 @@ class PipelineOrchestrator:
             elif "specialty" in detections and isinstance(detections["specialty"], str):
                 specialty_str = detections["specialty"].lower().replace(" ","")
                 if specialty_str.startswith("multiplematches:"):
-                    # Parse specialties from string (robust split)
+                    # Parse specialties from string (robust split, allow for extra spaces after colon)
                     matches_str = detections["specialty"][detections["specialty"].find(":")+1:].strip()
-                    specialty_list = [s.strip() for s in matches_str.split(",") if s.strip()]
+                    # If matches_str contains commas, split; else, treat as single specialty
+                    if "," in matches_str:
+                        specialty_list = [s.strip() for s in matches_str.split(",") if s.strip()]
+                    else:
+                        specialty_list = [matches_str] if matches_str else []
 
         # Only skip blocking if detected_specialty is a single, confirmed specialty (not ambiguous, not a list, not a multiple matches string)
         if detected_specialty and isinstance(detected_specialty, str) \
