@@ -10,6 +10,8 @@ from geopy.geocoders import Nominatim
 from geopy.distance import geodesic 
 from typing import List, Tuple
 import logging
+import ssl
+import certifi
 
 
 def multi_radius_search(public_df: pd.DataFrame, private_df: pd.DataFrame,number_institutions: int,city_not_specified: bool,radii: List[int]) -> Tuple[pd.DataFrame, pd.DataFrame, int]:
@@ -57,8 +59,10 @@ def exget_coordinates(city_name: str) -> tuple:
         tuple: (latitude, longitude) if found, otherwise None.
     """
     try:
-        # Initialize geopy geolocator
-        geolocator = Nominatim(user_agent="city_distance_calculator", timeout=5)  # Increased timeout to 5 seconds for reliability
+        # Create SSL context with certifi's trusted certificates
+        ctx = ssl.create_default_context(cafile=certifi.where())
+        # Initialize geopy geolocator with SSL context
+        geolocator = Nominatim(user_agent="city_distance_calculator", timeout=5, ssl_context=ctx)  # Increased timeout to 5 seconds for reliability
         # Attempt to geocode the city name
         location = geolocator.geocode(city_name)
         if location:
@@ -69,8 +73,8 @@ def exget_coordinates(city_name: str) -> tuple:
             return None, False  # geolocation_api_error is False if city not found
     except Exception as e:
         return None, True  # geolocation_api_error is True if an error occurs
-    
-    
+
+
 def get_coordinates(df_with_cities: pd.DataFrame, city_name: str) -> tuple:
     """
     Retrieve the geographic coordinates (latitude, longitude) of a city from 
