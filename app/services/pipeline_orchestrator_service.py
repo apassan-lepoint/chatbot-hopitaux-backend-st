@@ -3,7 +3,7 @@ import pandas as pd
 from app.services.data_processing_service import DataProcessor
 from app.features.query_analysis.query_analyst import QueryAnalyst
 from app.config.file_paths_config import PATHS
-from app.config.features_config import (SEARCH_RADIUS_KM, ERROR_GENERAL_RANKING_MSG, ERROR_INSTITUTION_RANKING_MSG,ERROR_GEOPY_MSG, ERROR_DATA_UNAVAILABLE_MSG, ERROR_IN_CREATING_TABLE_MSG, WARNING_MESSAGES, METHODOLOGY_WEB_LINK, GENERAL_ERROR_MSG)
+from app.config.features_config import (SEARCH_RADIUS_KM, ERROR_GENERAL_RANKING_MSG, ERROR_INSTITUTION_RANKING_MSG,ERROR_GEOPY_MSG, ERROR_DATA_UNAVAILABLE_MSG, ERROR_IN_CREATING_TABLE_MSG, WARNING_MESSAGES, METHODOLOGY_WEB_LINK, GENERAL_ERROR_MSG, MULTIPLE_SPECIALTIES_MSG)
 from app.utility.logging import get_logger
 from app.utility.formatting_helpers import format_response
 from app.utility.distance_calc_helpers import multi_radius_search
@@ -423,7 +423,6 @@ class PipelineOrchestrator:
         # Reset attributes for new query
         self.reset_attributes()
         self.specialty = detected_specialty
-        logger.debug("Reset pipeline attributes for new query")
         # Defensive: ensure specialty is never empty or None
         if not detected_specialty or not str(detected_specialty).strip():
             detected_specialty = "no specialty match"
@@ -451,18 +450,31 @@ class PipelineOrchestrator:
             self.data_processor.create_csv(question=prompt, reponse=error_msg)
             logger.info("Sanity check failed, returning error message and halting pipeline.")
             return error_msg, None
-        # Handle multiple matches early (UI selection)
-        extracted_specialty = detected_specialty if detected_specialty and detected_specialty != "no specialty match" else self.extract_query_parameters(prompt)
-        if extracted_specialty and str(extracted_specialty).startswith("multiple matches:"):
+        
+
+        # Robust specialty selection blocking logic
+        detections = self.extract_query_parameters(prompt, detected_specialty, conv_history)
+        specialty_list = []
+        # Check for multiple specialties in detections
+        if detections:
+            if "multiple_specialties" in detections and detections["multiple_specialties"]:
+                specialty_list = detections["multiple_specialties"]
+            elif "specialty" in detections and isinstance(detections["specialty"], list) and len(detections["specialty"]) > 1:
+                specialty_list = detections["specialty"]
+        if detected_specialty and isinstance(detected_specialty, list) and len(detected_specialty) > 1:
+            specialty_list = detected_specialty
+
+        if specialty_list:
             logger.info("Multiple specialty matches detected, returning for UI selection")
-            specialty_list = [s.strip() for s in extracted_specialty.replace("multiple matches:", "").split(',') if s.strip()]
-            formatted_response = f"Plusieurs spécialités sont disponibles. Veuillez préciser laquelle vous intéresse:\n- {'\n- '.join(specialty_list)}"
+            formatted_response = (
+                MULTIPLE_SPECIALTIES_MSG + "\n- ".join(specialty_list)
+            )
             logger.debug(f"Returning multiple matches response: {formatted_response}")
-            # Return a dict for API/Streamlit to handle selection UI
             return {
                 "message": formatted_response,
                 "multiple_specialties": specialty_list
             }, None
+
         # Build DataFrame with ranking and distances
         logger.debug("Calling build_ranking_dataframe_with_distances")
         try:

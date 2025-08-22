@@ -29,6 +29,7 @@ INTERNAL_SERVER_ERROR_MSG = "Internal server error"
 # NO_PRIVATE_INSTITUTION_MSG = "Nous n'avons pas d'établissement privé pour cette pathologie, mais un classement des établissements publics existe."
 # NO_PUBLIC_INSTITUTION_MSG = "Nous n'avons pas d'établissement public pour cette pathologie, mais un classement des établissements privés existe."
 # NO_RESULTS_FOUND_IN_LOCATION_MSG = "Aucun résultat trouvé dans un rayon de 100 km autour de votre localisation."
+MULTIPLE_SPECIALTIES_MSG = "Plusieurs spécialités ont été détectées dans votre question. Merci de sélectionner une spécialité pour continuer."
 
 WARNING_MESSAGES = {
     "message_length": "Votre message est trop long. Merci de le raccourcir.",
