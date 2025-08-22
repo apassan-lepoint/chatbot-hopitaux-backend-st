@@ -18,6 +18,7 @@ def handle_specialty_selection(prompt: str, key_suffix: str = "") -> str:
     Updates session state with the selected specialty.
     """
     multiple_specialties = get_session_state_value(SESSION_STATE_KEYS["multiple_specialties"], None)
+    logger.info(f"[handle_specialty_selection] multiple_specialties in session: {multiple_specialties}")
     if multiple_specialties is not None:
         selected_specialty = st.radio(
             UI_SPECIALTY_SELECTION_PROMPT,
@@ -25,6 +26,7 @@ def handle_specialty_selection(prompt: str, key_suffix: str = "") -> str:
             index=None,
             key=f"specialty_radio{key_suffix}"
         )
+        logger.info(f"[handle_specialty_selection] selected_specialty: {selected_specialty}")
         if selected_specialty and selected_specialty in multiple_specialties:
             st.session_state.selected_specialty = selected_specialty
             st.session_state.specialty_context = {
@@ -32,8 +34,9 @@ def handle_specialty_selection(prompt: str, key_suffix: str = "") -> str:
                 'selected_specialty': selected_specialty,
                 'timestamp': datetime.now().isoformat()
             }
+            # Only clear multiple_specialties after a valid selection
+            logger.info(f"[handle_specialty_selection] Clearing multiple_specialties after selection: {selected_specialty}")
             st.session_state.multiple_specialties = None
-            logger.info(f"User selected valid specialty: {selected_specialty}")
             return selected_specialty
         elif selected_specialty:
             st.error(UI_INVALID_SELECTION_ERROR)
@@ -41,17 +44,25 @@ def handle_specialty_selection(prompt: str, key_suffix: str = "") -> str:
 
 def process_message(prompt: str) -> None:
     """
-    Sends the user query (and selected specialty if present) to backend and displays the response.
-    If multiple specialties are present, calls specialty selection UI.
+    This function sends the user's prompt to the backend, optionally including a selected specialty.
+    If multiple specialties are detected, it blocks further processing and prompts the user to select one.
+    The selected specialty is stored in session state and used for subsequent queries.
+    The function also handles backend responses that may again require specialty selection, and appends
+    the conversation turn to the session history.
     """
-    # Always block further processing and prompt user if multiple_specialties is present
+    logger.info(f"[process_message] multiple_specialties in session: {st.session_state.get('multiple_specialties')}")
+    # If multiple_specialties is present, always show the specialty selection UI and block further processing until a valid selection
     if st.session_state.get("multiple_specialties") is not None:
-        st.info("Veuillez sélectionner une spécialité avant de poursuivre.")
-        return
-    selected_specialty = handle_specialty_selection(prompt)
-    if selected_specialty:
+        selected_specialty = handle_specialty_selection(prompt)
+        if not selected_specialty:
+            st.info("Veuillez sélectionner une spécialité avant de poursuivre.")
+            logger.info("[process_message] Blocking further processing due to multiple_specialties.")
+            return
+        # Only after a valid selection, continue processing
+        logger.info(f"[process_message] User selected specialty: {selected_specialty}")
         result, links = PipelineOrchestrator().generate_response(prompt=prompt, detected_specialty=selected_specialty)
         if isinstance(result, dict) and "multiple_specialties" in result:
+            logger.info(f"[process_message] Backend returned multiple_specialties again: {result['multiple_specialties']}")
             st.session_state["multiple_specialties"] = result["multiple_specialties"]
             st.info(result["message"])
             return
@@ -61,8 +72,10 @@ def process_message(prompt: str) -> None:
         return
     prev_specialty = st.session_state.get("selected_specialty")
     if prev_specialty:
+        logger.info(f"[process_message] Using previous selected_specialty: {prev_specialty}")
         result, links = PipelineOrchestrator().generate_response(prompt=prompt, detected_specialty=prev_specialty)
         if isinstance(result, dict) and "multiple_specialties" in result:
+            logger.info(f"[process_message] Backend returned multiple_specialties again: {result['multiple_specialties']}")
             st.session_state["multiple_specialties"] = result["multiple_specialties"]
             st.info(result["message"])
             return
@@ -73,6 +86,7 @@ def process_message(prompt: str) -> None:
     try:
         result, links = PipelineOrchestrator().generate_response(prompt=prompt)
         if isinstance(result, dict) and "multiple_specialties" in result:
+            logger.info(f"[process_message] Backend returned multiple_specialties: {result['multiple_specialties']}")
             st.session_state["multiple_specialties"] = result["multiple_specialties"]
             st.info(result["message"])
             return
