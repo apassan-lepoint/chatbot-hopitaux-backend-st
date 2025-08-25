@@ -148,7 +148,7 @@ class SpecialtyDetector:
         """Keyword-only specialty detection."""
         return self._detect_specialty_keywords(prompt)
     
-    def detect_specialty_llm_only(self, prompt: str, conv_history: str = "") -> SpecialtyDetectionResult:
+    def detect_specialty_llm_only(self, prompt: str, conv_history: str = "") -> dict:
         """LLM-only specialty detection."""
         return self._detect_specialty_llm(prompt, conv_history)
     
@@ -158,14 +158,18 @@ class SpecialtyDetector:
         """
         # Use a simple LLM call to determine status
         formatted_prompt = self._format_specialty_status_prompt(prompt, conv_history)
-        raw_response = invoke_llm_with_error_handling(
-            self.model, 
-            formatted_prompt, 
-            "detect_specialty_status"
-        )
-        
-        return parse_llm_response(raw_response, "specialty")
-    
+        result = invoke_llm_with_error_handling(self.model,formatted_prompt, "detect_specialty_llm")
+        logger.debug(f"Raw LLM response for specialty status:\n{result}")
+        # If result is a dict (with cost), extract content and cost
+        if isinstance(result, dict):
+            raw_specialty = result.get('content')
+            cost = result.get('cost')
+        else:
+            raw_specialty = result
+            cost = None
+        normalized_specialty = self.normalize_specialty_format(raw_specialty)
+        logger.debug(f"Specialty status detected via LLM: {normalized_specialty}")
+        return {'specialty': SpecialtyDetectionResult(normalized_specialty, "llm"), 'cost': cost}
     def validate_specialty(self, specialty: str) -> bool:
         """True if specialty is valid."""
         return bool(specialty) and (specialty in self.specialty_list or any(specialty in specs for specs in self.specialty_categories_dict.values()))

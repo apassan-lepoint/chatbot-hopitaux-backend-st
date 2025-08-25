@@ -128,23 +128,25 @@ MESSAGE À ANALYSER: '{prompt}'
                         return "multiple matches:" + ",".join(keywords)
         return None
     
-    def detect_specialty(self, prompt: str, conv_history: str = "") -> Tuple[str, str]:
+    def detect_specialty(self, prompt: str, conv_history: str = "") -> dict:
         """
-        Returns a tuple: (raw_specialty_string, detection_method)
-        Always unpack the result as:
-            specialty, method = detector.detect_specialty(...)
-        Never use .specialty on the result, as it is a tuple.
+        Returns a dict: {'specialty': str, 'detection_method': str, 'cost': float}
         """
         logger.info(f"Detecting specialty from prompt: '{prompt}'")
         # Step 1: Try keyword-based detection first
         specialty, method = self._detect_specialty_keywords(prompt)
+        cost = 0.0
         if specialty and specialty.lower() not in {"no specialty match", "aucune correspondance", "no match", ""}:
             logger.info(f"Specialty detected via keywords: {specialty}")
-            return specialty, method
+            return {'specialty': specialty, 'detection_method': method, 'cost': cost}
         # Step 2: Fall back to LLM-based detection
-        specialty, method = self._detect_specialty_llm(prompt, conv_history)
-        logger.info(f"Specialty detection result: {specialty}, method: {method}")
-        return specialty, method
+        raw_specialty = invoke_llm_with_error_handling(self.model,prompt_formatting("second_detect_specialty_prompt", mapping_words=self.key_words, prompt=prompt, conv_history=conv_history),"detect_specialty_llm")
+        specialty = raw_specialty
+        if isinstance(raw_specialty, dict):
+            cost = raw_specialty.get('cost', 0.0)
+            specialty = raw_specialty.get('content', raw_specialty)
+        logger.info(f"Specialty detection result: {specialty}, method: llm")
+        return {'specialty': specialty, 'detection_method': 'llm', 'cost': cost}
     
     
     def detect_specialty_keyword_only(self, prompt: str) -> Tuple[str, str]:

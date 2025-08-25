@@ -31,7 +31,7 @@ class MessagePertinenceChecker:
         self.llm_handler_service = llm_handler_service
         self.pertinent_chatbot_use_case = pertinent_chatbot_use_case
 
-    def sanity_check_medical_pertinence(self, prompt: str, conv_history: str = "") -> str:
+    def sanity_check_medical_pertinence(self, prompt: str, conv_history: str = "") -> dict:
         """
         Checks the medical pertinence of the given prompt using the LLM.
         Returns True if medically pertinent, False otherwise.
@@ -43,11 +43,18 @@ class MessagePertinenceChecker:
         )
         logger = get_logger(__name__)
         logger.debug(f"Sanity check medical pertinence prompt sent to LLM.")
-        raw_response = invoke_llm_with_error_handling(self.llm_handler_service.model, formatted_prompt, "sanity_check_medical_pertinence")
-        logger.debug(f"Raw LLM response for medical pertinence:\n{raw_response}")
-        return parse_llm_response(raw_response, "numeric")
+        result = invoke_llm_with_error_handling(self.llm_handler_service.model, formatted_prompt, "sanity_check_medical_pertinence")
+        if isinstance(result, dict):
+            content = result.get('content')
+            cost = result.get('cost')
+        else:
+            content = result
+            cost = None
+        logger.debug(f"Raw LLM response for medical pertinence:\n{content}")
+        parsed = parse_llm_response(content, "numeric")
+        return {'result': parsed, 'cost': cost}
 
-    def sanity_check_chatbot_pertinence(self, prompt: str, conv_history: str = "") -> str:
+    def sanity_check_chatbot_pertinence(self, prompt: str, conv_history: str = "") -> dict:
         """
         Checks the pertinence of the given prompt for the chatbot using the LLM.
         Returns:
@@ -62,9 +69,16 @@ class MessagePertinenceChecker:
         )
         logger = get_logger(__name__)
         logger.debug(f"Sanity check chatbot pertinence prompt sent to LLM.")
-        raw_response = invoke_llm_with_error_handling(self.llm_handler_service.model, formatted_prompt, "sanity_check_chatbot_pertinence")
-        logger.debug(f"Raw LLM response for chatbot pertinence:\n{raw_response}")
-        return parse_llm_response(raw_response, "numeric")
+        result = invoke_llm_with_error_handling(self.llm_handler_service.model, formatted_prompt, "sanity_check_chatbot_pertinence")
+        if isinstance(result, dict):
+            content = result.get('content')
+            cost = result.get('cost')
+        else:
+            content = result
+            cost = None
+        logger.debug(f"Raw LLM response for chatbot pertinence:\n{content}")
+        parsed = parse_llm_response(content, "numeric")
+        return {'result': parsed, 'cost': cost}
     
     def check(self, user_input, conv_history=""):
         """

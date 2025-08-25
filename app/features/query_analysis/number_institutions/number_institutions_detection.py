@@ -35,16 +35,21 @@ class number_institutionsDetector:
         self.max_number_institutions = number_institutions_MAX
 
 
-    def detect_number_institutions(self, prompt: str, conv_history: str = "") -> int:
+    def detect_number_institutions(self, prompt: str, conv_history: str = "") -> dict:
         """
         Detects the number_institutions results from the given prompt using the LLM.
-        Returns integer for number_institutions or 0 if not mentioned.
+        Returns a dict: {'number_institutions': int, 'detection_method': str, 'cost': float}
         """
         logger.debug(f"Detecting number_institutions from prompt: {prompt[:50]}...")
         formatted_prompt = prompt_formatting("detect_number_institutions_prompt", prompt=prompt, conv_history=conv_history)
         raw_response = invoke_llm_with_error_handling(self.model, formatted_prompt, "detect_number_institutions")
-        number_institutions = parse_llm_response(raw_response, "numeric", 0)
-        return number_institutions
+        cost = 0.0
+        number_institutions = raw_response
+        if isinstance(raw_response, dict):
+            cost = raw_response.get('cost', 0.0)
+            number_institutions = raw_response.get('content', raw_response)
+        parsed_number = parse_llm_response(number_institutions, "numeric", 0)
+        return {'number_institutions': parsed_number, 'detection_method': 'llm', 'cost': cost}
     def detect_number_institutions_with_fallback(self, prompt: str, conv_history: str = "", as_string: bool = False) -> int | str:
         """
         Detects number_institutions with fallback to default value or string.

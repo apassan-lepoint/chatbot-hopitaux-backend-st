@@ -25,8 +25,15 @@ class SpecialtyAnalyst:
     
     def detect_and_validate_specialty(self, prompt: str, conv_history: str = "") -> Dict[str, Optional[str]]:
         # Step 1: Detect specialty
-        detected_specialty, detection_method = self.detector.detect_specialty(prompt, conv_history)
-        # Step 2: Validate specialty (returns dict)
+        detected_result = self.detector.detect_specialty(prompt, conv_history)
+        cost = 0.0
+        detected_specialty = detected_result
+        detection_method = None
+        if isinstance(detected_result, dict):
+            cost = detected_result.get('cost', 0.0)
+            detected_specialty = detected_result.get('specialty', detected_result.get('content', detected_result))
+            detection_method = detected_result.get('detection_method', None)
+        # Step 2: Validate specialty (returns list)
         validated_specialty = self.validator.validate_specialty(detected_specialty)
         # Step 3: Format for pipeline (string for downstream)
         detected_validated_specialty = self._specialty_list_to_string(validated_specialty)
@@ -34,7 +41,8 @@ class SpecialtyAnalyst:
         return {
             "specialty": detected_validated_specialty,
             "detection_method": detection_method,
-            "original_detected_specialty": detected_specialty
+            "original_detected_specialty": detected_specialty,
+            "cost": cost
         }
     
     ## Following function kept in case of future need

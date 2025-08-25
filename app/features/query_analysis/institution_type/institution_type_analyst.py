@@ -33,12 +33,18 @@ class InstitutionTypeAnalyst:
 
     def detect_and_validate_type(self, prompt: str, conv_history: str = "") -> Dict[str, Optional[str]]:
         """
-        Detects institution type, validates, and returns a summary dict.
+        Detects institution type, validates, and returns a summary dict with cost.
         """
-        raw_institution_type = self.detector.detect_public_private_preference(prompt, conv_history)
+        detected_result = self.detector.detect_public_private_preference(prompt, conv_history)
+        cost = 0.0
+        raw_institution_type = detected_result
+        if isinstance(detected_result, dict):
+            cost = detected_result.get('cost', 0.0)
+            raw_institution_type = detected_result.get('institution_type', detected_result.get('content', detected_result))
         institution_type = self.validator.normalize_institution_type(raw_institution_type)
         return {
             "raw_institution_type": raw_institution_type,
             "institution_type": institution_type,
-            "is_valid": self.validator.is_institution_type_valid(institution_type)
+            "is_valid": self.validator.is_institution_type_valid(institution_type),
+            "cost": cost
         }

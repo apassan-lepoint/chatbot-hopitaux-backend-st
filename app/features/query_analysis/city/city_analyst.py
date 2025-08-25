@@ -27,7 +27,7 @@ class CityAnalyst:
     def process_city(self, prompt: str, conv_history: str = ""):
         logger.debug(f"process_city called: prompt={prompt}, conv_history={conv_history}")
         """
-        Detects and validates the city from the prompt, returning both city and detection status.
+        Detects and validates the city from the prompt, returning both city and detection status, and cost.
         """
         # Step 1: Detect city
         city_result = self.detector.detect_city(prompt, conv_history)
@@ -35,10 +35,11 @@ class CityAnalyst:
         # Step 2: Validate city (side effect, but not used for detection status)
         self.checker.check(prompt, conv_history)
         # Step 3: Finalize and return
-        from app.config.features_config import CITY_MENTIONED
-        if isinstance(city_result, str) and city_result.strip() and city_result.strip().lower() != "aucune correspondance":
-            logger.info(f"CityAnalyst.process_city: Detected city '{city_result.strip()}', setting city_detected=True")
-            return {"city": city_result.strip(), "city_detected": True}
+        city_value = city_result.get('city') if isinstance(city_result, dict) else city_result
+        cost = city_result.get('cost', 0.0) if isinstance(city_result, dict) else 0.0
+        city_detected = bool(city_value and isinstance(city_value, str) and city_value.strip() and city_value.strip().lower() != "aucune correspondance")
+        if city_detected:
+            logger.info(f"CityAnalyst.process_city: Detected city '{city_value.strip()}', setting city_detected=True")
         else:
             logger.info("CityAnalyst.process_city: No valid city detected, setting city_detected=False")
-            return {"city": None, "city_detected": False}
+        return {"city": city_value.strip() if city_detected else None, "city_detected": city_detected, "cost": cost}

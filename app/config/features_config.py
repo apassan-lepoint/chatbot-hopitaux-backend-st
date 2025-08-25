@@ -6,6 +6,10 @@ Configuration constants for the chatbot hopitaux.
 # Default OpenAI model name
 OPENAI_MODEL = "gpt-4o-mini"
 
+# Pricing and tracking settings
+INPUT_PROMPT_PRICE_PER_TOKEN = 0.00000015  # $0.15 per 1M tokens
+OUTPUT_COMPLETION_PRICE_PER_TOKEN = 0.00000060  # $0.60 per 1M tokens
+TRACK_LLM_CALL_COST = True
 
 # Ranking URLs and mapping 
 PUBLIC_RANKING_URL = "https://www.lepoint.fr/hopitaux/classements/tableau-d-honneur-public.php"

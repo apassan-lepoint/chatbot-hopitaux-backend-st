@@ -159,6 +159,16 @@ class PipelineOrchestrator:
             setattr(self, attr, None)
 
 
+    def _accumulate_llm_cost(self, result, query_cost):
+        """
+        Helper to safely accumulate LLM cost from a result dict.
+        Returns updated query_cost.
+        """
+        if isinstance(result, dict) and result.get('cost') is not None:
+            return query_cost + result['cost']
+        return query_cost
+    
+
     def extract_query_parameters(self, prompt: str, detected_specialty: str = None, conv_history: list = None) -> dict:
         """
         Centralized detection: runs QueryAnalyst and sets results in DataProcessor.
@@ -179,6 +189,17 @@ class PipelineOrchestrator:
         conv_history_str = "".join(conv_history) if conv_history else ""
         detections = prompt_manager.run_all_detections(prompt, conv_history=conv_history_str, institution_list=institution_list)
         logger.debug(f"Full detections dict: {detections}")
+
+        # Accumulate all costs from detection steps (to account for original and follow-up calls)
+        total_cost = 0.0
+        for key, value in detections.items():
+            if isinstance(value, dict) and value.get('cost') is not None:
+                total_cost += value['cost']
+            elif key == 'cost' and isinstance(value, (int, float)): #TODO : check if needed
+                total_cost += value
+        detections['cost'] = total_cost
+        self.total_query_cost = total_cost
+        
         # Only use a valid specialty for assignment
         invalid_specialties = ["no match", "no specialty match", "aucune correspondance", ""]
         specialty_to_set = None

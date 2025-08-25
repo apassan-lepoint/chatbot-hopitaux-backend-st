@@ -29,16 +29,19 @@ class NumberInstitutionsAnalyst:
         self.min_number_institutions = number_institutions_MIN
         self.max_number_institutions = number_institutions_MAX
 
-    def process_number_institutions(self, prompt: str, conv_history: str = "", user_number_institutions: int = None) -> int:
+    def process_number_institutions(self, prompt: str, conv_history: str = "", user_number_institutions: int = None) -> dict:
         """
         Detects and validates the number_institutions value from the prompt.
-        Args:
-            prompt (str): The message to analyze
-            conv_history (str, optional): Conversation history for context
-            user_number_institutions (int, optional): User-provided number_institutions value
-        Returns:
-            int: Final validated number_institutions value
+        Returns a dict with number_institutions, detection_method, and cost.
         """
-        detected_number_institutions = self.detector.detect_number_institutions(prompt, conv_history)
+        detected_result = self.detector.detect_number_institutions(prompt, conv_history)
+        cost = detected_result.get('cost', 0.0) if isinstance(detected_result, dict) else 0.0
+        detection_method = detected_result.get('detection_method', None) if isinstance(detected_result, dict) else None
+        detected_number_institutions = detected_result.get('number_institutions', detected_result) if isinstance(detected_result, dict) else detected_result
         user_number_institutions = user_number_institutions if user_number_institutions is not None else 0
-        return self.validator.finalize_number_institutions(user_number_institutions, detected_number_institutions, self.default_number_institutions)
+        final_number_institutions = self.validator.finalize_number_institutions(user_number_institutions, detected_number_institutions, self.default_number_institutions)
+        return {
+            'number_institutions': final_number_institutions,
+            'detection_method': detection_method,
+            'cost': cost
+        }
