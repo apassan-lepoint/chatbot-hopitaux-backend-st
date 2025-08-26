@@ -37,11 +37,7 @@ class CityDetector:
         """
         logger.debug(f"_detect_city_status called: prompt={prompt}, conv_history={conv_history}")
         formatted_prompt = prompt_formatting("detect_city_prompt", prompt=prompt, conv_history=conv_history)
-        raw_response = invoke_llm_with_error_handling(
-            self.model, 
-            formatted_prompt, 
-            "detect_city_status"
-        )
+        raw_response = invoke_llm_with_error_handling(self.model, formatted_prompt, "detect_city_status")
         logger.info(f"Raw LLM response for city status: {raw_response}")
         city_status = parse_llm_response(raw_response, "city")
         logger.info(f"Parsed city status: {city_status}")
@@ -53,11 +49,7 @@ class CityDetector:
         """
         logger.debug(f"_detect_city_name called: prompt={prompt}, conv_history={conv_history}")
         formatted_prompt = prompt_formatting("second_detect_city_prompt", prompt=prompt, conv_history=conv_history)
-        city_name = invoke_llm_with_error_handling(
-            self.model, 
-            formatted_prompt, 
-            "detect_city_name"
-        )
+        city_name = invoke_llm_with_error_handling(self.model, formatted_prompt, "detect_city_name")
         logger.info(f"Raw LLM response for city name: {city_name}")
         logger.debug(f"City name extracted: {city_name}")
         return city_name.strip()
@@ -75,16 +67,18 @@ class CityDetector:
         logger.debug(f"detect_city called: prompt={prompt}, conv_history={conv_history}")
         """
         Detects the city from the given prompt using the LLM.
-        Returns a dict: {'city': str, 'detection_method': str, 'cost': float, 'status_code': int}
+        Returns a dict: {'city': str, 'detection_method': str, 'cost': float, 'status_code': int, 'token_usage': Any}
         """
         logger.info(f"Detecting city from prompt: '{prompt}'")
         # Get city status and its cost
         raw_status_response = self._detect_city_status(prompt, conv_history)
         cost = 0.0
+        token_usage = 0.0
         city_status = raw_status_response
         if isinstance(raw_status_response, dict):
             cost = raw_status_response.get('cost', 0.0)
             city_status = raw_status_response.get('content', raw_status_response)
+            token_usage = raw_status_response.get('token_usage', 0.0)
         city_name = None
         detection_method = 'status'
         # Defensive: always return a proper status code
@@ -98,10 +92,16 @@ class CityDetector:
             city_name = raw_city_name
             logger.info(f"City detected: {city_name}")
             detection_method = 'llm'
-            # If LLM was used, try to extract cost
+            # If LLM was used, try to extract cost and token_usage
             if isinstance(raw_city_name, dict):
                 cost += raw_city_name.get('cost', 0.0)
                 city_name = raw_city_name.get('content', raw_city_name)
+                # Merge token usage if available
+                if raw_city_name.get('token_usage', {}).get('total_tokens', 0):
+                    if token_usage:
+                        token_usage = {**token_usage, **raw_city_name['token_usage']}
+                    else:
+                        token_usage = raw_city_name['token_usage']
             # Defensive: ensure city_name is valid
             if not city_name or not isinstance(city_name, str) or city_name.strip() == "":
                 logger.warning("City name extraction failed, returning CITY_NO_CITY_MENTIONED status code")
@@ -112,7 +112,8 @@ class CityDetector:
             'city': city_name.strip() if city_name else None,
             'detection_method': detection_method,
             'cost': cost,
-            'status_code': city_status
+            'status_code': city_status,
+            'token_usage': token_usage
         }
         logger.info(f"City detection result: {result}")
         return result
@@ -132,5 +133,3 @@ class CityDetector:
             return "none"
         else:
             return "unknown"
-
-

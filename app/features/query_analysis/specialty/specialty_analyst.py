@@ -29,10 +29,12 @@ class SpecialtyAnalyst:
         cost = 0.0
         detected_specialty = detected_result
         detection_method = None
+        token_usage = 0.0
         if isinstance(detected_result, dict):
             cost = detected_result.get('cost', 0.0)
             detected_specialty = detected_result.get('specialty', detected_result.get('content', detected_result))
             detection_method = detected_result.get('detection_method', None)
+            token_usage = detected_result.get('token_usage', 0.0)
         # Step 2: Validate specialty (returns list)
         validated_specialty = self.validator.validate_specialty(detected_specialty)
         # Step 3: Format for pipeline (string for downstream)
@@ -42,7 +44,8 @@ class SpecialtyAnalyst:
             "specialty": detected_validated_specialty,
             "detection_method": detection_method,
             "original_detected_specialty": detected_specialty,
-            "cost": cost
+            "cost": cost,
+            "token_usage": token_usage
         }
     
     ## Following function kept in case of future need

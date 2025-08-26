@@ -1,8 +1,8 @@
 python-dotenv==0.21.0
 geopy==2.4.1
 streamlit==1.37.1
-langchain-openai>=0.1.0
-openai==1.57.4
+langchain>=0.3.27,<0.4.0
+openai>=1.57.4
 openpyxl==3.1.5
 fastapi==0.110.2
 snowflake-connector-python==3.10.1

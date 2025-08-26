@@ -1,6 +1,5 @@
 import os
-from typing import Dict, Any
-from langchain_openai import ChatOpenAI
+from langchain.chat_models import ChatOpenAI
 from dotenv import load_dotenv
 
 from app.config.file_paths_config import PATHS
@@ -61,10 +60,7 @@ class LLMHandler:
         api_key = os.getenv("OPENAI_API_KEY")
         logger.debug(f"OPENAI_API_KEY loaded: {'set' if api_key else 'not set'}")
         logger.debug("Creating ChatOpenAI instance")
-        self.model = ChatOpenAI(
-            openai_api_key=api_key,
-            model=OPENAI_MODEL
-        )
+        self.model = ChatOpenAI(openai_api_key=api_key, model=OPENAI_MODEL)
         logger.info("ChatOpenAI model initialized")
         return self.model
     

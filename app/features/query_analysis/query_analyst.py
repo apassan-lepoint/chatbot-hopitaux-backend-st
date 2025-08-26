@@ -43,31 +43,44 @@ class QueryAnalyst:
         Consolidate results from all prompt detection classes into a dictionary.
         """
         specialty_result = self.specialty_analyst.detect_and_validate_specialty(text, conv_history)
-        number_institutions = self.number_institutions_service.process_number_institutions(text, conv_history)
+        number_institutions_result = self.number_institutions_service.process_number_institutions(text, conv_history)
 
         try:
             city_info = self.city_service.process_city(text, conv_history)
             logger.debug(f"QueryAnalyst.run_all_detections: city_info={city_info}")
-            # Sanity check: city_info must be a dict with 'city' and 'city_detected'
             if not isinstance(city_info, dict) or "city" not in city_info or "city_detected" not in city_info:
                 logger.error(f"QueryAnalyst.run_all_detections: city_info malformed, using fallback: {city_info}")
-                city_info = {"city": None, "city_detected": False}
+                city_info = {"city": None, "city_detected": False, "detection_method": None, "cost": 0.0}
         except CityCheckException as e:
             logger.error(f"QueryAnalyst.run_all_detections: CityCheckException: {e}")
-            city_info = {"city": None, "city_detected": False}
+            city_info = {"city": None, "city_detected": False, "detection_method": None, "cost": 0.0}
         except Exception as e:
             logger.error(f"QueryAnalyst.run_all_detections: Unexpected exception: {e}")
-            city_info = {"city": None, "city_detected": False}
+            city_info = {"city": None, "city_detected": False, "detection_method": None, "cost": 0.0}
 
         institution_name_result = self.institution_name_service.detect_and_validate(text, conv_history)
         institution_type_result = self.institution_type_service.detect_and_validate_type(text, conv_history)
         return {
             "city": city_info["city"],
             "city_detected": city_info["city_detected"],
-            "institution_name": institution_name_result["institution_name"],
-            "institution_type": institution_type_result["institution_type"],
-            "specialty": specialty_result["specialty"],
-            "detection_method": specialty_result["detection_method"],
-            "original_detected_specialty": specialty_result["original_detected_specialty"],
-            "number_institutions": number_institutions
+            "city_detection_method": city_info.get("detection_method"),
+            "city_cost": city_info.get("cost", 0.0),
+            "city_token_usage": city_info.get("token_usage", 0),
+            "institution_name": institution_name_result.get("institution_name"),
+            "institution_name_detection_method": institution_name_result.get("detection_method"),
+            "institution_name_cost": institution_name_result.get("cost", 0.0),
+            "institution_name_token_usage": institution_name_result.get("token_usage", 0),
+            "institution_type": institution_type_result.get("institution_type"),
+            "institution_type_detection_method": institution_type_result.get("detection_method"),
+            "institution_type_cost": institution_type_result.get("cost", 0.0),
+            "institution_type_token_usage": institution_type_result.get("token_usage", 0),
+            "specialty": specialty_result.get("specialty"),
+            "specialty_detection_method": specialty_result.get("detection_method"),
+            "specialty_cost": specialty_result.get("cost", 0.0),
+            "specialty_token_usage": specialty_result.get("token_usage", 0),
+            "original_detected_specialty": specialty_result.get("original_detected_specialty"),
+            "number_institutions": number_institutions_result.get("number_institutions"),
+            "number_institutions_detection_method": number_institutions_result.get("detection_method"),
+            "number_institutions_cost": number_institutions_result.get("cost", 0.0),
+            "number_institutions_token_usage": number_institutions_result.get("token_usage", 0)
         }

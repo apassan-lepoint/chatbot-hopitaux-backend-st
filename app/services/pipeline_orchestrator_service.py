@@ -107,7 +107,7 @@ class PipelineOrchestrator:
         return base_message.format(count=count, specialty=specialty_part, location=location_part)
 
 
-    def _create_response_and_log(self, message: str, table_str: str, prompt: str, ranking_link: str = None) -> str:
+    def _create_response_and_log(self, message: str, table_str: str, prompt: str, ranking_link: str = None, sanity_result=None, detections=None, conversation_result=None) -> str:
         """
         Helper method to create final response, log it, and save to CSV.
         Args:
@@ -124,8 +124,21 @@ class PipelineOrchestrator:
         response = f"{message}\n{table_str}"
         if ranking_link:
             response += f"\n\n🔗 Consultez la méthodologie de palmarès hopitaux <a href=\"{ranking_link}\" target=\"_blank\">ici</a>."
-        # Save response to CSV for history
-        self.data_processor.create_csv(question=prompt, reponse=response)
+        # Aggregate costs and tokens
+        aggregation = self.get_costs_and_tokens(sanity_result, detections, conversation_result)
+        # Save response to CSV for history, with all cost/token info
+        self.data_processor.create_csv(
+            question=prompt,
+            response=response,
+            total_cost_sanity_checks=aggregation['total_cost_sanity_checks'],
+            total_cost_query_analyst=aggregation['total_cost_query_analyst'],
+            total_cost_conversation_analyst=aggregation['total_cost_conversation_analyst'],
+            total_cost=aggregation['total_cost'],
+            total_tokens_sanity_checks=aggregation['total_tokens_sanity_checks'],
+            total_tokens_query_analyst=aggregation['total_tokens_query_analyst'],
+            total_tokens_conversation_analyst=aggregation['total_tokens_conversation_analyst'],
+            total_tokens=aggregation['total_tokens']
+        )
         logger.debug(f"Formatted response: {response}")
         return response
 
@@ -157,16 +170,6 @@ class PipelineOrchestrator:
             "city_not_specified", "institution_mentioned", "institution_name", "df_gen"
         ]:
             setattr(self, attr, None)
-
-
-    def _accumulate_llm_cost(self, result, query_cost):
-        """
-        Helper to safely accumulate LLM cost from a result dict.
-        Returns updated query_cost.
-        """
-        if isinstance(result, dict) and result.get('cost') is not None:
-            return query_cost + result['cost']
-        return query_cost
     
 
     def extract_query_parameters(self, prompt: str, detected_specialty: str = None, conv_history: list = None) -> dict:
@@ -190,16 +193,6 @@ class PipelineOrchestrator:
         detections = prompt_manager.run_all_detections(prompt, conv_history=conv_history_str, institution_list=institution_list)
         logger.debug(f"Full detections dict: {detections}")
 
-        # Accumulate all costs from detection steps (to account for original and follow-up calls)
-        total_cost = 0.0
-        for key, value in detections.items():
-            if isinstance(value, dict) and value.get('cost') is not None:
-                total_cost += value['cost']
-            elif key == 'cost' and isinstance(value, (int, float)): #TODO : check if needed
-                total_cost += value
-        detections['cost'] = total_cost
-        self.total_query_cost = total_cost
-        
         # Only use a valid specialty for assignment
         invalid_specialties = ["no match", "no specialty match", "aucune correspondance", ""]
         specialty_to_set = None
@@ -429,6 +422,62 @@ class PipelineOrchestrator:
             number_institutions, max_radius_km, self.city
         )
         return self._create_response_and_log(message, res_str, prompt, METHODOLOGY_WEB_LINK)
+
+
+    def get_costs_and_tokens(self, sanity_result, detections, conversation_result=None):
+        """
+        Aggregate total costs and token usage from sanity checks, query analyst, and conversation analyst.
+        Returns only total variables for each step and overall.
+        """
+        # Sanity checks
+        total_cost_sanity_checks = 0.0
+        total_tokens_sanity_checks = 0
+        if isinstance(sanity_result, dict):
+            for v in sanity_result.values():
+                if isinstance(v, dict):
+                    total_cost_sanity_checks += v.get('cost', 0.0)
+                    total_tokens_sanity_checks += v.get('token_usage', {}).get('total_tokens', 0)
+                elif isinstance(v, (int, float)):
+                    total_cost_sanity_checks += v
+        elif isinstance(sanity_result, list):
+            for v in sanity_result:
+                if isinstance(v, dict):
+                    total_cost_sanity_checks += v.get('cost', 0.0)
+                    total_tokens_sanity_checks += v.get('token_usage', {}).get('total_tokens', 0)
+        # Query analyst
+        total_cost_query_analyst = 0.0
+        total_tokens_query_analyst = 0
+        if isinstance(detections, dict):
+            for v in detections.values():
+                if isinstance(v, dict):
+                    total_cost_query_analyst += v.get('cost', 0.0)
+                    total_tokens_query_analyst += v.get('token_usage', {}).get('total_tokens', 0)
+                elif isinstance(v, (int, float)):
+                    total_cost_query_analyst += v
+        # Conversation analyst (if used)
+        total_cost_conversation_analyst = 0.0
+        total_tokens_conversation_analyst = 0
+        if conversation_result and isinstance(conversation_result, dict):
+            for v in conversation_result.values():
+                if isinstance(v, dict):
+                    total_cost_conversation_analyst += v.get('cost', 0.0)
+                    total_tokens_conversation_analyst += v.get('token_usage', {}).get('total_tokens', 0)
+                elif isinstance(v, (int, float)):
+                    total_cost_conversation_analyst += v
+        # Totals
+        total_cost = total_cost_sanity_checks + total_cost_query_analyst + total_cost_conversation_analyst
+        total_tokens = total_tokens_sanity_checks + total_tokens_query_analyst + total_tokens_conversation_analyst
+        return {
+            'total_cost_sanity_checks': total_cost_sanity_checks,
+            'total_cost_query_analyst': total_cost_query_analyst,
+            'total_cost_conversation_analyst': total_cost_conversation_analyst,
+            'total_cost': total_cost,
+            'total_tokens_sanity_checks': total_tokens_sanity_checks,
+            'total_tokens_query_analyst': total_tokens_query_analyst,
+            'total_tokens_conversation_analyst': total_tokens_conversation_analyst,
+            'total_tokens': total_tokens
+        }
+    
 
     def generate_response(self, prompt: str, max_radius_km: int = 5, detected_specialty: str=None, conversation=None, conv_history=None) -> str:
         """

@@ -32,16 +32,18 @@ class NumberInstitutionsAnalyst:
     def process_number_institutions(self, prompt: str, conv_history: str = "", user_number_institutions: int = None) -> dict:
         """
         Detects and validates the number_institutions value from the prompt.
-        Returns a dict with number_institutions, detection_method, and cost.
+        Returns a dict with number_institutions, detection_method, cost, and token_usage.
         """
         detected_result = self.detector.detect_number_institutions(prompt, conv_history)
         cost = detected_result.get('cost', 0.0) if isinstance(detected_result, dict) else 0.0
         detection_method = detected_result.get('detection_method', None) if isinstance(detected_result, dict) else None
+        token_usage = detected_result.get('token_usage', {}).get('total_tokens', 0) if isinstance(detected_result, dict) else 0.0
         detected_number_institutions = detected_result.get('number_institutions', detected_result) if isinstance(detected_result, dict) else detected_result
         user_number_institutions = user_number_institutions if user_number_institutions is not None else 0
         final_number_institutions = self.validator.finalize_number_institutions(user_number_institutions, detected_number_institutions, self.default_number_institutions)
         return {
             'number_institutions': final_number_institutions,
             'detection_method': detection_method,
-            'cost': cost
+            'cost': cost,
+            'token_usage': token_usage
         }

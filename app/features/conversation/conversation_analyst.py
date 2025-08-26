@@ -45,18 +45,49 @@ class ConversationAnalyst:
             }
         # Run Conversation methods
         continued_response = self.conversation.continue_conversation(prompt, conv_history)
-        modification_result = self.conversation.detect_query_modification(prompt, conv_history)
+        continued_cost = 0.0
+        continued_method = "llm"
+        continued_tokens = None
+        if isinstance(continued_response, dict):
+            continued_cost = continued_response.get('cost', 0.0)
+            continued_method = continued_response.get('detection_method', 'llm')
+            continued_tokens = continued_response.get('token_usage', {}).get('total_tokens', 0)
 
-        # Conditionally run MultiTurn analysis
+        modification_result = self.conversation.detect_query_modification(prompt, conv_history)
+        # If modification_result is a dict, extract cost, method, tokens
+        modification_cost = 0.0
+        modification_method = "llm"
+        modification_tokens = None
+        if isinstance(modification_result, dict):
+            modification_cost = modification_result.get('cost', 0.0)
+            modification_method = modification_result.get('detection_method', 'llm')
+            modification_tokens = modification_result.get('token_usage', {}).get('total_tokens', 0)
+
+        # Multi-turn conversation analysis
         multi_turn_result = None
+        multi_turn_cost = 0.0
+        multi_turn_method = None
+        multi_turn_tokens = None
         if ENABLE_MULTI_TURN and self.multi_turn:
             multi_turn_result = self.multi_turn.analyze_subsequent_message(prompt, conv_history)
+            if isinstance(multi_turn_result, dict):
+                multi_turn_cost = multi_turn_result.get('cost', 0.0)
+                multi_turn_method = multi_turn_result.get('detection_method', 'llm')
+                multi_turn_tokens = multi_turn_result.get('token_usage', {}).get('total_tokens', 0)
 
-        # Consolidate all results
         consolidated = {
             "continued_response": continued_response,
+            "continued_response_cost": continued_cost,
+            "continued_response_detection_method": continued_method,
+            "continued_response_token_usage": continued_tokens,
             "modification_result": modification_result,
+            "modification_result_cost": modification_cost,
+            "modification_result_detection_method": modification_method,
+            "modification_result_token_usage": modification_tokens,
             "multi_turn_result": multi_turn_result,
+            "multi_turn_result_cost": multi_turn_cost,
+            "multi_turn_result_detection_method": multi_turn_method,
+            "multi_turn_result_token_usage": multi_turn_tokens,
             "sanity_check_failed": False,
             "warning_message": None
         }

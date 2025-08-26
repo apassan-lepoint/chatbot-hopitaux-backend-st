@@ -4,6 +4,8 @@ from app.utility.logging import get_logger
 from app.utility.wrappers import prompt_formatting, parse_llm_response
 from app.utility.llm_helpers import invoke_llm_with_error_handling
 
+
+logger = get_logger(__name__)
 class MessagePertinenceCheckException(Exception):
     pass
 
@@ -41,18 +43,20 @@ class MessagePertinenceChecker:
             prompt=prompt,
             conv_history=conv_history
         )
-        logger = get_logger(__name__)
         logger.debug(f"Sanity check medical pertinence prompt sent to LLM.")
         result = invoke_llm_with_error_handling(self.llm_handler_service.model, formatted_prompt, "sanity_check_medical_pertinence")
         if isinstance(result, dict):
             content = result.get('content')
             cost = result.get('cost')
+            total_tokens = result.get('token_usage', {}).get('total_tokens', 0)
         else:
             content = result
             cost = None
+            token_usage = 0
         logger.debug(f"Raw LLM response for medical pertinence:\n{content}")
         parsed = parse_llm_response(content, "numeric")
-        return {'result': parsed, 'cost': cost}
+        logger.debug(f"Parsed medical pertinence value: {parsed} (type: {type(parsed)})")
+        return {'result': parsed, 'cost': cost, 'token_usage': token_usage}
 
     def sanity_check_chatbot_pertinence(self, prompt: str, conv_history: str = "") -> dict:
         """
@@ -73,25 +77,35 @@ class MessagePertinenceChecker:
         if isinstance(result, dict):
             content = result.get('content')
             cost = result.get('cost')
+            total_tokens = result.get('token_usage', {}).get('total_tokens', 0)
         else:
             content = result
             cost = None
+            token_usage = 0
         logger.debug(f"Raw LLM response for chatbot pertinence:\n{content}")
         parsed = parse_llm_response(content, "numeric")
-        return {'result': parsed, 'cost': cost}
+        logger.debug(f"Parsed chatbot pertinence value: {parsed} (type: {type(parsed)})")
+        return {'result': parsed, 'cost': cost, 'token_usage': token_usage}
     
     def check(self, user_input, conv_history=""):
         """
-        Checks if the user input is medically pertinent, then chatbot pertinent. Raises an exception if either is off-topic.
+        Checks if the user input is medically pertinent, then chatbot pertinent. Returns standardized dicts with cost, token_usage, and detection_method.
         """
-        # First, check medical pertinence
-        medically_pertinent_result = str(self.sanity_check_medical_pertinence(user_input, conv_history)).strip()
-        if medically_pertinent_result == '0':
-            raise MessagePertinenceCheckException(WARNING_MESSAGES["message_pertinence"])
-        elif medically_pertinent_result == '2':
-            raise MessagePertinenceCheckException(WARNING_MESSAGES["methodology_questions"].format(METHODOLOGY_WEB_LINK=METHODOLOGY_WEB_LINK))
-
-        # Then, check chatbot pertinence
-        chatbot_pertinence_result = str(self.sanity_check_chatbot_pertinence(user_input, conv_history)).strip()
-        if chatbot_pertinence_result == "0":
-            raise MessagePertinenceCheckException(WARNING_MESSAGES["message_pertinence"])
+        med_result = self.sanity_check_medical_pertinence(user_input, conv_history)
+        logger.debug(f"med_result: {med_result}")
+        med_passed = bool(med_result.get('result', False))
+        med_cost = med_result.get('cost', 0.0)
+        med_token_usage = med_result.get('token_usage', {}).get('total_tokens', 0)
+        if not med_passed:
+            return {"passed": False, "error": WARNING_MESSAGES["message_pertinence"], "cost": med_cost, "token_usage": med_token_usage, "detection_method": "llm-medical"}
+        chatbot_result = self.sanity_check_chatbot_pertinence(user_input, conv_history)
+        logger.debug(f"chatbot_result: {chatbot_result}")
+        chatbot_value = chatbot_result.get('result', 0)
+        chatbot_cost = chatbot_result.get('cost', 0.0)
+        chatbot_token_usage = chatbot_result.get('token_usage', {}).get('total_tokens', 0)
+        if chatbot_value == 2:
+            # Methodology question: halt pipeline and return specific warning
+            return {"passed": False, "error": WARNING_MESSAGES["methodology_questions"], "cost": chatbot_cost, "token_usage": chatbot_token_usage, "detection_method": "llm-chatbot-methodology"}
+        if chatbot_value == 0:
+            return {"passed": False, "error": WARNING_MESSAGES["message_pertinence"], "cost": chatbot_cost, "token_usage": chatbot_token_usage, "detection_method": "llm-chatbot"}
+        return {"passed": True, "cost": med_cost + chatbot_cost, "token_usage": med_token_usage + chatbot_token_usage, "detection_method": "llm-both"}

@@ -40,12 +40,21 @@ class SanityChecksAnalyst:
         if checks_to_run is None:
             checks_to_run = list(all_checks.keys())
         results = {}
+        all_passed = True
         for check_name in checks_to_run:
             try:
-                all_checks[check_name]()
-                results[check_name] = {"passed": True}
-            except (ConversationLimitCheckException, MessageLengthCheckException, MessagePertinenceCheckException) as e:
-                # Immediately return the standardized response and stop further checks
+                if check_name == "message_pertinence":
+                    pertinence_result = all_checks[check_name]()
+                    results[check_name] = pertinence_result
+                    if not pertinence_result.get("passed", False):
+                        all_passed = False
+                else:
+                    rule_result = {"passed": True, "cost": 0.0, "token_usage": 0, "detection_method": "rule"}
+                    all_checks[check_name]()
+                    results[check_name] = rule_result
+            except (ConversationLimitCheckException, MessageLengthCheckException) as e:
                 logger.info(f"Sanity check exception caught: {str(e)}. Stopping pipeline.")
-                return {"passed": False, "error": str(e)}
+                results[check_name] = {"passed": False, "error": str(e), "cost": 0.0, "token_usage": 0, "detection_method": "rule"}
+                all_passed = False
+        results["passed"] = all_passed
         return results

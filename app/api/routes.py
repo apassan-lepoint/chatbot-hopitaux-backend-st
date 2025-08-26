@@ -41,12 +41,12 @@ def ask_question(query: UserQuery) -> AskResponse:
         logger.info(f"Response generated for /ask endpoint - Links found: {len(links) if links else 0}")
         # If multiple specialties, always return ambiguous=True and multiple_specialties for client enforcement
         if isinstance(result, dict) and "multiple_specialties" in result:
-            return {
-                "result": result["message"],
-                "links": [],
-                "ambiguous": True,
-                "multiple_specialties": result["multiple_specialties"]
-            }
+            return AskResponse(
+                result=result["message"],
+                links=[],
+                ambiguous=True,
+                multiple_specialties=result["multiple_specialties"]
+            )
         return AskResponse(result=result, links=links)
     except Exception as e:
         logger.error(f"Error processing /ask request - Prompt: '{query.prompt[:100]}...', Error: {str(e)}")

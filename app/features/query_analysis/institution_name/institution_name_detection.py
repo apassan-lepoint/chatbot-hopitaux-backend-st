@@ -34,26 +34,23 @@ class InstitutionNameDetector:
     def detect_specific_institution(self, prompt: str, institution_list: str, conv_history: str = "") -> dict:
         """
         Detects if a specific institution is mentioned in the prompt.
-        Returns a dict: {'institution_name': str, 'detection_method': str, 'cost': float}
+        Args:
+            prompt (str): The message to analyze
+            institution_list (str): Comma-separated list of valid institution names
+            conv_history (str, optional): Conversation history for context
+        Returns:
+            str: The detected institution name or "aucune correspondance"
         """
-        formatted_prompt = prompt_formatting(
-            "detect_institution_type_prompt",
-            prompt=prompt,
-            institution_list=institution_list,
-            conv_history=conv_history
-        )
-        raw_result = invoke_llm_with_error_handling(
-            self.model,
-            formatted_prompt,
-            "detect_specific_institution"
-        )
+        formatted_prompt = prompt_formatting("detect_institution_type_prompt", prompt=prompt, institution_list=institution_list, conv_history=conv_history)
+        raw_result = invoke_llm_with_error_handling(self.model, formatted_prompt, "detect_specific_institution")
+        logger.debug(f"Raw LLM response for specific institution detection: {raw_result}")
         cost = 0.0
         institution_name = raw_result
+        token_usage = 0.0
         if isinstance(raw_result, dict):
             cost = raw_result.get('cost', 0.0)
             institution_name = raw_result.get('content', raw_result)
-        return {'institution_name': institution_name, 'detection_method': 'llm', 'cost': cost}
+            token_usage = raw_result.get('token_usage', 0.0)
         logger.debug(f"Specific institution detection result: {institution_name}")
-        return institution_name.strip()
-
+        return {'institution_name': institution_name, 'detection_method': 'llm', 'cost': cost, 'token_usage': token_usage}
 

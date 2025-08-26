@@ -34,7 +34,7 @@ class InstitutionTypeDetector:
     def detect_public_private_preference(self, prompt: str, conv_history: str = "") -> dict:
         """
         Detects if the user has a preference for public or private institutions.
-        Returns a dict with institution_type and cost.
+        Returns a dict: {'institution_type': str, 'detection_method': str, 'cost': float, 'token_usage': Any}
         """
         formatted_prompt = prompt_formatting(
             "second_detect_institution_type_prompt",
@@ -44,12 +44,14 @@ class InstitutionTypeDetector:
         llm_response = invoke_llm_with_error_handling(self.model, formatted_prompt, "detect_public_private_preference")
         cost = 0.0
         institution_type = llm_response
+        token_usage = 0.0
         if isinstance(llm_response, dict):
             cost = llm_response.get('cost', 0.0)
             institution_type = llm_response.get('content', llm_response)
+            token_usage = llm_response.get('token_usage', 0.0)
         parsed_response = parse_llm_response(institution_type, "institution_type")
         logger.debug(f"Public/private preference detection result: {parsed_response}")
-        return {'institution_type': parsed_response, 'cost': cost}
+        return {'institution_type': parsed_response, 'detection_method': 'llm', 'cost': cost, 'token_usage': token_usage}
         
 
     
