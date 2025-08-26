@@ -15,4 +15,5 @@ class ConversationLimitChecker:
         Checks if the conversation has reached the maximum number of messages allowed.
         """
         if len(conversation) > self.max_messages:
-            raise ConversationLimitCheckException(WARNING_MESSAGES["conversation_limit"])
+            return {"passed": False, "error": f"Conversation exceeds max of {self.max_messages} messages.", "detection_method": "rule"}
+        return {"passed": True}

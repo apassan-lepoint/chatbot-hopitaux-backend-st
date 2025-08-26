@@ -1,7 +1,8 @@
 python-dotenv==0.21.0
 geopy==2.4.1
 streamlit==1.37.1
-langchain>=0.3.27,<0.4.0
+langchain>=0.2.14,<0.3.0
+langchain-openai>=0.1.6,<0.2.0
 openai>=1.57.4
 openpyxl==3.1.5
 fastapi==0.110.2

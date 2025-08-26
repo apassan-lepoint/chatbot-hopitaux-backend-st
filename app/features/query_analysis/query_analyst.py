@@ -60,7 +60,8 @@ class QueryAnalyst:
 
         institution_name_result = self.institution_name_service.detect_and_validate(text, conv_history)
         institution_type_result = self.institution_type_service.detect_and_validate_type(text, conv_history)
-        return {
+
+        results =  {
             "city": city_info["city"],
             "city_detected": city_info["city_detected"],
             "city_detection_method": city_info.get("detection_method"),
@@ -84,3 +85,5 @@ class QueryAnalyst:
             "number_institutions_cost": number_institutions_result.get("cost", 0.0),
             "number_institutions_token_usage": number_institutions_result.get("token_usage", 0)
         }
+        logger.debug(f"QueryAnalyst.run_all_detections: consolidated results={results}")
+        return results
