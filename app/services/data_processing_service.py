@@ -621,7 +621,6 @@ class DataProcessor:
         Returns:
             None
         """
-
         logger.info(f"Saving Q&A to CSV: question={question}")
         file_name=self.paths["history_path"]
         # Prepare the data dictionary for CSV row

@@ -15,5 +15,5 @@ PATHS={
     "ranking_overall_private_path": os.path.join(DATA_DIR, "Tableaux_d'honneur_2024_PRIVE.csv"),
     "ranking_overall_public_path": os.path.join(DATA_DIR, "Tableaux_d'honneur_2024_PUBLIC.csv"),
     "hospital_coordinates_path": os.path.join(DATA_DIR, "fichier_hopitaux_avec_coordonnees_avec_privacitee.xlsx"),
-    "history_path": os.path.join(HISTORY_DIR, "results_history.csv")
+    "history_path": os.path.join(HISTORY_DIR, "results_history_mvp.csv")
     }
