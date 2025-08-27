@@ -75,20 +75,35 @@ class ConversationAnalyst:
                 multi_turn_method = multi_turn_result.get('detection_method', 'llm')
                 multi_turn_tokens = multi_turn_result.get('token_usage', {}).get('total_tokens', 0)
 
+        total_cost = (
+            continued_cost
+            + modification_cost
+            + multi_turn_cost
+        )
+        total_token_usage = (
+            (continued_tokens or 0)
+            + (modification_tokens or 0)
+            + (multi_turn_tokens or 0)
+        )
         consolidated = {
             "continued_response": continued_response,
             "continued_response_cost": continued_cost,
             "continued_response_detection_method": continued_method,
-            "continued_response_token_usage": continued_tokens,
+            "continued_response_tokens": continued_tokens,
             "modification_result": modification_result,
             "modification_result_cost": modification_cost,
             "modification_result_detection_method": modification_method,
-            "modification_result_token_usage": modification_tokens,
+            "modification_result_tokens": modification_tokens,
             "multi_turn_result": multi_turn_result,
             "multi_turn_result_cost": multi_turn_cost,
             "multi_turn_result_detection_method": multi_turn_method,
-            "multi_turn_result_token_usage": multi_turn_tokens,
+            "multi_turn_result_tokens": multi_turn_tokens,
+            "total_cost": total_cost,
+            "total_tokens": total_token_usage,
             "sanity_check_failed": False,
             "warning_message": None
         }
+
+        logger.info(f"Consolidated ConversationAnalyst checks result: {consolidated}")
+
         return consolidated

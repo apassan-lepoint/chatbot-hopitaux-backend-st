@@ -44,6 +44,7 @@ class SanityChecksAnalyst:
         results = {}
         all_passed = True
         
+        logger.info(f"SanityChecksAnalyst running checks: {checks_to_run} for user_input: {user_input}")
         for check_name in checks_to_run:
             try:
                 check_result = all_checks[check_name]()
@@ -65,7 +66,8 @@ class SanityChecksAnalyst:
 
         results["passed"] = all_passed
         results["total_cost"] = total_cost
-        results["total_token_usage"] = total_tokens
+        results["total_tokens"] = total_tokens
 
-        logger.debug(f"Sanity check results: {results}")
+        logger.info(f"SanityChecksAnalyst completed checks. All passed: {all_passed}, Total cost: {total_cost}, Total tokens: {total_tokens}")
+        logger.info(f"Sanity check results: {results}")
         return results

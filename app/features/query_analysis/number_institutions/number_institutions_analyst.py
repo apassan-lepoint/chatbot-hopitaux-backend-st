@@ -4,6 +4,9 @@ Service for orchestrating number_institutions detection and validation.
 from .number_institutions_detection import number_institutionsDetector
 from .number_institutions_validation import number_institutionsValidation
 from app.config.features_config import number_institutions_DEFAULT, number_institutions_MIN, number_institutions_MAX
+from app.utility.logging import get_logger
+
+logger = get_logger(__name__)
 
 class NumberInstitutionsAnalyst:
     """
@@ -34,16 +37,23 @@ class NumberInstitutionsAnalyst:
         Detects and validates the number_institutions value from the prompt.
         Returns a dict with number_institutions, detection_method, cost, and token_usage.
         """
+        result = {}
+
+        # Detect and validate number_institutions
         detected_result = self.detector.detect_number_institutions(prompt, conv_history)
-        cost = detected_result.get('cost', 0.0) if isinstance(detected_result, dict) else 0.0
-        detection_method = detected_result.get('detection_method', None) if isinstance(detected_result, dict) else None
-        token_usage = detected_result.get('token_usage', {}).get('total_tokens', 0) if isinstance(detected_result, dict) else 0.0
         detected_number_institutions = detected_result.get('number_institutions', detected_result) if isinstance(detected_result, dict) else detected_result
         user_number_institutions = user_number_institutions if user_number_institutions is not None else 0
-        final_number_institutions = self.validator.finalize_number_institutions(user_number_institutions, detected_number_institutions, self.default_number_institutions)
-        return {
-            'number_institutions': final_number_institutions,
-            'detection_method': detection_method,
-            'cost': cost,
-            'token_usage': token_usage
-        }
+        detected_validated_number_institutions = self.validator.finalize_number_institutions(user_number_institutions, detected_number_institutions, self.default_number_institutions)
+        result['number_institutions'] = detected_validated_number_institutions
+
+        # Extract detection_method, cost, and token_usage from detection step
+        detection_method = detected_result.get('detection_method', None) if isinstance(detected_result, dict) else None
+        detected_cost = detected_result.get('cost', 0.0) if isinstance(detected_result, dict) else 0.0
+        detected_token_usage = detected_result.get('token_usage', {}).get('total_tokens', 0) if isinstance(detected_result, dict) else 0.0
+        result['detection_method'] = detection_method
+        result['cost'] = detected_cost
+        result['token_usage'] = detected_token_usage
+        
+        logger.debug(f"Number of institutions detection and validation result: {result}")
+
+        return result

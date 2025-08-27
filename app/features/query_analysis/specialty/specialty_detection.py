@@ -57,8 +57,8 @@ class SpecialtyDetector:
         Returns (specialty_string, method)
         """
         formatted_prompt = prompt_formatting("second_detect_specialty_prompt", mapping_words=self.key_words, prompt=prompt, conv_history=conv_history)
-        raw_specialty = invoke_llm_with_error_handling(self.model, formatted_prompt, "detect_specialty_llm")
-        return raw_specialty, "llm"
+        llm_call_result = invoke_llm_with_error_handling(self.model, formatted_prompt, "detect_specialty_llm")
+        return llm_call_result, "llm"
     
     def _format_specialty_status_prompt(self, prompt: str, conv_history: str = "") -> str:
         """
@@ -132,23 +132,15 @@ MESSAGE À ANALYSER: '{prompt}'
             logger.info(f"Specialty detected via keywords: {specialty}")
             return {'specialty': specialty, 'detection_method': method, 'cost': cost, 'token_usage': token_usage}
         # Step 2: Fall back to LLM-based detection
-        raw_specialty = invoke_llm_with_error_handling(self.model,prompt_formatting("second_detect_specialty_prompt", mapping_words=self.key_words, prompt=prompt, conv_history=conv_history),"detect_specialty_llm")
-        specialty = raw_specialty
-        if isinstance(raw_specialty, dict):
-            cost = raw_specialty.get('cost', 0.0)
-            specialty = raw_specialty.get('content', raw_specialty)
-            token_usage = raw_specialty.get('token_usage', 0.0)
+        formatted_prompt = prompt_formatting("second_detect_specialty_prompt", mapping_words=self.key_words, prompt=prompt, conv_history=conv_history)
+        llm_call_result = invoke_llm_with_error_handling(self.model, formatted_prompt, "detect_specialty_llm")
+        specialty = llm_call_result
+        if isinstance(llm_call_result, dict):
+            specialty = llm_call_result.get('content', llm_call_result)
+            cost = llm_call_result.get('cost', 0.0)
+            token_usage = llm_call_result.get('token_usage', 0.0)
         logger.info(f"Specialty detection result: {specialty}, method: llm")
         return {'specialty': specialty, 'detection_method': 'llm', 'cost': cost, 'token_usage': token_usage}
-    
-    
-    def detect_specialty_keyword_only(self, prompt: str) -> Tuple[str, str]:
-        """Keyword-only specialty detection."""
-        return self._detect_specialty_keywords(prompt)
-    
-    def detect_specialty_llm_only(self, prompt: str, conv_history: str = "") -> Tuple[str, str]:
-        """LLM-only specialty detection."""
-        return self._detect_specialty_llm(prompt, conv_history)
     
     
     @property

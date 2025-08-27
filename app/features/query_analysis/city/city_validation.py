@@ -18,8 +18,6 @@ class CityChecker:
         detector: An instance of a city detection service.      
         llm_handler_service: Optional service for handling LLM interactions.
     Methods:
-        validate_french_city(city_status): Validates if a city is French.
-        is_city_detection_valid(city_status): Checks if city detection is valid.
         check(user_input, conv_history=""): Checks for non-French cities in user input.
         Raises CityCheckException if a foreign or ambiguous city is detected.
     """
@@ -27,22 +25,6 @@ class CityChecker:
         logger.info("Initializing CityChecker")
         self.llm_handler_service = llm_handler_service
         self.detector = detector
-
-
-    def validate_french_city(self, city_status) -> bool:
-        """
-        Validate if a city is French.
-        """
-        logger.debug(f"validate_french_city called: city_status={city_status}")
-        return self.detector.is_french_city(city_status)
-
-
-    def is_city_detection_valid(self, city_status) -> bool:
-        """
-        Check if city detection is valid (not ambiguous or foreign).
-        """
-        logger.debug(f"is_city_detection_valid called: city_status={city_status}")
-        return self.detector.is_valid_city(city_status)
 
 
     def check(self, user_input, conv_history=""):
@@ -54,9 +36,8 @@ class CityChecker:
             logger.warning("CityChecker.check: detector is missing, skipping city validation.")
             return  # Skip validation, do not raise exception
         city_result = self.detector.detect_city(user_input, conv_history)
-        city_status_type = self.detector.get_city_status_type(city_result)
+        city_status_type = self.detector.get_city_status_type(city_result.get('status_code') if isinstance(city_result, dict) else city_result)
         if city_status_type == "foreign":
             raise CityCheckException(WARNING_MESSAGES["non_french_cities"])
         if city_status_type == "ambiguous":
             raise CityCheckException(WARNING_MESSAGES["ambiguous_city"])
-

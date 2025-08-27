@@ -132,7 +132,6 @@ class DataProcessor:
         Returns:
             str: Normalized string, stripped of whitespace and lowercased.  
         """
-        logger.debug(f"Normalizing string: {s}")
         if not isinstance(s, str):
             return ""
         s = s.strip().lower()
@@ -185,7 +184,6 @@ class DataProcessor:
         institution_list = list(set(institution_list))
         institution_list = [element for element in institution_list if element not in ("CHU", "CH")]
         institution_list = ", ".join(map(str, institution_list))
-        logger.debug(f"Institution list: {institution_list}")
         return institution_list
 
 
@@ -205,7 +203,6 @@ class DataProcessor:
         logger.info(f"Filtering ranking by criteria: specialty='{specialty}', institution_type='{institution_type}'")
         logger.debug(f"Filtering ranking data - specialty: '{specialty}', institution_type: '{institution_type}'")
         logger.debug(f"Specialty type: {type(specialty)}, length: {len(specialty) if specialty else 'None'}")
-        logger.debug(f"Available specialties in ranking data: {self.ranking_df['Spécialité'].unique()}")
 
         if self._is_no_specialty(specialty):
             logger.debug("No specialty provided or specialty is 'no match', returning empty DataFrame")
@@ -213,8 +210,7 @@ class DataProcessor:
         # Normalize the Spécialité column once if not already present
         if 'Spécialité_norm' not in self.ranking_df.columns:
             self.ranking_df['Spécialité_norm'] = self.ranking_df['Spécialité'].apply(self._normalize_str)
-        # Debug: Show all normalized specialties in the DataFrame
-        logger.debug(f"Normalized specialties in DataFrame: {[repr(s) for s in self.ranking_df['Spécialité_norm'].unique()]}")
+        # logger.debug(f"Normalized specialties in DataFrame: {[repr(s) for s in self.ranking_df['Spécialité_norm'].unique()]}")
         matching_rows = pd.DataFrame()
         # Handle multiple specialties
         if ',' in specialty or specialty.startswith(('plusieurs correspondances:', 'multiple matches:')):

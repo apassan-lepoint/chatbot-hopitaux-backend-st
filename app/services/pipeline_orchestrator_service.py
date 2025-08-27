@@ -1,4 +1,6 @@
 import pandas as pd
+from datetime import datetime
+from uuid import uuid4
 ## Accent-insensitive matching removed
 from app.services.data_processing_service import DataProcessor
 from app.features.query_analysis.query_analyst import QueryAnalyst
@@ -61,8 +63,8 @@ class PipelineOrchestrator:
         self.institution_mentioned=None
         self.institution_name=None
         self.data_processor=DataProcessor() # Instance of DataProcessor for data extraction and transformation
-        self.sanity_checks_analyst = SanityChecksAnalyst(self.data_processor.llm_handler_service)
-
+        self.sanity_checks_analyst_results = SanityChecksAnalyst(self.data_processor.llm_handler_service)
+        self.query_analyst_results = None
 
     def _normalize_specialty_for_display(self, specialty: str) -> str:
         """
@@ -107,7 +109,7 @@ class PipelineOrchestrator:
         return base_message.format(count=count, specialty=specialty_part, location=location_part)
 
 
-    def _create_response_and_log(self, message: str, table_str: str, prompt: str, ranking_link: str = None, sanity_result=None, detections=None, conversation_result=None) -> str:
+    def _create_response_and_log(self, message: str, table_str: str, prompt: str, ranking_link: str = None, sanity_result=None, detections=None, conversation_analyst_results=None) -> str:
         """
         Helper method to create final response, log it, and save to CSV.
         Args:
@@ -125,25 +127,29 @@ class PipelineOrchestrator:
         if ranking_link:
             response += f"\n\n🔗 Consultez la méthodologie de palmarès hopitaux <a href=\"{ranking_link}\" target=\"_blank\">ici</a>."
         # Aggregate costs and tokens
-        aggregation = self.get_costs_and_tokens(sanity_result, detections, conversation_result)
+        aggregation = self.get_costs_and_tokens(getattr(self, 'sanity_checks_analyst_result', None), getattr(self, 'query_analyst_results', None), conversation_analyst_results=None)
+        logger.info(f"Final cost/token usage aggregation: {aggregation}")
+        logger.info(f"Detected variables: specialty={self.specialty}, city={self.city}, institution_type={self.institution_type}, institution_name={self.institution_name}, number_institutions={self.number_institutions}")
+
         csv_data = {
+            'uuid': str(uuid4()),
+            'date': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             'question': prompt,
             'response': response,
-            'conversation_list': conversation_result.get('conversation', []) if conversation_result else [],
+            'conversation_list': conversation_analyst_results.get('conversation', []) if conversation_analyst_results else [],
             'city': self.data_processor.city,
             'institution_type': self.data_processor.institution_type,
             'institution_name': self.data_processor.institution_name,
             'specialty': self.data_processor.specialty,
             'number_institutions': self.data_processor.number_institutions,
-            'links': self.data_processor.links,
-            'total_cost_sanity_checks': aggregation['total_cost_sanity_checks'],
-            'total_cost_query_analyst': aggregation['total_cost_query_analyst'],
-            'total_cost_conversation_analyst': aggregation['total_cost_conversation_analyst'],
-            'total_cost': aggregation['total_cost'],
-            'total_tokens_sanity_checks': aggregation['total_tokens_sanity_checks'],
-            'total_tokens_query_analyst': aggregation['total_tokens_query_analyst'],
-            'total_tokens_conversation_analyst': aggregation['total_tokens_conversation_analyst'],
-            'total_tokens': aggregation['total_tokens']
+            'total_cost_sanity_checks': aggregation.get('total_cost_sanity_checks_analyst'),
+            'total_cost_query_analyst': aggregation.get('total_cost_query_analyst'),
+            'total_cost_conversation_analyst': aggregation.get('total_cost_conversation_analyst'),
+            'total_cost': aggregation.get('total_cost'),
+            'total_tokens_sanity_checks': aggregation.get('total_token_usage_sanity_checks_analyst'),
+            'total_tokens_query_analyst': aggregation.get('total_token_usage_query_analyst'),
+            'total_tokens_conversation_analyst': aggregation.get('total_token_usage_conversation_analyst'),
+            'total_tokens': aggregation.get('total_token_usage')
         }
         self.data_processor.create_csv(result_data=csv_data)
         logger.debug(f"Formatted response: {response}")
@@ -198,6 +204,7 @@ class PipelineOrchestrator:
         institution_list = self.data_processor._get_institution_list()
         conv_history_str = "".join(conv_history) if conv_history else ""
         detections = prompt_manager.run_all_detections(prompt, conv_history=conv_history_str, institution_list=institution_list)
+        self.query_analyst_results = detections
         logger.debug(f"Full detections dict: {detections}")
 
         # Only use a valid specialty for assignment
@@ -251,6 +258,8 @@ class PipelineOrchestrator:
         logger.info(f"Building ranking DataFrame with distances: prompt='{prompt}', excel_path='{excel_path}', detected_specialty='{detected_specialty}'")
         # Centralized detection and data setup
         detections = self.extract_query_parameters(prompt, detected_specialty, conv_history)
+        logger.info(f"Detected variables: specialty={self.specialty}, city={self.city}, institution_type={self.institution_type}, institution_name={self.institution_name}, number_institutions={self.number_institutions}")
+        
         # Generate main DataFrame
         self.df_gen = self.data_processor.generate_data_response()
         # Debug: Log unique specialties and institution types in the loaded DataFrame
@@ -430,61 +439,47 @@ class PipelineOrchestrator:
         )
         return self._create_response_and_log(message, res_str, prompt, METHODOLOGY_WEB_LINK)
 
-
-    def get_costs_and_tokens(self, sanity_result, detections, conversation_result=None):
+    def sum_keys_with_substring(self, d, substr):
+        if not isinstance(d, dict):
+            return 0.0
+        return sum(
+            v if isinstance(v, (int, float)) else 0
+            for k, v in d.items() if substr in k
+        )
+    
+    def get_costs_and_tokens(self, sanity_checks_results, query_analyst_results, conversation_analyst_results=None):
         """
         Aggregate total costs and token usage from sanity checks, query analyst, and conversation analyst.
         Returns only total variables for each step and overall.
         """
-        # Sanity checks
-        total_cost_sanity_checks = 0.0
-        total_tokens_sanity_checks = 0
-        if isinstance(sanity_result, dict):
-            for v in sanity_result.values():
-                if isinstance(v, dict):
-                    total_cost_sanity_checks += v.get('cost', 0.0)
-                    total_tokens_sanity_checks += v.get('token_usage', {}).get('total_tokens', 0)
-                elif isinstance(v, (int, float)):
-                    total_cost_sanity_checks += v
-        elif isinstance(sanity_result, list):
-            for v in sanity_result:
-                if isinstance(v, dict):
-                    total_cost_sanity_checks += v.get('cost', 0.0)
-                    total_tokens_sanity_checks += v.get('token_usage', {}).get('total_tokens', 0)
-        # Query analyst
-        total_cost_query_analyst = 0.0
-        total_tokens_query_analyst = 0
-        if isinstance(detections, dict):
-            for v in detections.values():
-                if isinstance(v, dict):
-                    total_cost_query_analyst += v.get('cost', 0.0)
-                    total_tokens_query_analyst += v.get('token_usage', {}).get('total_tokens', 0)
-                elif isinstance(v, (int, float)):
-                    total_cost_query_analyst += v
-        # Conversation analyst (if used)
-        total_cost_conversation_analyst = 0.0
-        total_tokens_conversation_analyst = 0
-        if conversation_result and isinstance(conversation_result, dict):
-            for v in conversation_result.values():
-                if isinstance(v, dict):
-                    total_cost_conversation_analyst += v.get('cost', 0.0)
-                    total_tokens_conversation_analyst += v.get('token_usage', {}).get('total_tokens', 0)
-                elif isinstance(v, (int, float)):
-                    total_cost_conversation_analyst += v
-        # Totals
-        total_cost = total_cost_sanity_checks + total_cost_query_analyst + total_cost_conversation_analyst
-        total_tokens = total_tokens_sanity_checks + total_tokens_query_analyst + total_tokens_conversation_analyst
-        return {
-            'total_cost_sanity_checks': total_cost_sanity_checks,
+        logger.debug(f"Sanity check results for costs/tokens aggregation: {sanity_checks_results}")
+        logger.debug(f"Query analyst results for costs/tokens aggregation: {query_analyst_results}")
+        logger.debug(f"Conversation analyst results for costs/tokens aggregation: {conversation_analyst_results}")
+        
+        total_cost_sanity_checks_analyst = self.sum_keys_with_substring(sanity_checks_results, 'cost') if sanity_checks_results is not None else 0.0
+        total_token_usage_sanity_checks_analyst = self.sum_keys_with_substring(sanity_checks_results, 'tokens') if sanity_checks_results is not None else 0
+
+        total_cost_query_analyst = self.sum_keys_with_substring(query_analyst_results, 'cost') if query_analyst_results is not None else 0.0
+        total_token_usage_query_analyst = self.sum_keys_with_substring(query_analyst_results, 'tokens') if query_analyst_results is not None else 0
+
+        total_cost_conversation_analyst = self.sum_keys_with_substring(conversation_analyst_results, 'cost') if conversation_analyst_results is not None else 0.0
+        total_token_usage_conversation_analyst = self.sum_keys_with_substring(conversation_analyst_results, 'tokens') if conversation_analyst_results is not None else 0
+
+        total_cost = total_cost_sanity_checks_analyst + total_cost_query_analyst + total_cost_conversation_analyst
+        total_token_usage = total_token_usage_sanity_checks_analyst + total_token_usage_query_analyst + total_token_usage_conversation_analyst
+        costs_token_usage_dict = {
+            'total_cost_sanity_checks_analyst': total_cost_sanity_checks_analyst,
             'total_cost_query_analyst': total_cost_query_analyst,
             'total_cost_conversation_analyst': total_cost_conversation_analyst,
             'total_cost': total_cost,
-            'total_tokens_sanity_checks': total_tokens_sanity_checks,
-            'total_tokens_query_analyst': total_tokens_query_analyst,
-            'total_tokens_conversation_analyst': total_tokens_conversation_analyst,
-            'total_tokens': total_tokens
+            'total_token_usage_sanity_checks_analyst': total_token_usage_sanity_checks_analyst,
+            'total_token_usage_query_analyst': total_token_usage_query_analyst,
+            'total_token_usage_conversation_analyst': total_token_usage_conversation_analyst,
+            'total_token_usage': total_token_usage
         }
-    
+        logger.info(f"Aggregated costs and token usage: {costs_token_usage_dict}")
+
+        return costs_token_usage_dict
 
     def generate_response(self, prompt: str, max_radius_km: int = 5, detected_specialty: str=None, conversation=None, conv_history=None) -> str:
         """
@@ -496,7 +491,7 @@ class PipelineOrchestrator:
         Returns:
             str: The formatted response string with the hospital rankings and links.    
         """
-        logger.info(f"Starting pipeline processing - prompt: {prompt}, detected_specialty: {detected_specialty}")
+        logger.info(f"Starting pipeline processing - prompt: {prompt}")
         # Reset attributes for new query
         self.reset_attributes()
         self.specialty = detected_specialty
@@ -512,14 +507,22 @@ class PipelineOrchestrator:
         if conv_history is None:
             conv_history = ""
         try:
-            sanity_result = self.sanity_checks_analyst.run_checks(prompt, conversation, conv_history)
+            logger.info(f"Running sanity checks for prompt: {prompt}, conversation: {conversation}, conv_history: {conv_history}")
+            sanity_result = self.sanity_checks_analyst_results.run_checks(prompt, conversation, conv_history)
+            logger.info(f"Sanity checks result: {sanity_result}")
+            self.sanity_checks_analyst_result = sanity_result
         except Exception as exc:
             if isinstance(exc, (MessagePertinenceCheckException, MessageLengthCheckException, ConversationLimitCheckException)):
                 error_msg = str(exc)
             else:
                 error_msg = getattr(exc, 'message', str(exc))
-            aggregation = self.get_costs_and_tokens(sanity_result, None, None) if 'sanity_result' in locals() and isinstance(sanity_result, dict) else {}
+            aggregation = self.get_costs_and_tokens(getattr(self, 'sanity_checks_analyst_result', None), None, None) if 'sanity_result' in locals() and isinstance(sanity_result, dict) else {}
+            logger.info(f"Final cost/token usage aggregation: {aggregation}")
+            logger.info(f"Detected variables: specialty={self.specialty}, city={self.city}, institution_type={self.institution_type}, institution_name={self.institution_name}, number_institutions={self.number_institutions}")
+
             csv_data = {
+                'uuid': str(uuid4()),
+                'date': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 'question': prompt,
                 'response': error_msg,
                 'conversation_list': conversation if conversation else [],
@@ -528,23 +531,27 @@ class PipelineOrchestrator:
                 'institution_name': self.data_processor.institution_name,
                 'specialty': self.data_processor.specialty,
                 'number_institutions': self.data_processor.number_institutions,
-                'links': None,
-                'total_cost_sanity_checks': aggregation.get('total_cost_sanity_checks'),
+                'total_cost_sanity_checks': aggregation.get('total_cost_sanity_checks_analyst'),
                 'total_cost_query_analyst': aggregation.get('total_cost_query_analyst'),
                 'total_cost_conversation_analyst': aggregation.get('total_cost_conversation_analyst'),
                 'total_cost': aggregation.get('total_cost'),
-                'total_tokens_sanity_checks': aggregation.get('total_tokens_sanity_checks'),
-                'total_tokens_query_analyst': aggregation.get('total_tokens_query_analyst'),
-                'total_tokens_conversation_analyst': aggregation.get('total_tokens_conversation_analyst'),
-                'total_tokens': aggregation.get('total_tokens')
+                'total_tokens_sanity_checks': aggregation.get('total_token_usage_sanity_checks_analyst'),
+                'total_tokens_query_analyst': aggregation.get('total_token_usage_query_analyst'),
+                'total_tokens_conversation_analyst': aggregation.get('total_token_usage_conversation_analyst'),
+                'total_tokens': aggregation.get('total_token_usage')
             }
             self.data_processor.create_csv(result_data=csv_data)
             logger.info("Sanity check failed, returning error message and halting pipeline.")
             return error_msg, None
         if isinstance(sanity_result, dict) and not sanity_result.get("passed", True):
             error_msg = sanity_result.get("error", GENERAL_ERROR_MSG)
-            aggregation = self.get_costs_and_tokens(sanity_result, None, None)
+            aggregation = self.get_costs_and_tokens(getattr(self, 'sanity_checks_analyst_result', None), None, None)
+            logger.info(f"Final cost/token usage aggregation: {aggregation}")
+            logger.info(f"Detected variables: specialty={self.specialty}, city={self.city}, institution_type={self.institution_type}, institution_name={self.institution_name}, number_institutions={self.number_institutions}")
+
             csv_data = {
+                'uuid': str(uuid4()),
+                'date': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 'question': prompt,
                 'response': error_msg,
                 'conversation_list': conversation if conversation else [],
@@ -553,23 +560,25 @@ class PipelineOrchestrator:
                 'institution_name': self.data_processor.institution_name,
                 'specialty': self.data_processor.specialty,
                 'number_institutions': self.data_processor.number_institutions,
-                'links': None,
-                'total_cost_sanity_checks': aggregation.get('total_cost_sanity_checks'),
+                'total_cost_sanity_checks': aggregation.get('total_cost_sanity_checks_analyst'),
                 'total_cost_query_analyst': aggregation.get('total_cost_query_analyst'),
                 'total_cost_conversation_analyst': aggregation.get('total_cost_conversation_analyst'),
                 'total_cost': aggregation.get('total_cost'),
-                'total_tokens_sanity_checks': aggregation.get('total_tokens_sanity_checks'),
-                'total_tokens_query_analyst': aggregation.get('total_tokens_query_analyst'),
-                'total_tokens_conversation_analyst': aggregation.get('total_tokens_conversation_analyst'),
-                'total_tokens': aggregation.get('total_tokens')
+                'total_tokens_sanity_checks': aggregation.get('total_token_usage_sanity_checks_analyst'),
+                'total_tokens_query_analyst': aggregation.get('total_token_usage_query_analyst'),
+                'total_tokens_conversation_analyst': aggregation.get('total_token_usage_conversation_analyst'),
+                'total_tokens': aggregation.get('total_token_usage')
             }
             self.data_processor.create_csv(result_data=csv_data)
             logger.info("Sanity check failed, returning error message and halting pipeline.")
+
             return error_msg, None
         
 
         # Robust specialty selection blocking logic
         detections = self.extract_query_parameters(prompt, detected_specialty, conv_history)
+        logger.info(f"Detected variables: specialty={self.specialty}, city={self.city}, institution_type={self.institution_type}, institution_name={self.institution_name}, number_institutions={self.number_institutions}")
+
         specialty_list = []
         # Check for multiple specialties in detections
         if detections:
@@ -747,7 +756,10 @@ class PipelineOrchestrator:
                 message = f"{base_message} pour la pathologie {display_specialty}<br> \n"
             logger.debug(f"Result: {message}, Links: {self.link}")
             response = self._create_response_and_log(message, res_str, prompt, METHODOLOGY_WEB_LINK)
+            logger.info(f"General ranking response created successfully")
+            logger.info(f"Detected variables: specialty={self.specialty}, city={self.city}, institution_type={self.institution_type}, institution_name={self.institution_name}, number_institutions={self.number_institutions}")
             return response, self.link
         except Exception as e:
             logger.exception(f"Exception in general ranking response: {e}")
+            logger.info(f"Detected variables: specialty={self.specialty}, city={self.city}, institution_type={self.institution_type}, institution_name={self.institution_name}, number_institutions={self.number_institutions}")
             return ERROR_GENERAL_RANKING_MSG, self.link
