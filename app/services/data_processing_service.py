@@ -5,7 +5,7 @@ from datetime import datetime
 import unicodedata
 
 from app.config.file_paths_config import PATHS
-from app.config.features_config import (PUBLIC_RANKING_URL, PRIVATE_RANKING_URL, INSTITUTION_TYPE_URL_MAPPING)
+from app.config.features_config import (PUBLIC_RANKING_URL, PRIVATE_RANKING_URL, INSTITUTION_TYPE_URL_MAPPING, CSV_FIELDNAMES)
 from app.services.llm_handler_service import LLMHandler
 from app.utility.formatting_helpers import remove_accents
 from app.utility.distance_calc_helpers import exget_coordinates, distance_to_query
@@ -611,38 +611,30 @@ class DataProcessor:
         return self.df_with_distances
 
 
-    def create_csv(self, question:str, reponse: str):
+    
+
+    def create_csv(self, result_data: dict):
         """
-        Saves the user's query and the system's response to a CSV file for history tracking.
+        Saves the user's query and the system's response (and metadata) to a CSV file for history tracking.
 
         Args:
-            question (str): The user's question.
-            reponse (str): The system's response.
+            data (dict): Dictionary where keys are column names and values are cell values.
         Returns:
             None
         """
-        logger.info(f"Saving Q&A to CSV: question={question}")
-        file_name=self.paths["history_path"]
-        # Prepare the data dictionary for CSV row
-        data = {
-            "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "question": question,
-            "ville": self.city,
-            "type": self.institution_type,
-            "spécialité": self.specialty,
-            "résultat": reponse,
-        }
-
+        logger.info(f"Saving Q&A to CSV: {result_data.get('question','')}")
+        file_name = self.paths["history_path"]
         file_exists = os.path.exists(file_name)
-        # Write to CSV, add header if file does not exist
+        # Fill missing columns with empty string
+        for col in CSV_FIELDNAMES:
+            if col not in result_data:
+                result_data[col] = ""
         try:
             with open(file_name, mode="a", newline="", encoding="utf-8") as file:
-                writer = csv.DictWriter(file, fieldnames=data.keys())
-                # Write header only if file does not exist yet
-                if not file_exists: 
+                writer = csv.DictWriter(file, fieldnames=CSV_FIELDNAMES)
+                if not file_exists:
                     writer.writeheader()
-                # Write the data row
-                writer.writerow(data)
+                writer.writerow(result_data)
             logger.debug(f"CSV written to {file_name}")
         except Exception as e:
             logger.error(f"Failed to write CSV: {e}")

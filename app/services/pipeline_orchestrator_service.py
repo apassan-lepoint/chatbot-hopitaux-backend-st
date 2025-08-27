@@ -126,19 +126,26 @@ class PipelineOrchestrator:
             response += f"\n\n🔗 Consultez la méthodologie de palmarès hopitaux <a href=\"{ranking_link}\" target=\"_blank\">ici</a>."
         # Aggregate costs and tokens
         aggregation = self.get_costs_and_tokens(sanity_result, detections, conversation_result)
-        # Save response to CSV for history, with all cost/token info
-        self.data_processor.create_csv(
-            question=prompt,
-            response=response,
-            total_cost_sanity_checks=aggregation['total_cost_sanity_checks'],
-            total_cost_query_analyst=aggregation['total_cost_query_analyst'],
-            total_cost_conversation_analyst=aggregation['total_cost_conversation_analyst'],
-            total_cost=aggregation['total_cost'],
-            total_tokens_sanity_checks=aggregation['total_tokens_sanity_checks'],
-            total_tokens_query_analyst=aggregation['total_tokens_query_analyst'],
-            total_tokens_conversation_analyst=aggregation['total_tokens_conversation_analyst'],
-            total_tokens=aggregation['total_tokens']
-        )
+        csv_data = {
+            'question': prompt,
+            'response': response,
+            'conversation_list': conversation_result.get('conversation', []) if conversation_result else [],
+            'city': self.data_processor.city,
+            'institution_type': self.data_processor.institution_type,
+            'institution_name': self.data_processor.institution_name,
+            'specialty': self.data_processor.specialty,
+            'number_institutions': self.data_processor.number_institutions,
+            'links': self.data_processor.links,
+            'total_cost_sanity_checks': aggregation['total_cost_sanity_checks'],
+            'total_cost_query_analyst': aggregation['total_cost_query_analyst'],
+            'total_cost_conversation_analyst': aggregation['total_cost_conversation_analyst'],
+            'total_cost': aggregation['total_cost'],
+            'total_tokens_sanity_checks': aggregation['total_tokens_sanity_checks'],
+            'total_tokens_query_analyst': aggregation['total_tokens_query_analyst'],
+            'total_tokens_conversation_analyst': aggregation['total_tokens_conversation_analyst'],
+            'total_tokens': aggregation['total_tokens']
+        }
+        self.data_processor.create_csv(result_data=csv_data)
         logger.debug(f"Formatted response: {response}")
         return response
 
@@ -507,17 +514,56 @@ class PipelineOrchestrator:
         try:
             sanity_result = self.sanity_checks_analyst.run_checks(prompt, conversation, conv_history)
         except Exception as exc:
-            # Import exception classes
             if isinstance(exc, (MessagePertinenceCheckException, MessageLengthCheckException, ConversationLimitCheckException)):
                 error_msg = str(exc)
             else:
                 error_msg = getattr(exc, 'message', str(exc))
-                self.data_processor.create_csv(question=prompt, reponse=error_msg)
-                logger.info("Sanity check failed, returning error message and halting pipeline.")
-                return error_msg, None
+            aggregation = self.get_costs_and_tokens(sanity_result, None, None) if 'sanity_result' in locals() and isinstance(sanity_result, dict) else {}
+            csv_data = {
+                'question': prompt,
+                'response': error_msg,
+                'conversation_list': conversation if conversation else [],
+                'city': self.data_processor.city,
+                'institution_type': self.data_processor.institution_type,
+                'institution_name': self.data_processor.institution_name,
+                'specialty': self.data_processor.specialty,
+                'number_institutions': self.data_processor.number_institutions,
+                'links': None,
+                'total_cost_sanity_checks': aggregation.get('total_cost_sanity_checks'),
+                'total_cost_query_analyst': aggregation.get('total_cost_query_analyst'),
+                'total_cost_conversation_analyst': aggregation.get('total_cost_conversation_analyst'),
+                'total_cost': aggregation.get('total_cost'),
+                'total_tokens_sanity_checks': aggregation.get('total_tokens_sanity_checks'),
+                'total_tokens_query_analyst': aggregation.get('total_tokens_query_analyst'),
+                'total_tokens_conversation_analyst': aggregation.get('total_tokens_conversation_analyst'),
+                'total_tokens': aggregation.get('total_tokens')
+            }
+            self.data_processor.create_csv(result_data=csv_data)
+            logger.info("Sanity check failed, returning error message and halting pipeline.")
+            return error_msg, None
         if isinstance(sanity_result, dict) and not sanity_result.get("passed", True):
             error_msg = sanity_result.get("error", GENERAL_ERROR_MSG)
-            self.data_processor.create_csv(question=prompt, reponse=error_msg)
+            aggregation = self.get_costs_and_tokens(sanity_result, None, None)
+            csv_data = {
+                'question': prompt,
+                'response': error_msg,
+                'conversation_list': conversation if conversation else [],
+                'city': self.data_processor.city,
+                'institution_type': self.data_processor.institution_type,
+                'institution_name': self.data_processor.institution_name,
+                'specialty': self.data_processor.specialty,
+                'number_institutions': self.data_processor.number_institutions,
+                'links': None,
+                'total_cost_sanity_checks': aggregation.get('total_cost_sanity_checks'),
+                'total_cost_query_analyst': aggregation.get('total_cost_query_analyst'),
+                'total_cost_conversation_analyst': aggregation.get('total_cost_conversation_analyst'),
+                'total_cost': aggregation.get('total_cost'),
+                'total_tokens_sanity_checks': aggregation.get('total_tokens_sanity_checks'),
+                'total_tokens_query_analyst': aggregation.get('total_tokens_query_analyst'),
+                'total_tokens_conversation_analyst': aggregation.get('total_tokens_conversation_analyst'),
+                'total_tokens': aggregation.get('total_tokens')
+            }
+            self.data_processor.create_csv(result_data=csv_data)
             logger.info("Sanity check failed, returning error message and halting pipeline.")
             return error_msg, None
         
@@ -696,11 +742,12 @@ class PipelineOrchestrator:
             display_specialty, is_no_match = self._normalize_specialty_for_display(self.specialty)
             logger.debug(f"Display specialty: {display_specialty}, is_no_match: {is_no_match}")
             if is_no_match:
-                res = f"{base_message}:<br> \n{res_str}"
+                message = f"{base_message}:<br> \n"
             else:
-                res = f"{base_message} pour la pathologie {display_specialty}<br> \n{res_str}"
-            logger.debug(f"Result: {res}, Links: {self.link}")
-            return res, self.link
+                message = f"{base_message} pour la pathologie {display_specialty}<br> \n"
+            logger.debug(f"Result: {message}, Links: {self.link}")
+            response = self._create_response_and_log(message, res_str, prompt, METHODOLOGY_WEB_LINK)
+            return response, self.link
         except Exception as e:
             logger.exception(f"Exception in general ranking response: {e}")
             return ERROR_GENERAL_RANKING_MSG, self.link

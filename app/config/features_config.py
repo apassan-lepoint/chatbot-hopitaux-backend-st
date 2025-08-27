@@ -120,4 +120,5 @@ INSTITUTION_TYPE_CODES = {
 # Search radius in kilometers
 SEARCH_RADIUS_KM = [5, 10, 50, 100] 
 
-
+# CSV Specific constants
+CSV_FIELDNAMES = ["date", "question","response","links","conversation_list", "city", "institution_type", "institution_name", "specialty", "total_cost", "total_tokens", "total_cost_sanity_checks", "total_cost_query_analyst", "total_cost_conversation_analyst", "total_tokens_sanity_checks", "total_tokens_query_analyst", "total_tokens_conversation_analyst"]
