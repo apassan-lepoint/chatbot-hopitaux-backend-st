@@ -8,115 +8,87 @@ logger = get_logger(__name__)
 class CityDetector:
     """
     Service for detecting cities mentioned in user queries.
-    
-    This class handles the detection of cities or locations mentioned by users,
-    including validation for French cities, foreign cities, and ambiguous cases.
-    It supports conversation history context for better detection accuracy.
+    Handles detection of French, foreign, ambiguous, or missing city references.
 
     Attributes:
         model: The language model used for city detection.  
     Methods:
-        detect_city(prompt: str, conv_history: str = "") -> str:
+        detect_city(prompt: str, conv_history: str = "") -> dict:
             Detects the city from the given prompt using the LLM.
-        _detect_city_status(prompt: str, conv_history: str = "") -> int:
-            Detects the status of city detection from the given prompt.
-        _detect_city_name(prompt: str, conv_history: str = "") -> str:
-            Detects the city name from the given prompt using the LLM.
-        _get_city_response_description(city_status: int) -> str:
-            Gets a human-readable description of the city response based on its status. 
+        get_city_description(city_status: int) -> str:
+            Gets a human-readable description of the city response based on its status.
     """
-    
+
     def __init__(self, model):
         logger.info("Initializing CityDetector")
         self.model = model
-    
-    def _detect_city_status(self, prompt: str, conv_history: str = "") -> int:
-        """
-        Detects the status of city detection from the given prompt using the LLM.
-        This method determines if a city is mentioned, foreign, ambiguous, or not mentioned at all.
-        """
-        logger.debug(f"_detect_city_status called: prompt={prompt}, conv_history={conv_history}")
-        formatted_prompt = prompt_formatting("detect_city_prompt", prompt=prompt, conv_history=conv_history)
-        raw_response = invoke_llm_with_error_handling(
-            self.model, 
-            formatted_prompt, 
-            "detect_city_status"
-        )
-        logger.info(f"Raw LLM response for city status: {raw_response}")
-        city_status = parse_llm_response(raw_response, "city")
-        logger.info(f"Parsed city status: {city_status}")
-        return city_status
-    
-    def _detect_city_name(self, prompt: str, conv_history: str = "") -> str:
-        """
-        Detects the city name from the given prompt using the LLM.
-        """
-        logger.debug(f"_detect_city_name called: prompt={prompt}, conv_history={conv_history}")
-        formatted_prompt = prompt_formatting("second_detect_city_prompt", prompt=prompt, conv_history=conv_history)
-        city_name = invoke_llm_with_error_handling(
-            self.model, 
-            formatted_prompt, 
-            "detect_city_name"
-        )
-        logger.info(f"Raw LLM response for city name: {city_name}")
-        logger.debug(f"City name extracted: {city_name}")
-        return city_name.strip()
-    
 
-    def _get_city_response_description(self, city_status) -> str:
-        """
-        Gets a human-readable description of the city response.
-        """
-        if isinstance(city_status, str):
-            return f"French city: {city_status}"
-        return STATUS_DESCRIPTIONS_DICT.get(city_status, f"Unknown status: {city_status}")
 
-    def detect_city(self, prompt: str, conv_history: str = ""):
-        logger.debug(f"detect_city called: prompt={prompt}, conv_history={conv_history}")
+    def detect_city(self, prompt: str, conv_history: str = "") -> dict:
         """
-        Detects the city from the given prompt using the LLM.
-        
-        This is the main method for city detection. It first determines the status
-        of city detection (no city, foreign, ambiguous, or mentioned), and if a
-        city is clearly mentioned, it makes a second call to extract the actual
-        city name.
+        Detect the city mentioned in the user prompt.
+        Returns a dict: {'city': str, 'detection_method': str, 'cost': float, 'status_code': int, 'token_usage': Any}
         """
-        logger.info(f"Detecting city from prompt: '{prompt}'")
-        
-        # First call: detect city status
-        city_status = self._detect_city_status(prompt, conv_history)
-        
-        # If a clear city is mentioned, retrieve the actual city name
+        # Detect city status
+        city_status_formatted_prompt = prompt_formatting("detect_city_prompt", prompt=prompt, conv_history=conv_history)
+        city_status_llm_call_result = invoke_llm_with_error_handling(self.model, city_status_formatted_prompt, "detect_city_status")
+        city_status_from_llm_call_result = city_status_llm_call_result if isinstance(city_status_llm_call_result, dict) else {"content": city_status_llm_call_result}
+        city_status = city_status_from_llm_call_result.get("content")
+
+        # Extract cost and token usage from city status detection step
+        cost = city_status_from_llm_call_result.get("cost", 0.0)
+        token_usage = city_status_from_llm_call_result.get("token_usage", 0.0)
+
+        # Ensure city_status is int for validation
+        try:
+            city_status_int = int(city_status)
+        except (TypeError, ValueError):
+            city_status_int = city_status
+
+        valid_city_statuses = [CITY_NO_CITY_MENTIONED, CITY_FOREIGN, CITY_AMBIGUOUS, CITY_MENTIONED]
+        if city_status_int not in valid_city_statuses:
+            logger.warning(f"Invalid city status: {city_status}, defaulting to CITY_NO_CITY_MENTIONED")
+            city_status = CITY_NO_CITY_MENTIONED
+        else:
+            city_status = city_status_int
+
+        # If city is mentioned, extract/detect the city name
+        city_name, detection_method = None, "status"
         if city_status == CITY_MENTIONED:
-            logger.debug("City mentioned detected, extracting city name")
-            city_name = self._detect_city_name(prompt, conv_history)
-            logger.info(f"City detected: {city_name}")
-            # Defensive: ensure city_name is valid
-            if not city_name or not isinstance(city_name, str) or city_name.strip() == "":
-                logger.warning("City name extraction failed, returning CITY_NO_CITY_MENTIONED status code")
-                return CITY_NO_CITY_MENTIONED
-            return city_name.strip()
-        # Defensive: always return a proper status code, never a string error
-        if not isinstance(city_status, int) or city_status not in [CITY_NO_CITY_MENTIONED, CITY_FOREIGN, CITY_AMBIGUOUS, CITY_MENTIONED]:
-            logger.warning(f"Invalid city status detected: {city_status}, returning CITY_NO_CITY_MENTIONED")
-            return CITY_NO_CITY_MENTIONED
-        logger.info(f"City detection status: {self._get_city_response_description(city_status)}")
-        return city_status
-    
-    
+            city_name_formatted_prompt = prompt_formatting("second_detect_city_prompt", prompt=prompt, conv_history=conv_history)
+            city_name_llm_call_result = invoke_llm_with_error_handling(self.model, city_name_formatted_prompt, "detect_city_name")
+            city_name_from_llm_call_result = city_name_llm_call_result if isinstance(city_name_llm_call_result, dict) else {"content": city_name_llm_call_result}
+
+            raw_city = city_name_from_llm_call_result.get("content")
+            additional_cost = city_name_from_llm_call_result.get("cost", 0.0)
+            additional_tokens = city_name_from_llm_call_result.get("token_usage", 0.0)
+
+            cost += additional_cost
+            token_usage = (
+                {**token_usage, **additional_tokens}
+                if isinstance(token_usage, dict) and isinstance(additional_tokens, dict)
+                else additional_tokens or token_usage
+            )
+
+            if isinstance(raw_city, str) and raw_city.strip():
+                city_name = raw_city.strip()
+                detection_method = "llm"
+            else:
+                logger.warning("City name extraction failed; reverting to CITY_NO_CITY_MENTIONED")
+                city_status = CITY_NO_CITY_MENTIONED
+
+        logger.debug(f"City detection result: city={city_name}, status={city_status}, method={detection_method}, cost={cost}, tokens={token_usage}")
+        return {'city': city_name, 'detection_method': detection_method, 'cost': cost, 'status_code': city_status, 'token_usage': token_usage}
+
     def get_city_status_type(self, city_status):
         """
         Returns a string representing the type of city status.
         """
-        if city_status == CITY_MENTIONED or isinstance(city_status, str):
+        if isinstance(city_status, str) or city_status == CITY_MENTIONED:
             return "french"
-        elif city_status == CITY_FOREIGN:
-            return "foreign"
-        elif city_status == CITY_AMBIGUOUS:
-            return "ambiguous"
-        elif city_status == CITY_NO_CITY_MENTIONED:
-            return "none"
-        else:
-            return "unknown"
-
-
+        
+        return {
+            CITY_FOREIGN: "foreign",
+            CITY_AMBIGUOUS: "ambiguous",
+            CITY_NO_CITY_MENTIONED: "none"
+        }.get(city_status, "unknown")

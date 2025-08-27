@@ -5,7 +5,7 @@ from datetime import datetime
 import unicodedata
 
 from app.config.file_paths_config import PATHS
-from app.config.features_config import (PUBLIC_RANKING_URL, PRIVATE_RANKING_URL, INSTITUTION_TYPE_URL_MAPPING)
+from app.config.features_config import (PUBLIC_RANKING_URL, PRIVATE_RANKING_URL, INSTITUTION_TYPE_URL_MAPPING, CSV_FIELDNAMES)
 from app.services.llm_handler_service import LLMHandler
 from app.utility.formatting_helpers import remove_accents
 from app.utility.distance_calc_helpers import exget_coordinates, distance_to_query
@@ -132,7 +132,6 @@ class DataProcessor:
         Returns:
             str: Normalized string, stripped of whitespace and lowercased.  
         """
-        logger.debug(f"Normalizing string: {s}")
         if not isinstance(s, str):
             return ""
         s = s.strip().lower()
@@ -185,7 +184,6 @@ class DataProcessor:
         institution_list = list(set(institution_list))
         institution_list = [element for element in institution_list if element not in ("CHU", "CH")]
         institution_list = ", ".join(map(str, institution_list))
-        logger.debug(f"Institution list: {institution_list}")
         return institution_list
 
 
@@ -205,7 +203,6 @@ class DataProcessor:
         logger.info(f"Filtering ranking by criteria: specialty='{specialty}', institution_type='{institution_type}'")
         logger.debug(f"Filtering ranking data - specialty: '{specialty}', institution_type: '{institution_type}'")
         logger.debug(f"Specialty type: {type(specialty)}, length: {len(specialty) if specialty else 'None'}")
-        logger.debug(f"Available specialties in ranking data: {self.ranking_df['Spécialité'].unique()}")
 
         if self._is_no_specialty(specialty):
             logger.debug("No specialty provided or specialty is 'no match', returning empty DataFrame")
@@ -213,8 +210,7 @@ class DataProcessor:
         # Normalize the Spécialité column once if not already present
         if 'Spécialité_norm' not in self.ranking_df.columns:
             self.ranking_df['Spécialité_norm'] = self.ranking_df['Spécialité'].apply(self._normalize_str)
-        # Debug: Show all normalized specialties in the DataFrame
-        logger.debug(f"Normalized specialties in DataFrame: {[repr(s) for s in self.ranking_df['Spécialité_norm'].unique()]}")
+        # logger.debug(f"Normalized specialties in DataFrame: {[repr(s) for s in self.ranking_df['Spécialité_norm'].unique()]}")
         matching_rows = pd.DataFrame()
         # Handle multiple specialties
         if ',' in specialty or specialty.startswith(('plusieurs correspondances:', 'multiple matches:')):
@@ -611,39 +607,30 @@ class DataProcessor:
         return self.df_with_distances
 
 
-    def create_csv(self, question:str, reponse: str):
+    
+
+    def create_csv(self, result_data: dict):
         """
-        Saves the user's query and the system's response to a CSV file for history tracking.
+        Saves the user's query and the system's response (and metadata) to a CSV file for history tracking.
 
         Args:
-            question (str): The user's question.
-            reponse (str): The system's response.
+            data (dict): Dictionary where keys are column names and values are cell values.
         Returns:
             None
         """
-
-        logger.info(f"Saving Q&A to CSV: question={question}")
-        file_name=self.paths["history_path"]
-        # Prepare the data dictionary for CSV row
-        data = {
-            "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "question": question,
-            "ville": self.city,
-            "type": self.institution_type,
-            "spécialité": self.specialty,
-            "résultat": reponse,
-        }
-
+        logger.info(f"Saving Q&A to CSV: {result_data.get('question','')}")
+        file_name = self.paths["history_path"]
         file_exists = os.path.exists(file_name)
-        # Write to CSV, add header if file does not exist
+        # Fill missing columns with empty string
+        for col in CSV_FIELDNAMES:
+            if col not in result_data:
+                result_data[col] = ""
         try:
             with open(file_name, mode="a", newline="", encoding="utf-8") as file:
-                writer = csv.DictWriter(file, fieldnames=data.keys())
-                # Write header only if file does not exist yet
-                if not file_exists: 
+                writer = csv.DictWriter(file, fieldnames=CSV_FIELDNAMES)
+                if not file_exists:
                     writer.writeheader()
-                # Write the data row
-                writer.writerow(data)
+                writer.writerow(result_data)
             logger.debug(f"CSV written to {file_name}")
         except Exception as e:
             logger.error(f"Failed to write CSV: {e}")

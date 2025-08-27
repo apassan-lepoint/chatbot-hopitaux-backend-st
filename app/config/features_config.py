@@ -6,6 +6,10 @@ Configuration constants for the chatbot hopitaux.
 # Default OpenAI model name
 OPENAI_MODEL = "gpt-4o-mini"
 
+# Pricing and tracking settings
+INPUT_PROMPT_PRICE_PER_TOKEN = 0.00000015  # $0.15 per 1M tokens
+OUTPUT_COMPLETION_PRICE_PER_TOKEN = 0.00000060  # $0.60 per 1M tokens
+TRACK_LLM_CALL_COST = True  # Enable or disable cost tracking
 
 # Ranking URLs and mapping 
 PUBLIC_RANKING_URL = "https://www.lepoint.fr/hopitaux/classements/tableau-d-honneur-public.php"
@@ -116,4 +120,5 @@ INSTITUTION_TYPE_CODES = {
 # Search radius in kilometers
 SEARCH_RADIUS_KM = [5, 10, 50, 100] 
 
-
+# CSV Specific constants
+CSV_FIELDNAMES = ['uuid', 'date', 'question', 'response', 'conversation_list', 'city', 'institution_type', 'institution_name', 'specialty', 'number_institutions', 'total_cost_sanity_checks', 'total_cost_query_analyst', 'total_cost_conversation_analyst', 'total_cost', 'total_tokens_sanity_checks', 'total_tokens_query_analyst', 'total_tokens_conversation_analyst', 'total_tokens']

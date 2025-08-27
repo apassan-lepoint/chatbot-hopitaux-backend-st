@@ -93,10 +93,6 @@ class StreamlitChatbot:
         self.ui_components.setup_ui()
         # Initialize session state
         self.ui_components.setup_session_state(SESSION_STATE_DEFAULTS)
-
-        # Check conversation limit using SanityChecksAnalyst
-        sanity_checks_manager = SanityChecksAnalyst(self.llm_handler)
-        conversation = get_conversation_list()
         
         # Handle messages
         if get_conversation_length() == 0:

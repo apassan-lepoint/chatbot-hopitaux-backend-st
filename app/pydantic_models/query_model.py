@@ -14,10 +14,8 @@ class UserQuery(BaseModel):
     
     Attributes:
         prompt (str): The user's input or question for the chatbot.
-        detected_specialty (str | None): Optional medical specialty context for the query.
     """
     prompt: str # Required field for the user's input
-    detected_specialty: str | None = None # Optional field for medical specialty
 
 
 

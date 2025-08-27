@@ -4,6 +4,9 @@ Service for orchestrating number_institutions detection and validation.
 from .number_institutions_detection import number_institutionsDetector
 from .number_institutions_validation import number_institutionsValidation
 from app.config.features_config import number_institutions_DEFAULT, number_institutions_MIN, number_institutions_MAX
+from app.utility.logging import get_logger
+
+logger = get_logger(__name__)
 
 class NumberInstitutionsAnalyst:
     """
@@ -29,16 +32,28 @@ class NumberInstitutionsAnalyst:
         self.min_number_institutions = number_institutions_MIN
         self.max_number_institutions = number_institutions_MAX
 
-    def process_number_institutions(self, prompt: str, conv_history: str = "", user_number_institutions: int = None) -> int:
+    def process_number_institutions(self, prompt: str, conv_history: str = "", user_number_institutions: int = None) -> dict:
         """
         Detects and validates the number_institutions value from the prompt.
-        Args:
-            prompt (str): The message to analyze
-            conv_history (str, optional): Conversation history for context
-            user_number_institutions (int, optional): User-provided number_institutions value
-        Returns:
-            int: Final validated number_institutions value
+        Returns a dict with number_institutions, detection_method, cost, and token_usage.
         """
-        detected_number_institutions = self.detector.detect_number_institutions(prompt, conv_history)
+        result = {}
+
+        # Detect and validate number_institutions
+        detected_result = self.detector.detect_number_institutions(prompt, conv_history)
+        detected_number_institutions = detected_result.get('number_institutions', detected_result) if isinstance(detected_result, dict) else detected_result
         user_number_institutions = user_number_institutions if user_number_institutions is not None else 0
-        return self.validator.finalize_number_institutions(user_number_institutions, detected_number_institutions, self.default_number_institutions)
+        detected_validated_number_institutions = self.validator.finalize_number_institutions(user_number_institutions, detected_number_institutions, self.default_number_institutions)
+        result['number_institutions'] = detected_validated_number_institutions
+
+        # Extract detection_method, cost, and token_usage from detection step
+        detection_method = detected_result.get('detection_method', None) if isinstance(detected_result, dict) else None
+        detected_cost = detected_result.get('cost', 0.0) if isinstance(detected_result, dict) else 0.0
+        detected_token_usage = detected_result.get('token_usage', {}).get('total_tokens', 0) if isinstance(detected_result, dict) else 0.0
+        result['detection_method'] = detection_method
+        result['cost'] = detected_cost
+        result['token_usage'] = detected_token_usage
+        
+        logger.debug(f"Number of institutions detection and validation result: {result}")
+
+        return result

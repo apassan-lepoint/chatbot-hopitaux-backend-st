@@ -24,35 +24,26 @@ class InstitutionNameDetector:
         conv_history: Conversation history for context      
 
     Methods:
-        detect_specific_institution(prompt: str, institution_list: str, conv_history: str = "")
+        detect_institution_name(prompt: str, institution_list: str, conv_history: str = "")
             Detects if a specific institution is mentioned in the prompt.
             Returns the institution name or "aucune correspondance" if not found.       
     """
     def __init__(self, model):
         self.model = model
 
-    def detect_specific_institution(self, prompt: str, institution_list: str, conv_history: str = "") -> str:
+    def detect_institution_name(self, prompt: str, institution_list: str, conv_history: str = "") -> dict:
         """
         Detects if a specific institution is mentioned in the prompt.
-        Args:
-            prompt (str): The message to analyze
-            institution_list (str): Comma-separated list of valid institution names
-            conv_history (str, optional): Conversation history for context
-        Returns:
-            str: The detected institution name or "aucune correspondance"
+        Returns a dict: {'institution_name': str, 'detection_method': str, 'cost': float, 'token_usage': Any}
         """
-        formatted_prompt = prompt_formatting(
-            "detect_institution_type_prompt",
-            prompt=prompt,
-            institution_list=institution_list,
-            conv_history=conv_history
-        )
-        institution_name = invoke_llm_with_error_handling(
-            self.model,
-            formatted_prompt,
-            "detect_specific_institution"
-        )
-        logger.debug(f"Specific institution detection result: {institution_name}")
-        return institution_name.strip()
+        formatted_prompt = prompt_formatting("detect_institution_type_prompt", prompt=prompt, institution_list=institution_list, conv_history=conv_history)
+        llm_call_result = invoke_llm_with_error_handling(self.model, formatted_prompt, "detect_institution_name")
+        institution_name = llm_call_result.get('content', llm_call_result) if isinstance(llm_call_result, dict) else llm_call_result
+        
+        cost = llm_call_result.get('cost', 0.0) if isinstance(llm_call_result, dict) else 0.0
+        token_usage = llm_call_result.get('token_usage', 0.0) if isinstance(llm_call_result, dict) else 0.0
 
+        logger.debug(f"Specific institution detection result: {institution_name}, {cost}, {token_usage}")
+        
+        return {'institution_name': institution_name, 'detection_method': 'llm', 'cost': cost, 'token_usage': token_usage}
 
