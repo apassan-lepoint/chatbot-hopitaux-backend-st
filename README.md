@@ -56,7 +56,8 @@ BackendChatbotHopitaux/
 │   ├── services/
 │   │   ├── data_processing_service.py
 │   │   ├── llm_handler_service.py
-│   │   └── pipeline_orchestrator_service.py
+│   │   ├── pipeline_orchestrator_service.py
+│   │   └── conversation_service.py
 │   ├── snowflake_db/
 │   │   ├── query.py
 │   │   └── snowflake_connector.py
