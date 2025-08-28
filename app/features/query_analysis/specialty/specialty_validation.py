@@ -3,6 +3,15 @@ from app.utility.specialty_dicts_lists import specialty_categories_dict as defau
 import unidecode
 
 class SpecialtyValidator:
+    """
+    Handles validation and normalization of specialty values.
+    Attributes:
+        specialty_list (List[str]): A list of valid specialty names.
+        specialty_categories_dict (dict): A dictionary mapping specialties to their categories.
+    Methods:
+        validate_specialty(raw_specialty: str) -> List[str]:
+            Validates and normalizes the specialty string, returning a list of recognized specialties.
+    """
     def __init__(self, specialty_list: List[str], specialty_categories_dict=None):
         # Normalize specialty list: lowercase, no accents, strip
         self.specialty_list = [unidecode.unidecode(s).lower().strip() for s in specialty_list]
@@ -46,14 +55,3 @@ class SpecialtyValidator:
         normalized_specialty = self._normalize_specialty_format(raw_specialty)
         specialty_list = self._extract_specialty_list(normalized_specialty)
         return specialty_list
-    
-
-    ## Keeping the below function in case of future need
-    # def get_primary_specialty(self, specialty: str) -> Optional[str]:
-    #     """Get the primary specialty (first in list for multiple matches)."""
-    #     lst = self.extract_specialty_list(specialty)
-    #     return lst[0] if lst else None
-
-    # def get_specialty_category(self, specialty: str) -> Optional[str]:
-    #     """Return category for a specialty, or None."""
-    #     return next((cat for cat, specs in self.specialty_categories_dict.items() if specialty in specs), None)

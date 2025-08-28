@@ -1,5 +1,5 @@
 from .number_institutions_detection import number_institutionsDetector
-from .number_institutions_validation import number_institutionsValidation
+from .number_institutions_validation import NumberInstitutionsValidator
 from app.config.features_config import number_institutions_DEFAULT, number_institutions_MIN, number_institutions_MAX
 from app.utility.logging import get_logger
 
@@ -12,7 +12,7 @@ class NumberInstitutionsAnalyst:
 
     Attributes:
         detector (number_institutionsDetector): Instance of the detector for number_institutions.
-        validator (number_institutionsValidation): Instance of the validator for number_institutions.
+        validator (NumberInstitutionsValidator): Instance of the validator for number_institutions.
         default_number_institutions (int): Default value for number_institutions if none is detected or provided.
         min_number_institutions (int): Minimum allowed value for number_institutions.
         max_number_institutions (int): Maximum allowed value for number_institutions.   
@@ -24,7 +24,7 @@ class NumberInstitutionsAnalyst:
     """
     def __init__(self, model=None):
         self.detector = number_institutionsDetector(model)
-        self.validator = number_institutionsValidation()
+        self.validator = NumberInstitutionsValidator()
         self.default_number_institutions = number_institutions_DEFAULT
         self.min_number_institutions = number_institutions_MIN
         self.max_number_institutions = number_institutions_MAX

@@ -1,5 +1,5 @@
 from app.features.query_analysis.city.city_detection import CityDetector
-from app.features.query_analysis.city.city_validation import CityChecker
+from app.features.query_analysis.city.city_validation import CityValidator
 from app.utility.logging import get_logger
 
 logger = get_logger(__name__)
@@ -13,7 +13,7 @@ class CityAnalyst:
         llm_handler_service: Optional service for handling language model interactions
         model: Optional model for city detection, defaults to None
         detector: Instance of CityDetector for detecting city names
-        checker: Instance of CityChecker for validating detected cities
+        checker: Instance of CityValidator for validating detected cities
     Methods:
         detect_and_validate_city(prompt: str, conv_history: str = "") -> dict:
             Detects and validates the city from the prompt, returning both city and detection status.
@@ -22,7 +22,7 @@ class CityAnalyst:
     def __init__(self, llm_handler_service=None, model=None):
         logger.info("Initializing CityAnalyst")
         self.detector = CityDetector(model)
-        self.validator = CityChecker(self.detector, llm_handler_service)
+        self.validator = CityValidator(self.detector, llm_handler_service)
 
     def detect_and_validate_city(self, prompt: str, conv_history: str = ""):
         """

@@ -1,6 +1,6 @@
 from app.config.features_config import number_institutions_MIN, number_institutions_MAX
 
-class number_institutionsValidation:
+class NumberInstitutionsValidator:
     """
     Class for validating number_institutions values.
     It checks if the provided number_institutions is within the allowed range

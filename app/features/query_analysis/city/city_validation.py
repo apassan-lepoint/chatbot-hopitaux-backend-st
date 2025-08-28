@@ -10,7 +10,7 @@ class CityCheckException(Exception):
     pass
 
 
-class CityChecker:
+class CityValidator:
     """
     Class for city validation and non-French city checks.
 
@@ -22,7 +22,7 @@ class CityChecker:
         Raises CityCheckException if a foreign or ambiguous city is detected.
     """
     def __init__(self, detector, llm_handler_service=None):
-        logger.info("Initializing CityChecker")
+        logger.info("Initializing CityValidator")
         self.llm_handler_service = llm_handler_service
         self.detector = detector
 
@@ -33,7 +33,7 @@ class CityChecker:
         """
         logger.debug(f"check called: user_input={user_input}, conv_history={conv_history}")
         if not self.detector:
-            logger.warning("CityChecker.check: detector is missing, skipping city validation.")
+            logger.warning("CityValidator.check: detector is missing, skipping city validation.")
             return  # Skip validation, do not raise exception
         city_result = self.detector.detect_city(user_input, conv_history)
         city_status_type = self.detector.get_city_status_type(city_result.get('status_code') if isinstance(city_result, dict) else city_result)
