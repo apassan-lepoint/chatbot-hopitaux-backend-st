@@ -578,6 +578,7 @@ class PipelineOrchestrator:
         # Robust specialty selection blocking logic
         detections = self.extract_query_parameters(prompt, detected_specialty, conv_history)
         logger.info(f"Detected variables: specialty={self.specialty}, city={self.city}, institution_type={self.institution_type}, institution_name={self.institution_name}, number_institutions={self.number_institutions}")
+        logger.debug(f"[CITY DETECTION] Detected city: '{self.city}', city_detected: {self.city_detected}, DataProcessor.city: '{self.data_processor.city}', DataProcessor.city_detected: {self.data_processor.city_detected}")
 
         specialty_list = []
         # Check for multiple specialties in detections
@@ -710,27 +711,33 @@ class PipelineOrchestrator:
 
         # If city found and Distance column exists, use multi-radius search utility to get enough results
         logger.debug("Checking if city is detected")
-        if self.data_processor.city_detected and "Distance" in df.columns:
-            logger.info("City found, searching for results using multi-radius search")
-            # Prepare DataFrame for public/private split
-            df = df.copy()
-            df["Distance"] = pd.to_numeric(df["Distance"], errors="coerce")
-            filtered_df = df.dropna(subset=["Distance"]).reset_index(drop=True)
-            public_df = filtered_df[filtered_df["Catégorie"] == "Public"].nlargest(self.number_institutions, "Note / 20")
-            private_df = filtered_df[filtered_df["Catégorie"] == "Privé"].nlargest(self.number_institutions, "Note / 20")
-            # Use multi_radius_search to get enough results
-            filtered_public_df, filtered_private_df, used_radius = multi_radius_search(public_df, private_df, self.number_institutions, not self.city_detected, radii=SEARCH_RADIUS_KM)
-            # If no results at all, return not found message
-            if (filtered_public_df is None or filtered_public_df.empty) and (filtered_private_df is None or filtered_private_df.empty):
-                logger.warning("No results found even at maximum radius (multi_radius_search)")
+        logger.debug(f"[DF COLUMNS] DataFrame columns before city/distance selection: {df.columns.tolist()}")
+        # Use original city column 'Ville' for all city-based selection
+        if self.data_processor.city_detected and "Ville" in df.columns:
+            logger.debug(f"Unique cities in DataFrame before select_hospitals: {df['Ville'].unique() if 'Ville' in df.columns else 'N/A'}")
+            logger.info("City detected, preparing to call select_hospitals.")
+            logger.debug(f"About to call select_hospitals with df columns: {df.columns.tolist()}, city: {self.data_processor.city}, number_institutions: {self.number_institutions}")
+            query_city = self.data_processor.city
+            query_coords = None
+            # Try to get coordinates for the city if available (assume DataProcessor or utility provides this)
+            if hasattr(self.data_processor, 'get_city_coordinates'):
+                query_coords = self.data_processor.get_city_coordinates(query_city)
+            elif hasattr(self.data_processor, 'city_coordinates'):
+                query_coords = self.data_processor.city_coordinates.get(query_city)
+            radii = SEARCH_RADIUS_KM
+            selected_df, used_radius = self.data_processor.select_hospitals(df, query_city, self.number_institutions, query_coords, radii)
+            if selected_df is None or selected_df.empty:
+                logger.warning("No results found for city or by distance.")
                 return WARNING_MESSAGES["no_results_found_in_location"], self.link
             institution_type = getattr(self, 'institution_type', None)
+            public_df = selected_df[selected_df["Catégorie"] == "Public"] if "Catégorie" in selected_df.columns else None
+            private_df = selected_df[selected_df["Catégorie"] == "Privé"] if "Catégorie" in selected_df.columns else None
             if institution_type == 'Public':
-                res_str = format_response(filtered_public_df, None, self.number_institutions, not self.data_processor.city_detected)
+                res_str = format_response(public_df, None, self.number_institutions, not self.data_processor.city_detected)
             elif institution_type == 'Privé':
-                res_str = format_response(None, filtered_private_df, self.number_institutions, not self.data_processor.city_detected)
+                res_str = format_response(None, private_df, self.number_institutions, not self.data_processor.city_detected)
             else:
-                res_str = format_response(filtered_public_df, filtered_private_df, self.number_institutions, not self.data_processor.city_detected)
+                res_str = format_response(public_df, private_df, self.number_institutions, not self.data_processor.city_detected)
             message = self._format_response_with_specialty(
                 f"Voici les meilleurs établissements (rayon utilisé : {used_radius} km)",
                 self.number_institutions, used_radius, self.city

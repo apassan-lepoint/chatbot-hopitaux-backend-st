@@ -33,9 +33,16 @@ def multi_radius_search(public_df: pd.DataFrame, private_df: pd.DataFrame,number
         logger.debug(f"[multi_radius_search] priv_filtered shape: {priv.shape if priv is not None else 'None'}")
         logger.debug(f"[multi_radius_search] pub_filtered head: {pub.head(5) if pub is not None else 'None'}")
         logger.debug(f"[multi_radius_search] priv_filtered head: {priv.head(5) if priv is not None else 'None'}")
-        if len(pub) >= number_institutions or len(priv) >= number_institutions:
-            logger.debug(f"[multi_radius_search] Returning results at radius {radius}")
-            return pub, priv, radius
+        # Combine and sort by score, return top N
+        combined = pd.concat([pub, priv]).drop_duplicates()
+        combined_sorted = combined.sort_values(by='Note / 20', ascending=False)
+        top_n = combined_sorted.nlargest(number_institutions, 'Note / 20')
+        if len(top_n) >= number_institutions:
+            logger.debug(f"[multi_radius_search] Returning top {number_institutions} results at radius {radius}")
+            # Split back to public/private for downstream formatting
+            top_pub = top_n[top_n['Catégorie'] == 'Public']
+            top_priv = top_n[top_n['Catégorie'] == 'Privé']
+            return top_pub, top_priv, radius
     # If none of the radii yield enough, return the largest radius result
     if 'Distance' in public_df.columns:
         pub = public_df[public_df['Distance'] <= radii[-1]]
@@ -45,8 +52,13 @@ def multi_radius_search(public_df: pd.DataFrame, private_df: pd.DataFrame,number
         priv = private_df[private_df['Distance'] <= radii[-1]]
     else:
         priv = private_df
-    logger.debug(f"[multi_radius_search] Not enough results, returning max radius {radii[-1]}")
-    return pub, priv, radii[-1]
+    combined = pd.concat([pub, priv]).drop_duplicates()
+    combined_sorted = combined.sort_values(by='Note / 20', ascending=False)
+    top_n = combined_sorted.nlargest(number_institutions, 'Note / 20')
+    logger.debug(f"[multi_radius_search] Not enough results, returning top {number_institutions} at max radius {radii[-1]}")
+    top_pub = top_n[top_n['Catégorie'] == 'Public']
+    top_priv = top_n[top_n['Catégorie'] == 'Privé']
+    return top_pub, top_priv, radii[-1]
 
 def exget_coordinates(city_name: str) -> tuple:
     """
@@ -88,7 +100,7 @@ def get_coordinates(df_with_cities: pd.DataFrame, city_name: str) -> tuple:
     """
     df=df_with_cities
     # Filter DataFrame for the specified city and extract coordinates
-    result = df[df['City'] == city_name][['Latitude', 'Longitude']]
+    result = df[df['Ville'] == city_name][['Latitude', 'Longitude']]
     
     # Error handling if city not found
     if result.empty:
