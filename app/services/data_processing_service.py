@@ -8,7 +8,7 @@ from app.config.file_paths_config import PATHS
 from app.config.features_config import (PUBLIC_RANKING_URL, PRIVATE_RANKING_URL, INSTITUTION_TYPE_URL_MAPPING, CSV_FIELDNAMES)
 from app.services.llm_handler_service import LLMHandler
 from app.utility.formatting_helpers import remove_accents
-from app.utility.distance_calc_helpers import exget_coordinates, distance_to_query
+from app.utility.distance_calc_helpers import exget_coordinates, distance_to_query, multi_radius_search
 from app.utility.logging import get_logger
 
 
@@ -543,7 +543,8 @@ class DataProcessor:
         institution_coordinates_df = self.institution_coordinates_df[["Etablissement", "Ville", "Latitude", "Longitude"]]
         scores_df = self.specialty_df[["Etablissement", "Catégorie","Note / 20"]]
         self.df_with_cities = pd.merge(institution_coordinates_df, scores_df, on="Etablissement", how="inner")
-        self.df_with_cities.rename(columns={"Ville": "City"}, inplace=True)
+        # Ensure city column is always 'Ville' for downstream logic
+        # Do not rename 'Ville' to 'City'; keep 'Ville' for all downstream logic
         logger.debug(f"Merged DataFrame shape (with cities): {self.df_with_cities.shape}")
         return self.df_with_cities
     
@@ -557,6 +558,7 @@ class DataProcessor:
             pd.DataFrame or None: DataFrame with distance information, or None if geolocation fails.
         """
         logger.info(f"Calculating distances from query city: {self.city}")
+        # Ensure 'Ville' column exists (no need to rename 'City')
         # Skip geolocation if no city is detected
         if not self.city_detected or not self.city:
             logger.info("No city detected, skipping geolocation and returning DataFrame without distances.")
@@ -579,13 +581,13 @@ class DataProcessor:
 
         # Drop rows with missing city info
         initial_count = len(self.df_with_cities)
-        self.df_with_cities = self.df_with_cities.dropna(subset=['City'])
+        self.df_with_cities = self.df_with_cities.dropna(subset=['Ville'])
         dropped_count = initial_count - len(self.df_with_cities)
         if dropped_count > 0:
             logger.debug(f"Dropped {dropped_count} rows with missing city information")
 
-        # Calculate distance for each hospital/city        
-        self.df_with_cities['Distance'] = self.df_with_cities['City'].apply(
+        # Calculate distance for each hospital/village        
+        self.df_with_cities['Distance'] = self.df_with_cities['Ville'].apply(
             lambda city: distance_to_query(
                 query_coords,
                 city,
@@ -607,6 +609,44 @@ class DataProcessor:
         return self.df_with_distances
 
 
+    def select_hospitals(self, df: pd.DataFrame, query_city: str, number_institutions: int, query_coords: tuple, radii: list) -> tuple[pd.DataFrame, int]:
+        """
+        Select hospitals based on city first, then expand by distance if needed.
+        Returns the selected DataFrame and the radius used (0 if city-only filter succeeded).
+        """
+        logger.info(f"Selecting hospitals for city: {query_city} with number_institutions: {number_institutions}")
+        # Filter by city first
+        city_filtered = df[df['Ville'] == query_city]
+        # Always sort and limit by score, split by public/private for formatting
+        if len(city_filtered) >= number_institutions:
+            logger.info(f"Found {len(city_filtered)} hospitals in city '{query_city}', meeting the requirement of {number_institutions}.")
+            city_sorted = city_filtered.sort_values(by='Note / 20', ascending=False)
+            top_n = city_sorted.nlargest(number_institutions, 'Note / 20')
+            top_pub = top_n[top_n['Catégorie'] == 'Public']
+            top_priv = top_n[top_n['Catégorie'] == 'Privé']
+            combined = pd.concat([top_pub, top_priv]).drop_duplicates()
+            return combined, 0
+
+        # If not enough, compute distances to query city
+        if 'Distance' not in df.columns:
+            logger.info("Computing distances for hospitals as not enough found in city")
+            df['Distance'] = df['Ville'].apply(
+                lambda c: distance_to_query(query_coords, c, df, self.geolocation_api_error)
+            )
+
+        # Split by institution type
+        public_df = df[df['Catégorie'] == 'Public'].nlargest(number_institutions, 'Note / 20')
+        private_df = df[df['Catégorie'] == 'Privé'].nlargest(number_institutions, 'Note / 20')
+
+        # Use multi-radius search
+        filtered_public_df, filtered_private_df, used_radius = multi_radius_search(
+            public_df, private_df, number_institutions, city_not_specified=False, radii=radii
+        )
+
+        # Combine results and return
+        combined = pd.concat([filtered_public_df, filtered_private_df]).drop_duplicates()
+        logger.info(f"Selected {len(combined)} hospitals using radius: {used_radius} km")
+        return combined, used_radius
     
 
     def create_csv(self, result_data: dict):
