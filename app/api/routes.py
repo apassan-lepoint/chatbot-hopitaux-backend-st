@@ -13,33 +13,31 @@ from app.utility.formatting_helpers import format_links
 from app.features.conversation.conversation_analyst import ConversationAnalyst
 from app.utility.logging import get_logger
 from app.config.features_config import WARNING_MESSAGES, INTERNAL_SERVER_ERROR_MSG
+from app.services.conversation_service import ConversationService
+from app.config.features_config import ENABLE_MULTI_TURN
 
 # Initialize logger for this module
 logger = get_logger(__name__)
 
+
 # Initialize the API router instance to define and group related endpoints
 router = APIRouter()
 
-# Initialize services once at module level for performance optimization
-logger.info("Initializing core services...")
+# Services
+conversation_service = ConversationService()
 pipeline = PipelineOrchestrator()
-llm_handler_service = LLMHandler()
-conv_manager = ConversationAnalyst(llm_handler_service.model)
-logger.info("Core services initialized successfully")
 
 
+# === Single-turn endpoint ===
 @router.post("/ask", response_model=AskResponse)
-def ask_question(query: UserQuery) -> AskResponse:
+def ask_question(query: UserQuery):
     """
-    Handles POST requests to the /ask endpoint for single-turn conversations.
-    Validates the user query, performs sanity checks, and generates a response
-    using the pipeline orchestrator.  
+    Handles single-turn queries using the pipeline only.
     """
-    logger.info(f"Received /ask request with prompt length: {len(query.prompt)} chars")
     try:
         result, links = pipeline.generate_response(prompt=query.prompt)
-        logger.info(f"Response generated for /ask endpoint - Links found: {len(links) if links else 0}")
-        # If multiple specialties, always return ambiguous=True and multiple_specialties for client enforcement
+
+        # Handle multiple specialties if returned by the pipeline
         if isinstance(result, dict) and "multiple_specialties" in result:
             return AskResponse(
                 result=result["message"],
@@ -47,93 +45,42 @@ def ask_question(query: UserQuery) -> AskResponse:
                 ambiguous=True,
                 multiple_specialties=result["multiple_specialties"]
             )
+
         return AskResponse(result=result, links=links)
+
     except Exception as e:
-        logger.error(f"Error processing /ask request - Prompt: '{query.prompt[:100]}...', Error: {str(e)}")
-        if not isinstance(e, HTTPException):
-            raise HTTPException(status_code=500, detail="Internal server error")
-        raise
+        logger.error(f"Error processing /ask request: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
+# === Multi-turn endpoint ===
 @router.post("/chat", response_model=ChatResponse)
-def chat(request: ChatRequest) -> ChatResponse:
+def chat(request: ChatRequest):
     """
-    Multi-turn chat endpoint using 6-case approach.
-    Determines how to handle the user's subsequent message based on 4 checks:
-    1. Is it on-topic?
-    2. Is it a continuation of conversation?
-    3. Does it need search in hospital data?
-    4. How should queries be merged?
-    
-    Returns:
-        ChatResponse: Contains:
-        - response: The chatbot's response
-        - conversation: Updated conversation history
-        - ambiguous: Flag indicating if user intent was unclear
+    Handles multi-turn conversations. Routes to ConversationService if multi-turn
+    is enabled in config, otherwise falls back to single-turn logic.
     """
-    logger.info(f"Received /chat request - Prompt length: {len(request.prompt)} chars, "
-                f"Conversation history: {len(request.conversation) if request.conversation else 0} turns")
     try:
-        # perform_sanity_checks(request.prompt, request.conversation, checks_to_run=CHECKS_TO_RUN_MULTI_TURN)  # Redundant, handled in pipeline
-        # logger.debug("Sanity checks completed for /chat request")
-        conv_history = request.conversation if request.conversation else []
-        # Use ConversationAnalyst for consolidated conversation logic
-        conv_results = conv_manager.run_all_conversation_checks(request.prompt, conv_history)
-        multi_turn_result = conv_results["multi_turn_result"]
-        # Determine case from multi_turn_result
-        case = multi_turn_result.get("case") if isinstance(multi_turn_result, dict) else None
-        # Fallback to previous logic if case is not set
-        if not case:
-            conv_history_str = "\n".join([f"Utilisateur: {q}\nAssistant: {r}" for q, r in conv_history])
-            analysis = llm_handler_service.analyze_subsequent_message(request.prompt, conv_history_str)
-            case = llm_handler_service.determine_case(analysis)
-        logger.info(f"Determined case: {case}, Analysis: {multi_turn_result}")
-        if case == "case1":
-            result = WARNING_MESSAGES["message_pertinence"]
-            updated_conversation = conv_history + [[request.prompt, result]]
-            return ChatResponse(response=result, conversation=updated_conversation, ambiguous=False)
-        elif case == "case2":
-            logger.debug("Processing Case 2: merge query and search")
-            conv_history_str = "\n".join([f"Utilisateur: {q}\nAssistant: {r}" for q, r in conv_history])
-            rewritten_query = llm_handler_service.rewrite_query_merge(request.prompt, conv_history_str)
-            result, links = pipeline.generate_response(prompt=rewritten_query)
-            result = format_links(result, links)
-            updated_conversation = conv_history + [[request.prompt, result]]
-            return ChatResponse(response=result, conversation=updated_conversation, ambiguous=False)
-        elif case == "case3":
-            logger.debug("Processing Case 3: add query and search")
-            conv_history_str = "\n".join([f"Utilisateur: {q}\nAssistant: {r}" for q, r in conv_history])
-            rewritten_query = llm_handler_service.rewrite_query_add(request.prompt, conv_history_str)
-            result, links = pipeline.generate_response(prompt=rewritten_query)
-            result = format_links(result, links)
-            updated_conversation = conv_history + [[request.prompt, result]]
-            return ChatResponse(response=result, conversation=updated_conversation, ambiguous=False)
-        elif case == "case4":
-            logger.debug("Processing Case 4: LLM continuation")
-            result = conv_results["continued_response"]
-            updated_conversation = conv_history + [[request.prompt, result]]
-            return ChatResponse(response=result, conversation=updated_conversation, ambiguous=False)
-        elif case == "case5":
-            logger.debug("Processing Case 5: new question with search")
-            result, links = pipeline.generate_response(prompt=request.prompt)
-            # If multiple specialties, always return ambiguous=True and multiple_specialties for client enforcement
-            if isinstance(result, dict) and "multiple_specialties" in result:
-                return {
-                    "response": result["message"],
-                    "conversation": conv_history + [[request.prompt, result["message"]]],
-                    "ambiguous": True,
-                    "multiple_specialties": result["multiple_specialties"]
-                }
-            result = format_links(result, links)
-            updated_conversation = conv_history + [[request.prompt, result]]
-            return ChatResponse(response=result, conversation=updated_conversation, ambiguous=False)
-        else:  # case6
-            logger.debug("Processing Case 6: LLM new question")
-            result = conv_results["continued_response"]
-            updated_conversation = conv_history + [[request.prompt, result]]
-            return ChatResponse(response=result, conversation=updated_conversation, ambiguous=False)
+        if ENABLE_MULTI_TURN:
+            logger.info("Multi-turn chat enabled")
+            return conversation_service.handle_chat(request)
+
+        # Fallback: treat as single-turn
+        result, links = pipeline.generate_response(prompt=request.prompt)
+        if isinstance(result, dict) and "multiple_specialties" in result:
+            return ChatResponse(
+                response=result["message"],
+                conversation=[[request.prompt, result["message"]]],
+                ambiguous=True,
+                multiple_specialties=result["multiple_specialties"]
+            )
+
+        return ChatResponse(
+            response=result,
+            conversation=[[request.prompt, result]],
+            ambiguous=False
+        )
+
     except Exception as e:
         logger.error(f"Error processing /chat request: {str(e)}")
-        if not isinstance(e, HTTPException):
-            raise HTTPException(status_code=500, detail=INTERNAL_SERVER_ERROR_MSG)
-        raise
+        raise HTTPException(status_code=500, detail="Internal server error")
