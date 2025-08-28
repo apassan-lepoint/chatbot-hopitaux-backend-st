@@ -1,6 +1,3 @@
-"""
-Service for orchestrating number_institutions detection and validation.
-"""
 from .number_institutions_detection import number_institutionsDetector
 from .number_institutions_validation import number_institutionsValidation
 from app.config.features_config import number_institutions_DEFAULT, number_institutions_MIN, number_institutions_MAX

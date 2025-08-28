@@ -1,3 +1,7 @@
+"""
+Dictionaries and lists for medical specialties and their variations.
+These are used for categorizing and matching user queries to relevant medical specialties."""
+
 # Dictionary mapping main specialties to their sub-specialties or procedures
 specialty_categories_dict = {
         "Maternités": ["Accouchements normaux", "Accouchements à risques"],

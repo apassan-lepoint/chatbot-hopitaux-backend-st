@@ -6,11 +6,6 @@ detecting off-topic questions, extracting city names, or continuing conversation
 
 The prompts use placeholders (e.g., {prompt}, {specialty_list}) to be filled dynamically
 at runtime.
-
-Attributes:
-    PROMPT_INSTRUCTIONS (dict[str, str]): 
-        Keys: Names of the prompts.
-        Values: Template strings for each prompt.
 """
 
 from typing import Dict

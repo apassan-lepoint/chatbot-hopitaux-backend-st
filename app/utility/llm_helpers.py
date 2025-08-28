@@ -1,3 +1,6 @@
+"""
+Utility functions for invoking LLMs with consistent error handling, logging, and token usage/cost tracking.
+"""
 from langchain.schema import HumanMessage
 
 from app.utility.logging import get_logger

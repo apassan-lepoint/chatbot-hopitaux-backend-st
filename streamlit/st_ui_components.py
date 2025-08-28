@@ -1,7 +1,3 @@
-"""
-This module defines the UI components for the Streamlit application.
-"""
-
 import streamlit as st
 from app.utility.logging import get_logger
 from st_utility import create_example_button

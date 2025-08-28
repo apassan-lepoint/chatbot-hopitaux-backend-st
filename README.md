@@ -14,7 +14,6 @@ BackendChatbotHopitaux/
 ├── main.py
 ├── app/
 │   ├── api/
-│   │   ├── dependencies.py 
 │   │   └── routes.py
 │   ├── config/
 │   │   ├── features_config.py
@@ -73,8 +72,6 @@ BackendChatbotHopitaux/
 ├── Streamlit/
 │   ├── st_app.py
 │   ├── st_config.py
-│   ├── st_message_handler.py
-│   ├── st_specialty_handler.py
 │   ├── st_ui_components.py
 │   └── st_utility.py
 ├── data/

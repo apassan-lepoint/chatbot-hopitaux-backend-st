@@ -1,5 +1,5 @@
 """
-This file contains configuration settings for the chatbot application.
+This file contains necessary file paths for various modules in the repository.
 """
 
 import os
