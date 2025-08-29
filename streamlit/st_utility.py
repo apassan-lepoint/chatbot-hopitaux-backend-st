@@ -30,10 +30,6 @@ initialize_session_state()
 
 
 def handle_specialty_selection(prompt: str, key_suffix: str = "") -> str:
-    """
-    Displays a radio button for the user to select a specialty from a list (provided by backend).
-    Updates session state with the selected specialty.
-    """
     multiple_specialties = get_session_state_value(SESSION_STATE_KEYS["multiple_specialties"], None)
     logger.info(f"[handle_specialty_selection] multiple_specialties in session: {multiple_specialties}")
     # Defensive: ensure multiple_specialties is a list
@@ -41,11 +37,12 @@ def handle_specialty_selection(prompt: str, key_suffix: str = "") -> str:
         if not isinstance(multiple_specialties, list):
             # Try to convert to list if it's a string (comma separated)
             if isinstance(multiple_specialties, str):
+                # Remove prefix if present
+                if multiple_specialties.startswith("multiple matches:"):
+                    multiple_specialties = multiple_specialties.replace("multiple matches:", "")
                 multiple_specialties = [s.strip() for s in multiple_specialties.split(",") if s.strip()]
-                st.session_state.multiple_specialties = multiple_specialties
             else:
-                st.error("Erreur: la liste des spécialités n'est pas au format attendu.")
-                return None
+                multiple_specialties = []
         if not multiple_specialties:
             st.error("Aucune spécialité à sélectionner.")
             return None
@@ -62,106 +59,59 @@ def handle_specialty_selection(prompt: str, key_suffix: str = "") -> str:
         confirmed = st.button("Valider", key=confirm_key)
         if confirmed:
             if selected_specialty:
-                st.session_state.selected_specialty = selected_specialty
-                st.session_state.specialty_context = {
-                    'original_query': prompt,
-                    'selected_specialty': selected_specialty,
-                    'timestamp': datetime.now().isoformat()
-                }
-                logger.info(f"[handle_specialty_selection] SAVED selection: {selected_specialty}")
-                logger.info(f"[handle_specialty_selection] Clearing multiple_specialties after selection: {selected_specialty}")
-                st.session_state.multiple_specialties = None
+                st.session_state[SESSION_STATE_KEYS["selected_specialty"]] = selected_specialty
+                st.session_state[SESSION_STATE_KEYS["multiple_specialties"]] = None
                 st.rerun()
-                return selected_specialty
             else:
-                st.warning("Veuillez sélectionner une spécialité avant de valider.")
+                st.error(UI_INVALID_SELECTION_ERROR)
         st.stop()
     return None
 
 def process_message(prompt: str) -> None:
-    """
-    This function sends the user's prompt to the backend, optionally including a selected specialty.
-    If multiple specialties are detected, it blocks further processing and prompts the user to select one.
-    The selected specialty is stored in session state and used for subsequent queries.
-    The function also handles backend responses that may again require specialty selection, and appends
-    the conversation turn to the session history.
-    """
+    import unidecode
     logger.info(f"[process_message] multiple_specialties in session: {st.session_state.get('multiple_specialties')}")
     # Always preserve the prompt in session state
     if prompt:
         st.session_state.prompt = prompt
     # If multiple_specialties is present, always show the specialty selection UI and block ALL further processing until a valid selection
     if st.session_state.get("multiple_specialties") is not None:
-        selected_specialty = handle_specialty_selection(st.session_state.prompt)
-        # Block everything else until user selects
-        if not selected_specialty:
-            st.info("Veuillez sélectionner une spécialité avant de poursuivre.")
-            logger.info("[process_message] Blocking further processing due to multiple_specialties.")
-            st.stop()  # Ensures UI is rendered and blocks further code execution
-        # If a specialty was selected, rerun will happen, so return here
-        logger.info(f"[process_message] User selected specialty: {selected_specialty}")
+        handle_specialty_selection(st.session_state.prompt)
+        st.info("Veuillez sélectionner une spécialité avant de poursuivre.")
+        logger.info("[process_message] Blocking further processing due to multiple_specialties.")
+        st.stop()
         return
     # After rerun, if multiple_specialties is now None and selected_specialty is set, generate response and display conversation
-    if st.session_state.get("multiple_specialties") is None and st.session_state.get("selected_specialty"):
-        prev_specialty = st.session_state.get("selected_specialty")
-        normalized_specialty = unidecode.unidecode(str(prev_specialty)).strip().lower()
-        logger.info(f"[process_message] Generating response after specialty selection: {prev_specialty} (normalized: {normalized_specialty})")
-        st.session_state["multiple_specialties"] = None
-        result, links = PipelineOrchestrator().generate_response(prompt=st.session_state.prompt, detected_specialty=normalized_specialty)
-        if isinstance(result, dict) and "multiple_specialties" in result:
-            logger.info(f"[process_message] Backend returned multiple_specialties again: {result['multiple_specialties']}")
-            st.warning("Le backend n'a pas pu traiter la spécialité sélectionnée. Veuillez reformuler votre question ou choisir une spécialité différente.")
-            return
-        formatted_result = format_links(result, links)
-        result = execute_with_spinner(SPINNER_MESSAGES["loading"], lambda: formatted_result)
-        append_to_conversation(st.session_state.prompt, result)
-        display_conversation_history()
-        return
-    # If specialty was just selected and multiple_specialties is now None, generate response
     prev_specialty = st.session_state.get("selected_specialty")
     if prev_specialty and st.session_state.get("multiple_specialties") is None:
         normalized_specialty = unidecode.unidecode(str(prev_specialty)).strip().lower()
-        logger.info(f"[process_message] Using previous selected_specialty: {prev_specialty} (normalized: {normalized_specialty})")
-        st.session_state["multiple_specialties"] = None
+        logger.info(f"[process_message] Generating response after specialty selection: {prev_specialty} (normalized: {normalized_specialty})")
         result, links = PipelineOrchestrator().generate_response(prompt=st.session_state.prompt, detected_specialty=normalized_specialty)
         if isinstance(result, dict) and "multiple_specialties" in result:
-            logger.info(f"[process_message] Backend returned multiple_specialties again: {result['multiple_specialties']}")
+            # Backend returned multiple_specialties again, force selection
+            st.session_state[SESSION_STATE_KEYS["multiple_specialties"]] = result["multiple_specialties"]
+            st.session_state[SESSION_STATE_KEYS["selected_specialty"]] = None
             st.warning("Le backend n'a pas pu traiter la spécialité sélectionnée. Veuillez reformuler votre question ou choisir une spécialité différente.")
+            handle_specialty_selection(st.session_state.prompt)
+            st.stop()
             return
         formatted_result = format_links(result, links)
         result = execute_with_spinner(SPINNER_MESSAGES["loading"], lambda: formatted_result)
         append_to_conversation(st.session_state.prompt, result)
         display_conversation_history()
-        return
-    prev_specialty = st.session_state.get("selected_specialty")
-    if prev_specialty:
-        logger.info(f"[process_message] Using previous selected_specialty: {prev_specialty}")
-        result, links = PipelineOrchestrator().generate_response(prompt=st.session_state.prompt, detected_specialty=prev_specialty)
-        if isinstance(result, dict) and "multiple_specialties" in result:
-            logger.info(f"[process_message] Backend returned multiple_specialties again: {result['multiple_specialties']}")
-            st.session_state["multiple_specialties"] = result["multiple_specialties"]
-            st.info(result["message"])
-            st.rerun()  # Force rerun so specialty selection UI is rendered immediately
-            return
-        formatted_result = format_links(result, links)
-        result = execute_with_spinner(SPINNER_MESSAGES["loading"], lambda: formatted_result)
-        append_to_conversation(st.session_state.prompt, result)
         return
     try:
         result, links = PipelineOrchestrator().generate_response(prompt=st.session_state.prompt)
         if isinstance(result, dict) and "multiple_specialties" in result:
-            logger.info(f"[process_message] Backend returned multiple_specialties: {result['multiple_specialties']}")
-            st.session_state["multiple_specialties"] = result["multiple_specialties"]
-            st.info(result["message"])
-            st.rerun()  # Force rerun so specialty selection UI is rendered immediately
+            st.session_state[SESSION_STATE_KEYS["multiple_specialties"]] = result["multiple_specialties"]
+            handle_specialty_selection(st.session_state.prompt)
+            st.stop()
             return
         formatted_result = format_links(result, links)
         result = execute_with_spinner(SPINNER_MESSAGES["loading"], lambda: formatted_result)
         append_to_conversation(st.session_state.prompt, result)
     except Exception as e:
         logger.error(f"Error processing message: {e}")
-        # Normalize specialty string (strip, lower, remove accents)
-        normalized_specialty = unidecode.unidecode(str(prev_specialty)).strip().lower()
+        normalized_specialty = unidecode.unidecode(str(prev_specialty)).strip().lower() if prev_specialty else ""
         logger.info(f"[process_message] Sending specialty to backend: '{prev_specialty}' (normalized: '{normalized_specialty}')")
         st.error(ERROR_MESSAGES["general_processing"])
 
