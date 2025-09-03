@@ -12,7 +12,7 @@ from app.pydantic_models.response_model import AskResponse, ChatResponse
 from app.utility.formatting_helpers import format_links
 from app.features.conversation.conversation_analyst import ConversationAnalyst
 from app.utility.logging import get_logger
-from app.config.features_config import WARNING_MESSAGES, INTERNAL_SERVER_ERROR_MSG
+from app.config.features_config import ERROR_MESSAGES, INTERNAL_SERVER_ERROR_MSG
 from app.services.conversation_service import ConversationService
 from app.config.features_config import ENABLE_MULTI_TURN
 

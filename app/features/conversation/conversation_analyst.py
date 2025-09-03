@@ -2,7 +2,7 @@ from app.features.conversation.llm_responder import LLMResponder
 from app.features.conversation.multi_turn import MultiTurn
 from app.features.sanity_checks.sanity_checks_analyst import SanityChecksAnalyst
 from app.utility.logging import get_logger
-from app.config.features_config import ENABLE_MULTI_TURN, WARNING_MESSAGES, CHECKS_TO_RUN_MULTI_TURN
+from app.config.features_config import ENABLE_MULTI_TURN, ERROR_MESSAGES, CHECKS_TO_RUN_MULTI_TURN
 
 logger = get_logger(__name__)
 
@@ -41,7 +41,7 @@ class ConversationAnalyst:
                 "modification_result": None,
                 "multi_turn_result": None,
                 "sanity_check_failed": True,
-                "warning_message": WARNING_MESSAGES.get(failed, "Votre message n'est pas accepté.")
+                "warning_message": ERROR_MESSAGES.get(failed, "Votre message n'est pas accepté.")
             }
         # Run Conversation methods
         continued_response = self.conversation.continue_conversation(prompt, conv_history)

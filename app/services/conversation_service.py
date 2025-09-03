@@ -5,7 +5,7 @@ from app.features.conversation.conversation_analyst import ConversationAnalyst
 from app.pydantic_models.query_model import UserQuery, ChatRequest
 from app.pydantic_models.response_model import AskResponse, ChatResponse
 from app.utility.logging import get_logger
-from app.config.features_config import WARNING_MESSAGES, INTERNAL_SERVER_ERROR_MSG
+from app.config.features_config import ERROR_MESSAGES, INTERNAL_SERVER_ERROR_MSG
 from app.utility.formatting_helpers import format_links
 
 
@@ -51,7 +51,7 @@ class ConversationService:
             self.logger.info(f"Determined case: {case}, Analysis: {multi_turn_result}")
 
             if case == "case1":
-                result = WARNING_MESSAGES["message_pertinence"]
+                result = ERROR_MESSAGES["message_pertinence"]
                 return self._build_response(request.prompt, result, conv_history)
 
             elif case == "case2":
@@ -81,7 +81,7 @@ class ConversationService:
         except Exception as e:
             self.logger.error(f"Error processing /chat request: {str(e)}")
             if not isinstance(e, HTTPException):
-                raise HTTPException(status_code=500, detail=INTERNAL_SERVER_ERROR_MSG)
+                raise HTTPException(status_code=500, detail=ERROR_MESSAGES['internal_server_error'])
             raise
 
     

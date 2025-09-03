@@ -2,7 +2,7 @@ from typing import Dict, Any
 from app.utility.logging import get_logger
 from app.utility.wrappers import prompt_formatting
 from app.utility.llm_helpers import invoke_llm_and_parse_boolean
-from app.config.features_config import WARNING_MESSAGES
+from app.config.features_config import ERROR_MESSAGES
 
 logger = get_logger(__name__)
 
@@ -26,7 +26,7 @@ class MultiTurn:
         logger.info("Initializing MultiTurn")
         self.model = model
         self.case_responses = {
-            "case1": WARNING_MESSAGES["message_pertinence"],
+            "case1": ERROR_MESSAGES["message_pertinence"],
         }
     
 

@@ -21,29 +21,29 @@ INSTITUTION_TYPE_URL_MAPPING = {
 }
 METHODOLOGY_WEB_LINK = "https://www.lepoint.fr/sante/la-methodologie-du-palmares-des-hopitaux-et-cliniques-du-point-2024--04-12-2024-2577146_40.php"
 
-# User messages for different scenarios
-GENERAL_ERROR_MSG = "Je ne peux pas traiter votre demande. Merci de reformuler une question relative aux classements des hôpitaux."
-INTERNAL_SERVER_ERROR_MSG = "Internal server error"
-MULTIPLE_SPECIALTIES_MSG = "Plusieurs spécialités ont été détectées dans votre question. Merci de sélectionner une spécialité pour continuer."
+# Non-error user messages
+NON_ERROR_MESSAGES = {
+    "multiple_specialties": "Plusieurs spécialités ont été détectées dans votre question. Merci de sélectionner une spécialité pour continuer.",
+    "no_public_institution": "Nous n'avons pas d'établissement public pour cette pathologie, mais un classement des établissements privés existe.",
+    "no_private_institution": "Nous n'avons pas d'établissement privé pour cette pathologie, mais un classement des établissements publics existe.",
+    "no_results_found_in_location": "Aucun résultat trouvé dans un rayon de 100 km autour de votre localisation."
+}
 
-WARNING_MESSAGES = {
+
+# Error user messages
+ERROR_MESSAGES = {
     "message_length": "Votre message est trop long. Merci de le raccourcir.",
     "message_pertinence":"Cet assistant a pour but de fournir des informations sur les classements des établissements de soins de cette année. Merci de reformuler une question relative aux classements des hôpitaux.",
     "non_french_cities": "Je ne peux pas traiter les demandes concernant des villes étrangères. Merci de reformuler votre question en mentionnant une ville française.",
     "conversation_limit": "La conversation est trop longue. Merci de commencer une nouvelle conversation.",
     "methodology_questions": "Les questions sur la méthodologie du classement sont hors périmètre du chatbot. Vous pouvez consulter la méthodologie complète <a href=\"{METHODOLOGY_WEB_LINK}\" target=\"_blank\">ici</a>.",
     "ambiguous_city": "Je ne parviens pas à détecter votre localisation, merci de reformuler avec une autre ville.",
-    "no_private_institution": "Nous n'avons pas d'établissement privé pour cette pathologie, mais un classement des établissements publics existe.",
-    "no_public_institution": "Nous n'avons pas d'établissement public pour cette pathologie, mais un classement des établissements privés existe.",
-    "no_results_found_in_location": "Aucun résultat trouvé dans un rayon de 100 km autour de votre localisation."
+    "general_ranking_error": "Une erreur est survenue lors de la génération de votre réponse.",
+    "institution_not_found": "Le nom de l'établissement que vous avez indiqué n'a pas été évalué dans le classement des hôpitaux. Merci de reformuler votre question.",
+    "geopy_error": "Dû à une surutilisation de l'API de Geopy, le service de calcul des distances est indisponible pour le moment, merci de réessayer plus tard ou de recommencer avec une question sans localisation spécifique.",
+    "general_error": "Je ne peux pas traiter votre demande. Merci de reformuler une question relative aux classements des hôpitaux.",
+    "internal_server_error": "Internal server error."
 }
-
-# Error messages
-ERROR_GENERAL_RANKING_MSG = "Erreur: Exception lors de la génération du classement général."
-ERROR_INSTITUTION_RANKING_MSG = "Erreur: Exception lors de la récupération du classement de l'établissement."
-ERROR_GEOPY_MSG = "Dû à une surutilisation de l'API de Geopy, le service de calcul des distances est indisponible pour le moment, merci de réessayer plus tard ou de recommencer avec une question sans localisation spécifique."
-ERROR_DATA_UNAVAILABLE_MSG = "Erreur: Impossible de générer le classement car les données sont indisponibles."
-ERROR_IN_CREATING_TABLE_MSG = "Erreur: Exception lors de la génération du classement."
 
 
 # City related constants
