@@ -5,8 +5,8 @@ API_URL = "http://localhost:8000"
 # Test /ask endpoint
 def test_ask():
     payload = {
-        "prompt": "Quels sont les meilleurs hôpitaux à Paris pour la cancer de la vessie ?",
-        #"prompt": "Quels sont les 10 meilleurs hôpitaux publics à Bordeaux pour les maladies cardiaques?",
+        # "prompt": "Quels sont les meilleurs hôpitaux à Paris pour la cancer de la vessie ?",
+        "prompt": "Quels sont les 10 meilleurs hôpitaux publics à Bordeaux pour les maladies cardiaques?",
     }
     response = requests.post(f"{API_URL}/ask", json=payload)
     print("/ask response:", response.status_code, response.json())

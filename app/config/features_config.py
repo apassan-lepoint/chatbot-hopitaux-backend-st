@@ -23,16 +23,7 @@ METHODOLOGY_WEB_LINK = "https://www.lepoint.fr/sante/la-methodologie-du-palmares
 
 # User messages for different scenarios
 GENERAL_ERROR_MSG = "Je ne peux pas traiter votre demande. Merci de reformuler une question relative aux classements des hôpitaux."
-# OFF_TOPIC_RESPONSE = "Je n'ai pas bien saisi la nature de votre demande. Merci de reformuler une question relative aux classements des hôpitaux."
 INTERNAL_SERVER_ERROR_MSG = "Internal server error"
-# AMBIGUOUS_RESPONSE = "Je ne suis pas sûr si votre message est une nouvelle question ou une modification de la précédente. Veuillez préciser."
-# MESSAGE_LIMIT_REACHED_RESPONSE = "La limite de messages a été atteinte. La conversation va redémarrer."
-# MESSAGE_LENGTH_RESPONSE = "Votre message est trop long. Merci de reformuler."
-# FOREIGN_CITY_CHECK_EXCEPTION_MSG = "Je ne peux pas répondre aux questions concernant les hôpitaux situés hors du territoire français, merci de consulter la page du palmarès. [🔗 Page du classements par pathologie](https://www.lepoint.fr/hopitaux/classements)"
-# AMBIGUOUS_CITY_CHECK_EXCEPTION_MSG = "Je ne parviens pas à détecter votre localisation, merci de reformuler avec une autre ville."
-# NO_PRIVATE_INSTITUTION_MSG = "Nous n'avons pas d'établissement privé pour cette pathologie, mais un classement des établissements publics existe."
-# NO_PUBLIC_INSTITUTION_MSG = "Nous n'avons pas d'établissement public pour cette pathologie, mais un classement des établissements privés existe."
-# NO_RESULTS_FOUND_IN_LOCATION_MSG = "Aucun résultat trouvé dans un rayon de 100 km autour de votre localisation."
 MULTIPLE_SPECIALTIES_MSG = "Plusieurs spécialités ont été détectées dans votre question. Merci de sélectionner une spécialité pour continuer."
 
 WARNING_MESSAGES = {
@@ -71,7 +62,7 @@ STATUS_DESCRIPTIONS_DICT = {
 
 
 # Constants for checks
-MAX_MESSAGES = 0 # Keep as 0 for single=turn conversation
+MAX_MESSAGES = 0 # Keep as 0 for single-turn conversation
 MAX_LENGTH = 200
 ENABLE_MULTI_TURN = False  # Set to False to disable multiturn logic
 
