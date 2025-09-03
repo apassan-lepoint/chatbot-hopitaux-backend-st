@@ -481,12 +481,13 @@ class PipelineOrchestrator:
 
         return costs_token_usage_dict
 
-    def generate_response(self, prompt: str, max_radius_km: int = 5, conversation=None, conv_history=None) -> str:
+    def generate_response(self, prompt: str, max_radius_km: int = 5, conversation=None, conv_history=None, selected_specialty=None) -> str:
         """
         Main entry point: processes the user question and returns a formatted answer with ranking and links.
         Args:       
             prompt (str): The user query prompt.    
             max_radius_km (int, optional): The maximum radius in kilometers to filter results.
+            selected_specialty (str, optional): The specialty selected by the user after multiple matches.
         Returns:
             str: The formatted response string with the hospital rankings and links.    
         """
@@ -568,14 +569,23 @@ class PipelineOrchestrator:
             return error_msg, None
         
 
-        # Always detect specialty via query analysis module
-        detections = self.extract_query_parameters(prompt, None, conv_history)
+        # Specialty selection logic
+        if selected_specialty:
+            # User selected a specialty, use it directly and skip detection
+            logger.info(f"User selected specialty: {selected_specialty}, using for ranking.")
+            self.specialty = selected_specialty
+            self.data_processor.specialty = selected_specialty
+            # Run detection for other parameters only
+            detections = self.extract_query_parameters(prompt, selected_specialty, conv_history)
+        else:
+            # Always detect specialty via query analysis module
+            detections = self.extract_query_parameters(prompt, None, conv_history)
         logger.info(f"Detected variables: specialty={self.specialty}, city={self.city}, institution_type={self.institution_type}, institution_name={self.institution_name}, number_institutions={self.number_institutions}")
         logger.debug(f"[CITY DETECTION] Detected city: '{self.city}', city_detected: {self.city_detected}, DataProcessor.city: '{self.data_processor.city}', DataProcessor.city_detected: {self.data_processor.city_detected}")
 
         specialty_list = []
-        # Check for multiple specialties in detections
-        if detections:
+        # Check for multiple specialties in detections (only if not selected_specialty)
+        if not selected_specialty and detections:
             # Case 1: explicit multiple_specialties list
             if "multiple_specialties" in detections and detections["multiple_specialties"]:
                 specialty_list = detections["multiple_specialties"]
@@ -607,7 +617,7 @@ class PipelineOrchestrator:
         # Build DataFrame with ranking and distances
         logger.debug("Calling build_ranking_dataframe_with_distances")
         try:
-            df = self.build_ranking_dataframe_with_distances(prompt, relevant_file, None)
+            df = self.build_ranking_dataframe_with_distances(prompt, relevant_file, self.specialty)
             logger.debug(f"build_ranking_dataframe_with_distances returned DataFrame: {type(df)}")
         except Exception as e:
             logger.exception(f"Exception in build_ranking_dataframe_with_distances: {e}")
