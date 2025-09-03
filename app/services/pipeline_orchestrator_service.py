@@ -49,7 +49,7 @@ class PipelineOrchestrator:
             Helper for institution ranking response.
         get_filtered_and_sorted_df(df: pd.DataFrame, max_radius_km: int, number_institutions: int, prompt: str) -> str:
             Filters and sorts the ranking DataFrame by distance and score, and formats the response.
-        generate_response(prompt: str, max_radius_km: int = 5, detected_specialty: str=None) -> str:
+        generate_response(prompt: str, max_radius_km: int = 5, conversation=None, conv_history=None) -> str:
             Main entry point: processes the user question and returns a formatted answer with ranking and links.    
     """
     def __init__(self):
@@ -481,25 +481,18 @@ class PipelineOrchestrator:
 
         return costs_token_usage_dict
 
-    def generate_response(self, prompt: str, max_radius_km: int = 5, detected_specialty: str=None, conversation=None, conv_history=None) -> str:
+    def generate_response(self, prompt: str, max_radius_km: int = 5, conversation=None, conv_history=None) -> str:
         """
         Main entry point: processes the user question and returns a formatted answer with ranking and links.
         Args:       
             prompt (str): The user query prompt.    
             max_radius_km (int, optional): The maximum radius in kilometers to filter results.
-            detected_specialty (str, optional): The detected specialty from the user query.         
         Returns:
             str: The formatted response string with the hospital rankings and links.    
         """
         logger.info(f"Starting pipeline processing - prompt: {prompt}")
         # Reset attributes for new query
         self.reset_attributes()
-        self.specialty = detected_specialty
-        # Defensive: ensure specialty is never empty or None
-        if not detected_specialty or not str(detected_specialty).strip():
-            detected_specialty = "no specialty match"
-        # Set specialty in data processor for downstream use
-        self.data_processor.specialty = detected_specialty if self.specialty is not None else None
         relevant_file = self.ranking_file_path
         # Run sanity checks before any further processing
         if conversation is None:
@@ -575,8 +568,8 @@ class PipelineOrchestrator:
             return error_msg, None
         
 
-        # Robust specialty selection blocking logic
-        detections = self.extract_query_parameters(prompt, detected_specialty, conv_history)
+        # Always detect specialty via query analysis module
+        detections = self.extract_query_parameters(prompt, None, conv_history)
         logger.info(f"Detected variables: specialty={self.specialty}, city={self.city}, institution_type={self.institution_type}, institution_name={self.institution_name}, number_institutions={self.number_institutions}")
         logger.debug(f"[CITY DETECTION] Detected city: '{self.city}', city_detected: {self.city_detected}, DataProcessor.city: '{self.data_processor.city}', DataProcessor.city_detected: {self.data_processor.city_detected}")
 
@@ -593,19 +586,11 @@ class PipelineOrchestrator:
             elif "specialty" in detections and isinstance(detections["specialty"], str):
                 specialty_str = detections["specialty"].lower().replace(" ","")
                 if specialty_str.startswith("multiplematches:"):
-                    # Parse specialties from string (robust split, allow for extra spaces after colon)
                     matches_str = detections["specialty"][detections["specialty"].find(":")+1:].strip()
-                    # If matches_str contains commas, split; else, treat as single specialty
                     if "," in matches_str:
                         specialty_list = [s.strip() for s in matches_str.split(",") if s.strip()]
                     else:
                         specialty_list = [matches_str] if matches_str else []
-
-        # Only skip blocking if detected_specialty is a single, confirmed specialty (not ambiguous, not a list, not a multiple matches string)
-        if detected_specialty and isinstance(detected_specialty, str) \
-            and not detected_specialty.lower().replace(" ","").startswith("multiplematches:") \
-            and not (isinstance(detections.get('specialty'), list) and len(detections.get('specialty', [])) > 1):
-            specialty_list = []
 
         # Always block if specialty_list has more than one item
         if specialty_list and len(specialty_list) > 1:
@@ -622,7 +607,7 @@ class PipelineOrchestrator:
         # Build DataFrame with ranking and distances
         logger.debug("Calling build_ranking_dataframe_with_distances")
         try:
-            df = self.build_ranking_dataframe_with_distances(prompt, relevant_file, detected_specialty)
+            df = self.build_ranking_dataframe_with_distances(prompt, relevant_file, None)
             logger.debug(f"build_ranking_dataframe_with_distances returned DataFrame: {type(df)}")
         except Exception as e:
             logger.exception(f"Exception in build_ranking_dataframe_with_distances: {e}")
