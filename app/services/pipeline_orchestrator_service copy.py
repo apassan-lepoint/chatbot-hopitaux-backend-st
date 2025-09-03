@@ -22,15 +22,15 @@ def generate_response(self, prompt: str, max_radius_km: int = 5,
     specialty_list = self._handle_specialty_detection(prompt, detected_specialty, conv_history)
     if specialty_list and len(specialty_list) > 1:
         logger.info("Multiple specialty matches detected")
-        formatted_response = MULTIPLE_SPECIALTIES_MSG + "\n- " + "\n- ".join(specialty_list)
+        formatted_response = NON_ERROR_MESSAGES['multiple_specialties'] + "\n- " + "\n- ".join(specialty_list)
         return {"message": formatted_response, "multiple_specialties": specialty_list}, None
 
     # ------------------- Build Ranking DataFrame ------------------- #
     df = self._build_ranking_df(prompt, self.ranking_file_path, detected_specialty)
     if df is None:
-        return ERROR_DATA_UNAVAILABLE_MSG, None
+        return ERROR_MESSAGES['general_ranking_error'], None
     if self.data_processor.geolocation_api_error:
-        return ERROR_GEOPY_MSG, None
+        return ERROR_MESSAGES['geopy_error'], None
 
     # ------------------- Handle Fallback for Unavailable Specialty ------------------- #
     fallback_response = self._handle_fallback_if_unavailable()
@@ -44,7 +44,7 @@ def generate_response(self, prompt: str, max_radius_km: int = 5,
             return res, self.data_processor.web_ranking_link
         except Exception as e:
             logger.exception(f"Exception in get_filtered_and_sorted_df: {e}")
-            return ERROR_INSTITUTION_RANKING_MSG, self.data_processor.web_ranking_link
+            return ERROR_MESSAGES['general_error'], self.data_processor.web_ranking_link
 
     # ------------------- City-specific Ranking ------------------- #
     if self.data_processor.city_detected and "Ville" in df.columns:
@@ -60,7 +60,7 @@ def _run_sanity_checks(self, prompt, conversation, conv_history):
         result = self.sanity_checks_analyst_results.run_checks(prompt, conversation, conv_history)
         self.sanity_checks_analyst_result = result
         if isinstance(result, dict) and not result.get("passed", True):
-            error_msg = result.get("error", GENERAL_ERROR_MSG)
+            error_msg = result.get("error", ERROR_MESSAGES['general_error'])
             self._log_result_to_csv(prompt, error_msg)
             return error_msg
         return None
@@ -107,10 +107,10 @@ def _handle_fallback_if_unavailable(self):
         filtered_df = fallback_df[fallback_df["Catégorie"] == fallback_type]
         if fallback_type == 'Public':
             res_str = format_response(filtered_df, None, self.number_institutions, not self.data_processor.city_detected)
-            message = self._format_response_with_specialty(WARNING_MESSAGES["no_private_institution"], self.number_institutions, None, self.city)
+            message = self._format_response_with_specialty(NON_ERROR_MESSAGES['no_private_institutions'], self.number_institutions, None, self.city)
         else:
             res_str = format_response(None, filtered_df, self.number_institutions, not self.data_processor.city_detected)
-            message = self._format_response_with_specialty(WARNING_MESSAGES["no_public_institution"], self.number_institutions, None, self.city)
+            message = self._format_response_with_specialty(NON_ERROR_MESSAGES['no_public_institutions'], self.number_institutions, None, self.city)
         return self._create_response_and_log(message, res_str, None, METHODOLOGY_WEB_LINK), self.data_processor.web_ranking_link
     except Exception as e:
         logger.exception(f"Exception in fallback handling: {e}")
@@ -121,7 +121,7 @@ def _handle_city_ranking(self, df, prompt, max_radius_km):
     query_coords = getattr(self.data_processor, 'get_city_coordinates', lambda x: None)(query_city)
     selected_df, used_radius = self.data_processor.select_hospitals(df, query_city, self.number_institutions, query_coords, SEARCH_RADIUS_KM)
     if selected_df is None or selected_df.empty:
-        return WARNING_MESSAGES["no_results_found_in_location"], self.data_processor.web_ranking_link
+        return NON_ERROR_MESSAGES['no_results_found_in_location'], self.data_processor.web_ranking_link
 
     public_df = selected_df[selected_df["Catégorie"] == "Public"]
     private_df = selected_df[selected_df["Catégorie"] == "Privé"]
@@ -149,4 +149,4 @@ def _handle_general_ranking(self, prompt):
         return self._create_response_and_log(message, res_str, prompt, METHODOLOGY_WEB_LINK), self.data_processor.web_ranking_link
     except Exception as e:
         logger.exception(f"Exception in general ranking response: {e}")
-        return ERROR_GENERAL_RANKING_MSG, self.data_processor.web_ranking_link
+        return ERROR_MESSAGES['general_ranking_error'], self.data_processor.web_ranking_link

@@ -12,7 +12,7 @@ from app.pydantic_models.response_model import AskResponse, ChatResponse
 from app.utility.formatting_helpers import format_links
 from app.features.conversation.conversation_analyst import ConversationAnalyst
 from app.utility.logging import get_logger
-from app.config.features_config import WARNING_MESSAGES, INTERNAL_SERVER_ERROR_MSG
+from app.config.features_config import ERROR_MESSAGES, INTERNAL_SERVER_ERROR_MSG
 from app.services.conversation_service import ConversationService
 from app.config.features_config import ENABLE_MULTI_TURN
 
@@ -35,7 +35,7 @@ def ask_question(query: UserQuery):
     Handles single-turn queries using the pipeline only.
     """
     try:
-        result, links = pipeline.generate_response(prompt=query.prompt)
+        result, links = pipeline.generate_response(prompt=query.prompt, selected_specialty=getattr(query, "selected_specialty", None))
 
         # Handle multiple specialties if returned by the pipeline
         if isinstance(result, dict) and "multiple_specialties" in result:
@@ -66,7 +66,7 @@ def chat(request: ChatRequest):
             return conversation_service.handle_chat(request)
 
         # Fallback: treat as single-turn
-        result, links = pipeline.generate_response(prompt=request.prompt)
+        result, links = pipeline.generate_response(prompt=request.prompt,selected_specialty=getattr(request, "selected_specialty", None))
         if isinstance(result, dict) and "multiple_specialties" in result:
             return ChatResponse(
                 response=result["message"],

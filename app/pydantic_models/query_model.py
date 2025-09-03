@@ -16,6 +16,7 @@ class UserQuery(BaseModel):
         prompt (str): The user's input or question for the chatbot.
     """
     prompt: str # Required field for the user's input
+    selected_specialty: str = None  # Optional field for user-selected specialty
 
 
 
@@ -30,3 +31,4 @@ class ChatRequest(BaseModel):
     """
     prompt: str
     conversation: List[List[str]]  # List of [user, assistant] pairs
+    selected_specialty: str = None  # Optional field for user-selected specialty

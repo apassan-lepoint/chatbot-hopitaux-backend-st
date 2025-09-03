@@ -1,5 +1,5 @@
 from app.utility.logging import get_logger
-from app.config.features_config import WARNING_MESSAGES
+from app.config.features_config import ERROR_MESSAGES
 
 logger = get_logger(__name__)
 
@@ -38,6 +38,6 @@ class CityValidator:
         city_result = self.detector.detect_city(user_input, conv_history)
         city_status_type = self.detector.get_city_status_type(city_result.get('status_code') if isinstance(city_result, dict) else city_result)
         if city_status_type == "foreign":
-            raise CityCheckException(WARNING_MESSAGES["non_french_cities"])
+            raise CityCheckException(ERROR_MESSAGES["non_french_cities"])
         if city_status_type == "ambiguous":
-            raise CityCheckException(WARNING_MESSAGES["ambiguous_city"])
+            raise CityCheckException(ERROR_MESSAGES["ambiguous_city"])

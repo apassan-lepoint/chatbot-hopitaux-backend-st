@@ -5,10 +5,9 @@ from uuid import uuid4
 from app.services.data_processing_service import DataProcessor
 from app.features.query_analysis.query_analyst import QueryAnalyst
 from app.config.file_paths_config import PATHS
-from app.config.features_config import (SEARCH_RADIUS_KM, ERROR_GENERAL_RANKING_MSG, ERROR_INSTITUTION_RANKING_MSG,ERROR_GEOPY_MSG, ERROR_DATA_UNAVAILABLE_MSG, ERROR_IN_CREATING_TABLE_MSG, WARNING_MESSAGES, METHODOLOGY_WEB_LINK, GENERAL_ERROR_MSG, MULTIPLE_SPECIALTIES_MSG)
+from app.config.features_config import (SEARCH_RADIUS_KM, NON_ERROR_MESSAGES, ERROR_MESSAGES, METHODOLOGY_WEB_LINK)
 from app.utility.logging import get_logger
 from app.utility.formatting_helpers import format_response
-from app.utility.distance_calc_helpers import multi_radius_search
 from app.features.sanity_checks.message_pertinence_check import MessagePertinenceCheckException
 from app.features.sanity_checks.message_length_check import MessageLengthCheckException
 from app.features.sanity_checks.conversation_limit_check import ConversationLimitCheckException
@@ -49,7 +48,7 @@ class PipelineOrchestrator:
             Helper for institution ranking response.
         get_filtered_and_sorted_df(df: pd.DataFrame, max_radius_km: int, number_institutions: int, prompt: str) -> str:
             Filters and sorts the ranking DataFrame by distance and score, and formats the response.
-        generate_response(prompt: str, max_radius_km: int = 5, detected_specialty: str=None) -> str:
+        generate_response(prompt: str, max_radius_km: int = 5, conversation=None, conv_history=None) -> str:
             Main entry point: processes the user question and returns a formatted answer with ranking and links.    
     """
     def __init__(self):
@@ -481,25 +480,19 @@ class PipelineOrchestrator:
 
         return costs_token_usage_dict
 
-    def generate_response(self, prompt: str, max_radius_km: int = 5, detected_specialty: str=None, conversation=None, conv_history=None) -> str:
+    def generate_response(self, prompt: str, max_radius_km: int = 5, conversation=None, conv_history=None, selected_specialty=None) -> str:
         """
         Main entry point: processes the user question and returns a formatted answer with ranking and links.
         Args:       
             prompt (str): The user query prompt.    
             max_radius_km (int, optional): The maximum radius in kilometers to filter results.
-            detected_specialty (str, optional): The detected specialty from the user query.         
+            selected_specialty (str, optional): The specialty selected by the user after multiple matches.
         Returns:
             str: The formatted response string with the hospital rankings and links.    
         """
         logger.info(f"Starting pipeline processing - prompt: {prompt}")
         # Reset attributes for new query
         self.reset_attributes()
-        self.specialty = detected_specialty
-        # Defensive: ensure specialty is never empty or None
-        if not detected_specialty or not str(detected_specialty).strip():
-            detected_specialty = "no specialty match"
-        # Set specialty in data processor for downstream use
-        self.data_processor.specialty = detected_specialty if self.specialty is not None else None
         relevant_file = self.ranking_file_path
         # Run sanity checks before any further processing
         if conversation is None:
@@ -544,7 +537,7 @@ class PipelineOrchestrator:
             logger.info("Sanity check failed, returning error message and halting pipeline.")
             return error_msg, None
         if isinstance(sanity_result, dict) and not sanity_result.get("passed", True):
-            error_msg = sanity_result.get("error", GENERAL_ERROR_MSG)
+            error_msg = sanity_result.get("error", ERROR_MESSAGES['general_error'])
             aggregation = self.get_costs_and_tokens(getattr(self, 'sanity_checks_analyst_result', None), None, None)
             logger.info(f"Final cost/token usage aggregation: {aggregation}")
             logger.info(f"Detected variables: specialty={self.specialty}, city={self.city}, institution_type={self.institution_type}, institution_name={self.institution_name}, number_institutions={self.number_institutions}")
@@ -575,14 +568,23 @@ class PipelineOrchestrator:
             return error_msg, None
         
 
-        # Robust specialty selection blocking logic
-        detections = self.extract_query_parameters(prompt, detected_specialty, conv_history)
+        # Specialty selection logic
+        if selected_specialty:
+            # User selected a specialty, use it directly and skip detection
+            logger.info(f"User selected specialty: {selected_specialty}, using for ranking.")
+            self.specialty = selected_specialty
+            self.data_processor.specialty = selected_specialty
+            # Run detection for other parameters only
+            detections = self.extract_query_parameters(prompt, selected_specialty, conv_history)
+        else:
+            # Always detect specialty via query analysis module
+            detections = self.extract_query_parameters(prompt, None, conv_history)
         logger.info(f"Detected variables: specialty={self.specialty}, city={self.city}, institution_type={self.institution_type}, institution_name={self.institution_name}, number_institutions={self.number_institutions}")
         logger.debug(f"[CITY DETECTION] Detected city: '{self.city}', city_detected: {self.city_detected}, DataProcessor.city: '{self.data_processor.city}', DataProcessor.city_detected: {self.data_processor.city_detected}")
 
         specialty_list = []
-        # Check for multiple specialties in detections
-        if detections:
+        # Check for multiple specialties in detections (only if not selected_specialty)
+        if not selected_specialty and detections:
             # Case 1: explicit multiple_specialties list
             if "multiple_specialties" in detections and detections["multiple_specialties"]:
                 specialty_list = detections["multiple_specialties"]
@@ -593,25 +595,17 @@ class PipelineOrchestrator:
             elif "specialty" in detections and isinstance(detections["specialty"], str):
                 specialty_str = detections["specialty"].lower().replace(" ","")
                 if specialty_str.startswith("multiplematches:"):
-                    # Parse specialties from string (robust split, allow for extra spaces after colon)
                     matches_str = detections["specialty"][detections["specialty"].find(":")+1:].strip()
-                    # If matches_str contains commas, split; else, treat as single specialty
                     if "," in matches_str:
                         specialty_list = [s.strip() for s in matches_str.split(",") if s.strip()]
                     else:
                         specialty_list = [matches_str] if matches_str else []
 
-        # Only skip blocking if detected_specialty is a single, confirmed specialty (not ambiguous, not a list, not a multiple matches string)
-        if detected_specialty and isinstance(detected_specialty, str) \
-            and not detected_specialty.lower().replace(" ","").startswith("multiplematches:") \
-            and not (isinstance(detections.get('specialty'), list) and len(detections.get('specialty', [])) > 1):
-            specialty_list = []
-
         # Always block if specialty_list has more than one item
         if specialty_list and len(specialty_list) > 1:
             logger.info("Multiple specialty matches detected (robust), returning for UI selection")
             formatted_response = (
-                MULTIPLE_SPECIALTIES_MSG + "\n- " + "\n- ".join(specialty_list)
+                NON_ERROR_MESSAGES['multiple_specialties'] + "\n- " + "\n- ".join(specialty_list)
             )
             logger.debug(f"Returning multiple matches response: {formatted_response}")
             return {
@@ -622,24 +616,24 @@ class PipelineOrchestrator:
         # Build DataFrame with ranking and distances
         logger.debug("Calling build_ranking_dataframe_with_distances")
         try:
-            df = self.build_ranking_dataframe_with_distances(prompt, relevant_file, detected_specialty)
+            df = self.build_ranking_dataframe_with_distances(prompt, relevant_file, self.specialty)
             logger.debug(f"build_ranking_dataframe_with_distances returned DataFrame: {type(df)}")
         except Exception as e:
             logger.exception(f"Exception in build_ranking_dataframe_with_distances: {e}")
-            return ERROR_IN_CREATING_TABLE_MSG, None
+            return ERROR_MESSAGES['general_ranking_error'], None
 
         # Check if DataFrame is None and return error message if so
         logger.debug("Checking if DataFrame is None")
         if df is None:
             logger.error("build_ranking_dataframe_with_distances returned None. Aborting response generation.")
-            return ERROR_DATA_UNAVAILABLE_MSG, None
+            return ERROR_MESSAGES['general_ranking_error'], None
         logger.debug(f"Retrieved DataFrame shape: {df.shape if hasattr(df, 'shape') else 'N/A'}")
 
         # Handle geolocation API errors
         logger.debug("Checking for geolocation API errors")
         if self.data_processor.geolocation_api_error:
             logger.error("Geopy API error encountered, cannot calculate distances")
-            return ERROR_GEOPY_MSG, None
+            return ERROR_MESSAGES['geopy_error'], None
 
         # Get ranking link for UI
         logger.debug("Getting ranking link for UI")
@@ -672,10 +666,10 @@ class PipelineOrchestrator:
                             top_fallback = filtered_fallback.nlargest(self.number_institutions, "Note / 20")
                             if fallback_type == 'Public':
                                 res_str = format_response(top_fallback, None, self.number_institutions, not self.data_processor.city_detected)
-                                message = self._format_response_with_specialty(WARNING_MESSAGES["no_private_institution"] + "\nCependant, voici les établissements publics disponibles :", self.number_institutions, max_radius_km, self.city)
+                                message = self._format_response_with_specialty(NON_ERROR_MESSAGES['no_private_institutions'] + "\nCependant, voici les établissements publics disponibles :", self.number_institutions, max_radius_km, self.city)
                             else:
                                 res_str = format_response(None, top_fallback, self.number_institutions, not self.data_processor.city_detected)
-                                message = self._format_response_with_specialty(WARNING_MESSAGES["no_public_institution"] + "\nCependant, voici les établissements privés disponibles :", self.number_institutions, max_radius_km, self.city)
+                                message = self._format_response_with_specialty(NON_ERROR_MESSAGES['no_public_institutions'] + "\nCependant, voici les établissements privés disponibles :", self.number_institutions, max_radius_km, self.city)
                             return self._create_response_and_log(message, res_str, prompt, METHODOLOGY_WEB_LINK), self.link
                         else:
                             public_exists = not fallback_df[fallback_df["Catégorie"] == "Public"].empty if "Catégorie" in fallback_df.columns else False
@@ -683,9 +677,9 @@ class PipelineOrchestrator:
                             if not public_exists and not private_exists:
                                 return "Aucun établissement (ni public ni privé) est disponible pour votre query.", self.link
                             elif fallback_type == 'Privé' and not private_exists:
-                                return WARNING_MESSAGES["no_private_institution"], self.link
+                                return NON_ERROR_MESSAGES['no_private_institutions'], self.link
                             elif fallback_type == 'Public' and not public_exists:
-                                return WARNING_MESSAGES["no_public_institution"], self.link
+                                return NON_ERROR_MESSAGES['no_public_institutions'], self.link
                     else:
                         logger.warning("Fallback DataFrame missing 'Catégorie' column or is malformed. Returning fallback error message.")
                         return "Aucun établissement (ni public ni privé) est disponible pour votre query.", self.link
@@ -693,9 +687,9 @@ class PipelineOrchestrator:
                     logger.exception(f"Exception in fallback to {fallback_type} institutions: {e}")
                     return "Aucun établissement (ni public ni privé) est disponible pour votre query.", self.link
             if self.data_processor.institution_type == 'Public':
-                return WARNING_MESSAGES["no_public_institution"], self.link
+                return NON_ERROR_MESSAGES['no_public_institutions'], self.link
             elif self.data_processor.institution_type == 'Privé':
-                return WARNING_MESSAGES["no_private_institution"], self.link
+                return NON_ERROR_MESSAGES['no_private_institutions'], self.link
 
         # If institution is mentioned, return its ranking and link
         logger.debug("Checking if institution is mentioned")
@@ -706,7 +700,7 @@ class PipelineOrchestrator:
                 logger.debug(f"Result from get_filtered_and_sorted_df: {res}, Links: {self.link}")
             except Exception as e:
                 logger.exception(f"Exception in get_filtered_and_sorted_df: {e}")
-                return ERROR_INSTITUTION_RANKING_MSG, self.link
+                return ERROR_MESSAGES['general_error'], self.link
             return res, self.link
 
         # If city found and Distance column exists, use multi-radius search utility to get enough results
@@ -728,7 +722,7 @@ class PipelineOrchestrator:
             selected_df, used_radius = self.data_processor.select_hospitals(df, query_city, self.number_institutions, query_coords, radii)
             if selected_df is None or selected_df.empty:
                 logger.warning("No results found for city or by distance.")
-                return WARNING_MESSAGES["no_results_found_in_location"], self.link
+                return NON_ERROR_MESSAGES['no_results_found_in_location'], self.link
             institution_type = getattr(self, 'institution_type', None)
             public_df = selected_df[selected_df["Catégorie"] == "Public"] if "Catégorie" in selected_df.columns else None
             private_df = selected_df[selected_df["Catégorie"] == "Privé"] if "Catégorie" in selected_df.columns else None
@@ -769,4 +763,4 @@ class PipelineOrchestrator:
         except Exception as e:
             logger.exception(f"Exception in general ranking response: {e}")
             logger.info(f"Detected variables: specialty={self.specialty}, city={self.city}, institution_type={self.institution_type}, institution_name={self.institution_name}, number_institutions={self.number_institutions}")
-            return ERROR_GENERAL_RANKING_MSG, self.link
+            return ERROR_MESSAGES['general_ranking_error'], self.link

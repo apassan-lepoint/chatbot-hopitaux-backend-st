@@ -29,7 +29,7 @@ class SpecialtyAnalyst:
     def detect_and_validate_specialty(self, prompt: str, conv_history: str = "") -> Dict[str, Optional[str]]:
         """
         Detects the specialty from the prompt, validates it, and returns the result dict.
-        Only handles specialty logic. Returns a dict with cost, detection_method, original_detected_specialty, and token_usage.
+        Only handles specialty logic. Returns a dict with cost, detection_method, and token_usage.
         """
         result = {}
         

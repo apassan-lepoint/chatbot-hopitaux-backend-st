@@ -1,5 +1,5 @@
 
-from app.config.features_config import WARNING_MESSAGES, METHODOLOGY_WEB_LINK
+from app.config.features_config import ERROR_MESSAGES, METHODOLOGY_WEB_LINK
 from app.utility.logging import get_logger
 from app.utility.wrappers import prompt_formatting, parse_llm_response
 from app.utility.llm_helpers import invoke_llm_with_error_handling
@@ -85,14 +85,14 @@ class MessagePertinenceChecker:
         logger.debug(f"medical_pertinence_result: {medical_pertinence_check_result}")
 
         if medical_pertinence_check_result['result'] == 0:  # Not medically pertinent
-            return {"passed": False, "error": WARNING_MESSAGES["message_pertinence"], "cost": medical_pertinence_check_result["cost"], "token_usage": medical_pertinence_check_result["token_usage"]}
+            return {"passed": False, "error": ERROR_MESSAGES["message_pertinence"], "cost": medical_pertinence_check_result["cost"], "token_usage": medical_pertinence_check_result["token_usage"]}
 
         elif medical_pertinence_check_result['result']== 2:  # Methodology question
-            return {"passed": False, "error": WARNING_MESSAGES["methodology_questions"], "cost": medical_pertinence_check_result["cost"], "token_usage": medical_pertinence_check_result["token_usage"]}
+            return {"passed": False, "error": ERROR_MESSAGES["methodology_questions"], "cost": medical_pertinence_check_result["cost"], "token_usage": medical_pertinence_check_result["token_usage"]}
 
         # Next run chatbot pertinence check if medically pertinent
         chatbot_pertinence_check_result = self.sanity_check_chatbot_pertinence(user_input, conv_history)
         if chatbot_pertinence_check_result["result"] == 0:
-            return {"passed": False, "error": WARNING_MESSAGES["message_pertinence"], "cost": chatbot_pertinence_check_result["cost"], "token_usage": chatbot_pertinence_check_result["token_usage"]}
+            return {"passed": False, "error": ERROR_MESSAGES["message_pertinence"], "cost": chatbot_pertinence_check_result["cost"], "token_usage": chatbot_pertinence_check_result["token_usage"]}
     
         return {"passed": True, "cost": medical_pertinence_check_result["cost"] + chatbot_pertinence_check_result["cost"], "token_usage": medical_pertinence_check_result["token_usage"] + chatbot_pertinence_check_result["token_usage"]}

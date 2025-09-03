@@ -91,7 +91,6 @@ class QueryAnalyst:
             "specialty_detection_method": specialty_result.get("detection_method"),
             "specialty_cost": specialty_result.get("cost", 0.0),
             "specialty_token_usage": specialty_result.get("token_usage", 0),
-            "original_detected_specialty": specialty_result.get("original_detected_specialty"),
             "number_institutions": number_institutions_result.get("number_institutions"),
             "number_institutions_detection_method": number_institutions_result.get("detection_method"),
             "number_institutions_cost": number_institutions_result.get("cost", 0.0),
