@@ -85,7 +85,7 @@ def process_message(prompt: str) -> None:
     if prev_specialty and st.session_state.get("multiple_specialties") is None:
         normalized_specialty = unidecode.unidecode(str(prev_specialty)).strip().lower()
         logger.info(f"[process_message] Generating response after specialty selection: {prev_specialty} (normalized: {normalized_specialty})")
-        result, links = PipelineOrchestrator().generate_response(prompt=st.session_state.prompt)
+        result, links = PipelineOrchestrator().generate_response(prompt=st.session_state.prompt, selected_specialty=prev_specialty)
         if isinstance(result, dict) and "multiple_specialties" in result:
             # Backend returned multiple_specialties again, force selection
             st.session_state[SESSION_STATE_KEYS["multiple_specialties"]] = result["multiple_specialties"]
