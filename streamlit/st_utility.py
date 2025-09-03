@@ -97,7 +97,7 @@ def process_message(prompt: str) -> None:
         formatted_result = format_links(result, links)
         result = execute_with_spinner(SPINNER_MESSAGES["loading"], lambda: formatted_result)
         append_to_conversation(st.session_state.prompt, result)
-        display_conversation_history()
+        # Removed duplicate display_conversation_history() call
         return
     try:
         result, links = PipelineOrchestrator().generate_response(prompt=st.session_state.prompt)
@@ -109,6 +109,7 @@ def process_message(prompt: str) -> None:
         formatted_result = format_links(result, links)
         result = execute_with_spinner(SPINNER_MESSAGES["loading"], lambda: formatted_result)
         append_to_conversation(st.session_state.prompt, result)
+        # Removed duplicate display_conversation_history() call
     except Exception as e:
         logger.error(f"Error processing message: {e}")
         normalized_specialty = unidecode.unidecode(str(prev_specialty)).strip().lower() if prev_specialty else ""
