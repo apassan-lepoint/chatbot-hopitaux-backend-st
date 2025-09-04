@@ -112,4 +112,4 @@ INSTITUTION_TYPE_CODES = {
 SEARCH_RADIUS_KM = [5, 10, 50, 100] 
 
 # CSV Specific constants
-CSV_FIELDNAMES = ['uuid', 'date', 'question', 'response', 'conversation_list', 'city', 'institution_type', 'institution_name', 'specialty', 'number_institutions', 'total_cost_sanity_checks', 'total_cost_query_analyst', 'total_cost_conversation_analyst', 'total_cost', 'total_tokens_sanity_checks', 'total_tokens_query_analyst', 'total_tokens_conversation_analyst', 'total_tokens']
+CSV_FIELDNAMES = ['uuid', 'date', 'question', 'response', 'conversation_list', 'city', 'institution_type', 'institution_names', 'specialty', 'number_institutions', 'total_cost_sanity_checks', 'total_cost_query_analyst', 'total_cost_conversation_analyst', 'total_cost', 'total_tokens_sanity_checks', 'total_tokens_query_analyst', 'total_tokens_conversation_analyst', 'total_tokens']

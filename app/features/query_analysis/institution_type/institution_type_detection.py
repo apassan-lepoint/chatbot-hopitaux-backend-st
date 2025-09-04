@@ -25,7 +25,7 @@ class InstitutionTypeDetector:
         Detects if the user has a preference for public or private institutions.
         Returns a dict: {'institution_type': str, 'detection_method': str, 'cost': float, 'token_usage': Any}
         """
-        formatted_prompt = prompt_formatting("second_detect_institution_type_prompt", prompt=prompt, conv_history=conv_history)
+        formatted_prompt = prompt_formatting("detect_institution_type_prompt", prompt=prompt, conv_history=conv_history)
         llm_call_result = invoke_llm_with_error_handling(self.model, formatted_prompt, "detect_institution_type")
         institution_type_from_llm_call_response = llm_call_result.get('content', llm_call_result) if isinstance(llm_call_result, dict) else llm_call_result
         institution_type = parse_llm_response(institution_type_from_llm_call_response, "institution_type")

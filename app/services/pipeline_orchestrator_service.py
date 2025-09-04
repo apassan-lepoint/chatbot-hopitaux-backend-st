@@ -28,7 +28,7 @@ class PipelineOrchestrator:
         city (str): The detected city from the user query.
         df_gen (pd.DataFrame): The main DataFrame containing hospital rankings.     
         institution_mentioned (bool): Flag indicating if an institution was mentioned in the query.
-        institution_name (str): The name of the institution mentioned in the query.
+        institution_names (list)): The names of the institutions mentioned in the query.
         data_processor (DataProcessor): Instance of DataProcessor for data extraction and transformation.       
     Methods:
         _normalize_specialty_for_display(specialty: str) -> str: Normalizes specialty format for display purposes and checks for no match.
@@ -60,7 +60,7 @@ class PipelineOrchestrator:
         self.city_detected = False  # Flag to indicate if a city was detected
         self.df_gen = None # DF for results 
         self.institution_mentioned=None
-        self.institution_name=None
+        self.institution_names=[]
         self.data_processor=DataProcessor() # Instance of DataProcessor for data extraction and transformation
         self.sanity_checks_analyst_results = SanityChecksAnalyst(self.data_processor.llm_handler_service)
         self.query_analyst_results = None
@@ -128,7 +128,7 @@ class PipelineOrchestrator:
         # Aggregate costs and tokens
         aggregation = self.get_costs_and_tokens(getattr(self, 'sanity_checks_analyst_result', None), getattr(self, 'query_analyst_results', None), conversation_analyst_results=None)
         logger.info(f"Final cost/token usage aggregation: {aggregation}")
-        logger.info(f"Detected variables: specialty={self.specialty}, city={self.city}, institution_type={self.institution_type}, institution_name={self.institution_name}, number_institutions={self.number_institutions}")
+        logger.info(f"Detected variables: specialty={self.specialty}, city={self.city}, institution_type={self.institution_type}, institution_names={self.institution_names}, number_institutions={self.number_institutions}")
 
         csv_data = {
             'uuid': str(uuid4()),
@@ -138,7 +138,7 @@ class PipelineOrchestrator:
             'conversation_list': conversation_analyst_results.get('conversation', []) if conversation_analyst_results else [],
             'city': self.data_processor.city,
             'institution_type': self.data_processor.institution_type,
-            'institution_name': self.data_processor.institution_name,
+            'institution_names': self.data_processor.institution_names,
             'specialty': self.data_processor.specialty,
             'number_institutions': self.data_processor.number_institutions,
             'total_cost_sanity_checks': aggregation.get('total_cost_sanity_checks_analyst'),
@@ -179,7 +179,7 @@ class PipelineOrchestrator:
         # Reset all relevant attributes to None for a fresh query
         for attr in [
             "specialty", "institution_type", "city", "df_with_cities", "specialty_df",
-            "city_not_specified", "institution_mentioned", "institution_name", "df_gen"
+            "city_not_specified", "institution_mentioned", "institution_names", "df_gen"
         ]:
             setattr(self, attr, None)
     
@@ -221,7 +221,7 @@ class PipelineOrchestrator:
             city_detected=detections.get('city_detected', False),
             institution_type=detections.get('institution_type'),
             number_institutions=detections.get('number_institutions') if 'number_institutions' in detections else detections.get('number_institutions'),
-            institution_name=detections.get('institution_name'),
+            institution_names=detections.get('institution_names'),
             institution_mentioned=detections.get('institution_mentioned')
         )
         # Set orchestrator attributes for downstream use
@@ -233,13 +233,13 @@ class PipelineOrchestrator:
         logger.debug(f"PipelineOrchestrator.city_detected set to: {self.city_detected!r}")
         self.institution_type = self.data_processor.institution_type
         logger.debug(f"PipelineOrchestrator.institution_type set to: {self.institution_type!r}")
-        self.institution_name = self.data_processor.institution_name
-        logger.debug(f"PipelineOrchestrator.institution_name set to: {self.institution_name!r}")
+        self.institution_names = self.data_processor.institution_names
+        logger.debug(f"PipelineOrchestrator.institution_names set to: {self.institution_names!r}")
         self.institution_mentioned = self.data_processor.institution_mentioned
         logger.debug(f"PipelineOrchestrator.institution_mentioned set to: {self.institution_mentioned!r}")
         self.number_institutions = self.data_processor.number_institutions
         logger.debug(f"PipelineOrchestrator.number_institutions set to: {self.number_institutions!r}")
-        logger.debug(f"PipelineOrchestrator infos - specialty: {self.specialty}, city: {self.city}, institution_type: {self.institution_type}, institution: {self.institution_name}, institution_mentioned: {self.institution_mentioned}")
+        logger.debug(f"PipelineOrchestrator infos - specialty: {self.specialty}, city: {self.city}, institution_type: {self.institution_type}, institution: {self.institution_names}, institution_mentioned: {self.institution_mentioned}")
         return detections
 
 
@@ -257,7 +257,7 @@ class PipelineOrchestrator:
         logger.info(f"Building ranking DataFrame with distances: prompt='{prompt}', excel_path='{excel_path}', detected_specialty='{detected_specialty}'")
         # Centralized detection and data setup
         detections = self.extract_query_parameters(prompt, detected_specialty, conv_history)
-        logger.info(f"Detected variables: specialty={self.specialty}, city={self.city}, institution_type={self.institution_type}, institution_name={self.institution_name}, number_institutions={self.number_institutions}")
+        logger.info(f"Detected variables: specialty={self.specialty}, city={self.city}, institution_type={self.institution_type}, institution_names={self.institution_names}, number_institutions={self.number_institutions}")
         
         # Generate main DataFrame
         self.df_gen = self.data_processor.generate_data_response()
@@ -302,10 +302,10 @@ class PipelineOrchestrator:
         Returns:
             str: The formatted response string with the institution's ranking and details.  
         """
-        logger.info(f"Institution mentioned in query: {self.institution_name}")
+        logger.info(f"Institution mentioned in query: {self.institution_names}")
         # Check if institution is present in DataFrame
-        if not df['Etablissement'].str.contains(self.institution_name).any():
-            logger.warning(f"Institution {self.institution_name} not found in DataFrame")
+        if not df['Etablissement'].str.contains(self.institution_names).any():
+            logger.warning(f"Institution {self.institution_names} not found in DataFrame")
             display_specialty, is_no_match = self._normalize_specialty_for_display(self.specialty)
             if is_no_match:
                 return f"Cet établissement ne fait pas partie des {number_institutions} meilleurs établissements du palmarès global"
@@ -313,9 +313,9 @@ class PipelineOrchestrator:
                 return f"Cet établissement n'est pas présent pour la pathologie {display_specialty}, vous pouvez cependant consulter le classement suivant:"
         # Find institution's position in sorted DataFrame
         df_sorted = df.sort_values(by='Note / 20', ascending=False).reset_index(drop=True)
-        position = df_sorted.index[df_sorted["Etablissement"].str.contains(self.institution_name, case=False, na=False)][0] + 1
+        position = df_sorted.index[df_sorted["Etablissement"].str.contains(self.institution_names, case=False, na=False)][0] + 1
         display_specialty, is_no_match = self._normalize_specialty_for_display(self.specialty)
-        response = f"{self.institution_name} est classé n°{position} "
+        response = f"{self.institution_names} est classé n°{position} "
         if is_no_match:
             response += "du palmarès général"
         else:
@@ -511,7 +511,7 @@ class PipelineOrchestrator:
                 error_msg = getattr(exc, 'message', str(exc))
             aggregation = self.get_costs_and_tokens(getattr(self, 'sanity_checks_analyst_result', None), None, None) if 'sanity_result' in locals() and isinstance(sanity_result, dict) else {}
             logger.info(f"Final cost/token usage aggregation: {aggregation}")
-            logger.info(f"Detected variables: specialty={self.specialty}, city={self.city}, institution_type={self.institution_type}, institution_name={self.institution_name}, number_institutions={self.number_institutions}")
+            logger.info(f"Detected variables: specialty={self.specialty}, city={self.city}, institution_type={self.institution_type}, institution_names={self.institution_names}, number_institutions={self.number_institutions}")
 
             csv_data = {
                 'uuid': str(uuid4()),
@@ -521,7 +521,7 @@ class PipelineOrchestrator:
                 'conversation_list': conversation if conversation else [],
                 'city': self.data_processor.city,
                 'institution_type': self.data_processor.institution_type,
-                'institution_name': self.data_processor.institution_name,
+                'institution_names': self.data_processor.institution_names,
                 'specialty': self.data_processor.specialty,
                 'number_institutions': self.data_processor.number_institutions,
                 'total_cost_sanity_checks': aggregation.get('total_cost_sanity_checks_analyst'),
@@ -540,7 +540,7 @@ class PipelineOrchestrator:
             error_msg = sanity_result.get("error", ERROR_MESSAGES['general_error'])
             aggregation = self.get_costs_and_tokens(getattr(self, 'sanity_checks_analyst_result', None), None, None)
             logger.info(f"Final cost/token usage aggregation: {aggregation}")
-            logger.info(f"Detected variables: specialty={self.specialty}, city={self.city}, institution_type={self.institution_type}, institution_name={self.institution_name}, number_institutions={self.number_institutions}")
+            logger.info(f"Detected variables: specialty={self.specialty}, city={self.city}, institution_type={self.institution_type}, institution_names={self.institution_names}, number_institutions={self.number_institutions}")
 
             csv_data = {
                 'uuid': str(uuid4()),
@@ -550,7 +550,7 @@ class PipelineOrchestrator:
                 'conversation_list': conversation if conversation else [],
                 'city': self.data_processor.city,
                 'institution_type': self.data_processor.institution_type,
-                'institution_name': self.data_processor.institution_name,
+                'institution_names': self.data_processor.institution_names,
                 'specialty': self.data_processor.specialty,
                 'number_institutions': self.data_processor.number_institutions,
                 'total_cost_sanity_checks': aggregation.get('total_cost_sanity_checks_analyst'),
@@ -579,7 +579,7 @@ class PipelineOrchestrator:
         else:
             # Always detect specialty via query analysis module
             detections = self.extract_query_parameters(prompt, None, conv_history)
-        logger.info(f"Detected variables: specialty={self.specialty}, city={self.city}, institution_type={self.institution_type}, institution_name={self.institution_name}, number_institutions={self.number_institutions}")
+        logger.info(f"Detected variables: specialty={self.specialty}, city={self.city}, institution_type={self.institution_type}, institution_names={self.institution_names}, number_institutions={self.number_institutions}")
         logger.debug(f"[CITY DETECTION] Detected city: '{self.city}', city_detected: {self.city_detected}, DataProcessor.city: '{self.data_processor.city}', DataProcessor.city_detected: {self.data_processor.city_detected}")
 
         specialty_list = []
@@ -758,9 +758,9 @@ class PipelineOrchestrator:
             logger.debug(f"Result: {message}, Links: {self.link}")
             response = self._create_response_and_log(message, res_str, prompt, METHODOLOGY_WEB_LINK)
             logger.info(f"General ranking response created successfully")
-            logger.info(f"Detected variables: specialty={self.specialty}, city={self.city}, institution_type={self.institution_type}, institution_name={self.institution_name}, number_institutions={self.number_institutions}")
+            logger.info(f"Detected variables: specialty={self.specialty}, city={self.city}, institution_type={self.institution_type}, institution_names={self.institution_names}, number_institutions={self.number_institutions}")
             return response, self.link
         except Exception as e:
             logger.exception(f"Exception in general ranking response: {e}")
-            logger.info(f"Detected variables: specialty={self.specialty}, city={self.city}, institution_type={self.institution_type}, institution_name={self.institution_name}, number_institutions={self.number_institutions}")
+            logger.info(f"Detected variables: specialty={self.specialty}, city={self.city}, institution_type={self.institution_type}, institution_names={self.institution_names}, number_institutions={self.number_institutions}")
             return ERROR_MESSAGES['general_ranking_error'], self.link

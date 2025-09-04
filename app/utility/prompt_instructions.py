@@ -271,31 +271,89 @@ Exemples avec contexte conversationnel:
 - Avec historique sans nombre, 'aussi' → 0 (aucun nombre mentionné)
 """,
 
-    "detect_institution_type_prompt": """
-Un des noms exact de ma liste d'établissements est il mentionné précisément dans cette phrase?
+    "detect_institutions_prompt": """
+Ton rôle est d'extraire les noms exacts d'établissements mentionnés dans une question
+et de déterminer l'intention de la demande.
+
+---
 
 HISTORIQUE DE CONVERSATION:
 {conv_history}
 
 MESSAGE À ANALYSER: '{prompt}'
 
-Si un historique de conversation est fourni ci-dessus, analysez le nouveau message en tenant compte du contexte conversationnel. Un nom d'établissement peut être mentionné de manière implicite si le contexte de la conversation montre qu'on parle d'un établissement spécifique.
+---
 
-Voici ma liste d'établissements: {institution_list}
+INSTRUCTIONS:
 
-Réponds UNIQUEMENT avec le nom d'établissement exact de la liste si la phrase contient un des noms exacts d'établissement.
-Si aucun de ces établissement n'est mentionné dans ma phrase, renvoie moi EXACTEMENT ces deux mots: 'aucune correspondance'.
-Si la Ville de l'établissement est mentionnée mais pas le nom complet, par exemple 'Villeneuve-d'Ascq' est mentionné mais pas 'Clinique de Villeneuve-d'Ascq' alors tu renverras 'aucune correspondance'. 
+1. Extrait tous les noms d'établissements tels qu'ils apparaissent dans le message (même avec fautes ou variantes).
+   - Retourne-les tels que l'utilisateur les a écrits, sans corriger ni compléter.
+   - Si aucun établissement n'est mentionné, retourne une liste vide.
 
-Voici des exemples sans noms d'établissement: pour la phrase 'Je cherche un hôpital pour soigner mon audition à Toulon ?' ou 'Quelle est la meilleure clinique de Limoges?', tu me répondras 'aucune correspondance'.
-Voici un exemple avec noms d'établissement: pour la phrase 'Est-ce que l'Hôpital Edouard-Herriot est bon en cas de problèmes auditifs ?' tu me répondras 'Hôpital Edouard-Herriot'.
+2. Détermine l'intention de la question :
+   - "single" : L'utilisateur parle d'un seul établissement.
+   - "multi" : L'utilisateur demande des infos sur plusieurs établissements (mais sans comparaison).
+   - "compare" : L'utilisateur compare ou demande un classement.
+   - "none" : Pas d'intention claire. S'il y a au moins un établissement qui n'est pas dans la liste, retourne "none".
 
-Exemples avec contexte conversationnel:
-- Avec historique mentionnant 'Hôpital Edouard-Herriot', 'et privé?' → 'aucune correspondance' (pas de nouvel établissement mentionné)
-- Avec historique général, 'à la Pitié-Salpêtrière' → 'Hôpital Pitié-Salpêtrière' (si ce nom exact existe dans la liste)
+3. Retourne toujours un objet JSON :
+   {
+     "institutions": [...],
+     "intent": "single|multi|compare|none"
+   }
+
+---
+
+
+EXEMPLES :
+
+1. "Est-ce que l'Hôpital Edouard-Herriot est bon ?"  
+{"institutions": ["Hôpital Edouard-Herriot"], "intent": "single"}
+
+2. "Montre-moi les classements pour Hôpital A, Hôpital B et Hôpital C"  
+{"institutions": ["Hôpital A", "Hôpital B", "Hôpital C"], "intent": "multi"}
+
+3. "Hôpital Saint-Louis ou Clinique Pasteur, lequel est meilleur ?"  
+{"institutions": ["Hôpital Saint-Louis", "Clinique Pasteur"], "intent": "compare"}
+
+4. "Je cherche un hôpital à Toulon"  
+{"institutions": [], "intent": "none"}
+
+5. “Est-ce que l’Hôpital Edouard-Herriot est bien pour la cardiologie ?”
+{"institutions": ["Hôpital Edouard-Herriot"], "intent": "single"}
+
+6. “Le CHU de Lille est-il recommandé pour la pédiatrie ?”
+{"institutions": ["CHU de Lille"], "intent": "single"}
+
+7. “Hôpital Saint-Louis ou Clinique Pasteur, lequel est meilleur pour la neurologie ?”
+{"institutions": ["Hôpital Saint-Louis", "Clinique Pasteur"], "intent": "compare"}
+
+8. “CH de Toulon vs CHU de Bordeaux, lequel est le mieux classé ?”
+{"institutions": ["CH de Toulon", "CHU de Bordeaux"], "intent": "compare"}
+
+9. “Montre-moi les classements pour CHU de Toulouse, Hôpital Pompidou et CHU de Nantes”
+{"institutions": ["CHU de Toulouse", "Hôpital Pompidou", "CHU de Nantes"], "intent": "multi"}
+
+10. “Je cherche un hôpital à Rouen pour la chirurgie cardiaque”
+{"institutions": [], "intent": "none"}
+
+11. “Classement CH Roubaix ?”
+{"institutions": ["CH Roubaix"], "intent": "single"}
+
+12. “Quels sont les meilleurs hôpitaux pour les urgences en France ?”
+{"institutions": [], "intent": "none"}
+
+13. “Le CHU de Grenoble est-il bon en oncologie ?”
+{"institutions": ["CHU de Grenoble"], "intent": "single"}
+
+14. “Classement CHU de Lyon et Hôpital Pitié-Salpêtrière pour la neurologie ?”
+{"institutions": ["CHU de Lyon", "Hôpital Pitié-Salpêtrière"], "intent": "multi"}
+
+Réponds UNIQUEMENT avec un JSON.
+
 """,
 
-    "second_detect_institution_type_prompt": """
+    "detect_institution_type_prompt": """
 Détectez le type d'établissement de soin dans le message suivant.
 
 HISTORIQUE DE CONVERSATION:

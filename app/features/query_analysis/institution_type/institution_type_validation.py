@@ -8,7 +8,7 @@ class InstitutionTypeValidator:
     Attributes:
         institution_list (str): A comma-separated string of valid institution names.        
     Methods:
-        is_valid_institution(institution_name: str) -> bool:
+        is_valid_institution(institution_names: str) -> bool:
             Checks if the given institution name is valid based on the provided list.
         normalize_institution_type(institution_type: str) -> str:
             Normalizes the institution type to a standard format.
@@ -24,11 +24,11 @@ class InstitutionTypeValidator:
     def __init__(self, institution_list: str):
         self.institution_list = institution_list
 
-    def is_valid_institution(self, institution_name: str) -> bool:
-        if not institution_name or institution_name == "aucune correspondance":
+    def is_valid_institution(self, institution_names: str) -> bool:
+        if not institution_names or institution_names == "aucune correspondance":
             return False
-        institution_names = [name.strip() for name in self.institution_list.split(",")]
-        return institution_name in institution_names
+        institution_names_ = [name.strip() for name in self.institution_list.split(",")]
+        return institution_names in institution_names_
 
     def normalize_institution_type(self, institution_type: str) -> str:
         if not institution_type or institution_type in ["no match", "aucune correspondance"]:

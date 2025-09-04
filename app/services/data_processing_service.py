@@ -24,7 +24,7 @@ class DataProcessor:
         ranking_df (pd.DataFrame): DataFrame containing hospital rankings.
         llm_handler_service (LLMHandler): Service for handling LLM interactions.
         specialty_df (pd.DataFrame): DataFrame for the specific specialty rankings.
-        institution_name (str): Name of the institution mentioned in the query.
+        institution_names (list): List of institutions mentioned in the query.
         specialty_ranking_unavailable (bool): Flag indicating if the specialty ranking is unavailable.      
         web_ranking_link (list): List of generated web links for rankings.
         geolocation_api_error (bool): Flag indicating if there was an error with geolocation API
@@ -65,7 +65,7 @@ class DataProcessor:
         self.ranking_df = None
         self.llm_handler_service = LLMHandler()
         self.specialty_df = None
-        self.institution_name = None
+        self.institution_names = []
         self.specialty_ranking_unavailable = False
         self.web_ranking_link = []
         self.geolocation_api_error = False
@@ -267,7 +267,7 @@ class DataProcessor:
         return INSTITUTION_TYPE_URL_MAPPING.get(institution_type, institution_type.lower())
     
     
-    def set_detection_results(self, specialty, city, city_detected, institution_type, number_institutions=None, institution_name=None, institution_mentioned=None):
+    def set_detection_results(self, specialty, city, city_detected, institution_type, number_institutions=None, institution_names=[], institution_mentioned=None):
         """
         Sets detection results from orchestrator.
         Args:
@@ -276,12 +276,12 @@ class DataProcessor:
             city_detected (bool): Flag indicating if a city was detected.
             institution_type (str): The type of institution (public/private) detected.
             number_institutions (int, optional): Number of institutions mentioned in the query.
-            institution_name (str, optional): Name of the institution mentioned in the query.
+            institution_names (list, optional): Names of the institutions mentioned in the query.
             institution_mentioned (str, optional): Institution mentioned in the query.
         Returns:
             None
         """
-        logger.debug(f"set_detection_results: specialty={specialty!r}, city={city!r}, city_detected={city_detected!r}, institution_type={institution_type!r}, number_institutions={number_institutions!r}, institution_name={institution_name!r}, institution_mentioned={institution_mentioned!r}")
+        logger.debug(f"set_detection_results: specialty={specialty!r}, city={city!r}, city_detected={city_detected!r}, institution_type={institution_type!r}, number_institutions={number_institutions!r}, institution_names={institution_names!r}, institution_mentioned={institution_mentioned!r}")
         invalid_specialties = ["no match", "no specialty match", "aucune correspondance", ""]
         if specialty not in invalid_specialties and specialty is not None:
             self.specialty = specialty
@@ -296,8 +296,8 @@ class DataProcessor:
         logger.debug(f"DataProcessor.institution_type set to: {self.institution_type!r}")
         self.number_institutions = number_institutions
         logger.debug(f"DataProcessor.number_institutions set to: {self.number_institutions!r}")
-        self.institution_name = institution_name
-        logger.debug(f"DataProcessor.institution_name set to: {self.institution_name!r}")
+        self.institution_names = institution_names
+        logger.debug(f"DataProcessor.institution_names set to: {self.institution_names!r}")
         self.institution_mentioned = institution_mentioned
         logger.debug(f"DataProcessor.institution_mentioned set to: {self.institution_mentioned!r}")
         try:
