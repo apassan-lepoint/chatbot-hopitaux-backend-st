@@ -38,7 +38,7 @@ def generate_response(self, prompt: str, max_radius_km: int = 5,
         return fallback_response
 
     # ------------------- Institution-specific Query ------------------- #
-    if self.institution_mentioned:
+    if self.institution_name_mentioned:
         try:
             res = self.get_filtered_and_sorted_df(df, max_radius_km, self.number_institutions, prompt)
             return res, self.data_processor.web_ranking_link

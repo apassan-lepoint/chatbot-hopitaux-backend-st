@@ -9,7 +9,6 @@ class HospitalInfo:
     """
     name: str
     specialty: Optional[str] = None
-    exists: bool = False
     type: Optional[str] = None  # "public" or "private"
     ranking: Optional[int] = None
 

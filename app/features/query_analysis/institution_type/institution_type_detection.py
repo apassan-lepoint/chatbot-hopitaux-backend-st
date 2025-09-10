@@ -16,9 +16,8 @@ class InstitutionTypeDetector:
             Detects if the user has a preference for public or private institutions.
             Returns the raw LLM output (e.g., 'public', 'private', 'no match', etc.).
     """
-    def __init__(self, model, institution_list: str):
+    def __init__(self, model):
         self.model = model
-        self.institution_list = institution_list
 
     def detect_institution_type(self, prompt: str, conv_history: str = "") -> dict:
         """

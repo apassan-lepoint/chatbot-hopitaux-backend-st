@@ -17,39 +17,7 @@ logger = get_logger(__name__)
 
 class PipelineOrchestrator:
     """
-    Orchestrates the processing of user queries to extract hospital rankings.
-    This class handles the extraction of specialties, cities, and institution types,
-    retrieves relevant data from Excel files, calculates distances, and formats the final response.
-    Uses the centralized number_institutionsDetector for all number_institutions related operations.
-    Attributes:
-        ranking_file_path (str): Path to the Excel file containing hospital rankings.
-        specialty (str): The detected specialty from the user query.
-        institution_type (str): The detected institution type from the user query.
-        city (str): The detected city from the user query.
-        df_gen (pd.DataFrame): The main DataFrame containing hospital rankings.     
-        institution_mentioned (bool): Flag indicating if an institution was mentioned in the query.
-        institution_names (list)): The names of the institutions mentioned in the query.
-        data_processor (DataProcessor): Instance of DataProcessor for data extraction and transformation.       
-    Methods:
-        _normalize_specialty_for_display(specialty: str) -> str: Normalizes specialty format for display purposes and checks for no match.
-        _format_response_with_specialty(base_message:           
-            str, count: int, radius_km: int = None, city: str = None) -> str: 
-            Helper method to format response messages with specialty context.
-        _create_response_and_log(message: str, table_str: str, prompt: str) -> str: 
-            Helper method to create final response, log it, and save to CSV.        
-        _try_radius_search(df: pd.DataFrame, radius: int, number_institutions: int, prompt: str) -> str:
-            Try to find results within a specific radius.
-        reset_attributes(): Resets pipeline attributes for a new user query.
-        extract_query_parameters(prompt: str, detected_specialty: str = None, conv_history: list = None) -> dict:
-            Centralized detection: runs QueryAnalyst and sets results in DataProcessor.
-        build_ranking_dataframe_with_distances(prompt: str, excel_path: str, detected_specialty: str = None, conv_history: list = None) -> pd.DataFrame:
-            Retrieves the ranking DataFrame based on the user query, including distance calculations if a city is specified.
-        _institution_ranking_response(df: pd.DataFrame, number_institutions: int) -> str:
-            Helper for institution ranking response.
-        get_filtered_and_sorted_df(df: pd.DataFrame, max_radius_km: int, number_institutions: int, prompt: str) -> str:
-            Filters and sorts the ranking DataFrame by distance and score, and formats the response.
-        generate_response(prompt: str, max_radius_km: int = 5, conversation=None, conv_history=None) -> str:
-            Main entry point: processes the user question and returns a formatted answer with ranking and links.    
+    REWRITE THIS DOCSTRING   
     """
     def __init__(self):
         logger.info("Initializing PipelineOrchestrator")
@@ -59,11 +27,12 @@ class PipelineOrchestrator:
         self.city = None
         self.city_detected = False  # Flag to indicate if a city was detected
         self.df_gen = None # DF for results 
-        self.institution_mentioned=None
+        self.institution_name_mentioned=None
         self.institution_names=[]
         self.data_processor=DataProcessor() # Instance of DataProcessor for data extraction and transformation
         self.sanity_checks_analyst_results = SanityChecksAnalyst(self.data_processor.llm_handler_service)
         self.query_analyst_results = None
+        self.link = None
 
     def _normalize_specialty_for_display(self, specialty: str) -> str:
         """
@@ -108,7 +77,7 @@ class PipelineOrchestrator:
         return base_message.format(count=count, specialty=specialty_part, location=location_part)
 
 
-    def _create_response_and_log(self, message: str, table_str: str, prompt: str, ranking_link: str = None, sanity_result=None, detections=None, conversation_analyst_results=None) -> str:
+    def _create_response_and_log(self, message: str, table_str: str, prompt: str, ranking_link: str = None, conversation_analyst_results=None) -> str:
         """
         Helper method to create final response, log it, and save to CSV.
         Args:
@@ -179,7 +148,7 @@ class PipelineOrchestrator:
         # Reset all relevant attributes to None for a fresh query
         for attr in [
             "specialty", "institution_type", "city", "df_with_cities", "specialty_df",
-            "city_not_specified", "institution_mentioned", "institution_names", "df_gen"
+            "city_not_specified", "institution_name_mentioned", "institution_names", "df_gen"
         ]:
             setattr(self, attr, None)
     
@@ -197,11 +166,17 @@ class PipelineOrchestrator:
             dict: A dictionary containing the results of all query parameter detections.    
         """
         logger.info(f"Extracting query parameters: prompt='{prompt}', detected_specialty='{detected_specialty}', conv_history='{conv_history}'")
+        
+        # Setup QueryAnalyst
         model = getattr(self.data_processor.llm_handler_service, 'model', None)
         llm_handler_service = self.data_processor.llm_handler_service
         prompt_manager = QueryAnalyst(model=model, llm_handler_service=llm_handler_service)
+
+        # Prepare institution list + history
         institution_list = self.data_processor._get_institution_list()
         conv_history_str = "".join(conv_history) if conv_history else ""
+
+        # Run all detections
         detections = prompt_manager.run_all_detections(prompt, conv_history=conv_history_str, institution_list=institution_list)
         self.query_analyst_results = detections
         logger.debug(f"Full detections dict: {detections}")
@@ -221,9 +196,11 @@ class PipelineOrchestrator:
             city_detected=detections.get('city_detected', False),
             institution_type=detections.get('institution_type'),
             number_institutions=detections.get('number_institutions') if 'number_institutions' in detections else detections.get('number_institutions'),
-            institution_names=detections.get('institution_names'),
-            institution_mentioned=detections.get('institution_mentioned')
-        )
+            # institution_names=detections.get('institution_names'),
+            institution_name_mentioned=detections.get('institution_name_mentioned'),
+            institution_names=detections.get('institution_names', []),
+            institution_names_intent=detections.get('institution_names_intent', "none"))
+        
         # Set orchestrator attributes for downstream use
         self.specialty = self.data_processor.specialty
         logger.debug(f"PipelineOrchestrator.specialty set to: {self.specialty!r}")
@@ -234,12 +211,15 @@ class PipelineOrchestrator:
         self.institution_type = self.data_processor.institution_type
         logger.debug(f"PipelineOrchestrator.institution_type set to: {self.institution_type!r}")
         self.institution_names = self.data_processor.institution_names
+        self.institution_name_mentioned = self.data_processor.institution_name_mentioned
+        # self.institution_names_with_types = self.data_processor.institution_names_with_types
+        self.institution_names_intent = self.data_processor.institution_names_intent
         logger.debug(f"PipelineOrchestrator.institution_names set to: {self.institution_names!r}")
-        self.institution_mentioned = self.data_processor.institution_mentioned
-        logger.debug(f"PipelineOrchestrator.institution_mentioned set to: {self.institution_mentioned!r}")
+        self.institution_name_mentioned = self.data_processor.institution_name_mentioned
+        logger.debug(f"PipelineOrchestrator.institution_name_mentioned set to: {self.institution_name_mentioned!r}")
         self.number_institutions = self.data_processor.number_institutions
         logger.debug(f"PipelineOrchestrator.number_institutions set to: {self.number_institutions!r}")
-        logger.debug(f"PipelineOrchestrator infos - specialty: {self.specialty}, city: {self.city}, institution_type: {self.institution_type}, institution: {self.institution_names}, institution_mentioned: {self.institution_mentioned}")
+        logger.debug(f"PipelineOrchestrator infos - specialty: {self.specialty}, city: {self.city}, institution_type: {self.institution_type}, institution: {self.institution_names}, institution_name_mentioned: {self.institution_name_mentioned}")
         return detections
 
 
@@ -338,7 +318,7 @@ class PipelineOrchestrator:
         """
         logger.info(f"Filtering and sorting DataFrame with max_radius_km={max_radius_km}, number_institutions={number_institutions}, prompt={prompt}")
         # If institution is mentioned, return its ranking response
-        if self.institution_mentioned:
+        if self.institution_name_mentioned:
             return self._institution_ranking_response(df, self.number_institutions)
         # Only filter by distance if city is detected and Distance column exists
         if self.data_processor.city_detected and "Distance" in df.columns:
@@ -446,6 +426,67 @@ class PipelineOrchestrator:
             for k, v in d.items() if substr in k
         )
     
+    def compare_institutions(self, institution_names: list, prompt: str, mode: str = "implicit") -> str:
+        """
+        Build a comparison response for multiple institutions using only canonical (full) names, ranking them by score and noting the best.
+        Args:
+            institution_names (List[HospitalInfo or str]): The canonical names or HospitalInfo objects of the institutions to compare.
+            prompt (str): The original user query.
+            mode (str): 'explicit' if the user explicitly asked for comparison.
+        Returns:
+            str: Formatted comparison result string.
+        """
+        logger.info(f"Building comparison for canonical institution names: {institution_names}, mode={mode}")
+
+        # Always extract .name if present (for HospitalInfo), else use as string
+        canonical_names = [getattr(i, 'name', i) for i in institution_names]
+
+        try:
+            df = self.build_ranking_dataframe_with_distances(prompt, self.ranking_file_path, self.specialty)
+            # Only filter using canonical (full/original) names
+            df_filtered = df[df["Etablissement"].isin(canonical_names)]
+            found_names = set(df_filtered["Etablissement"]) if not df_filtered.empty else set()
+            not_found = [name for name in canonical_names if name not in found_names]
+            logger.debug(f"compare_institutions: df_filtered shape: {df_filtered.shape}, columns: {df_filtered.columns.tolist()}, head: {df_filtered.head()}")
+            message_extra = ""
+            if not_found:
+                message_extra = ("<br><b>Note :</b> Les établissements suivants ne figurent pas dans le classement pour la pathologie ou le contexte demandé, "
+                                 "mais peuvent être présents dans d'autres classements/pathologies :<br>- " + "<br>- ".join(not_found) +
+                                 "<br>Leur classement ne peut donc pas être comparé ici.")
+            if df_filtered.empty:
+                return f"Aucun classement trouvé pour les établissements mentionnés: {', '.join(canonical_names)}" + message_extra
+
+            # Sort by score descending
+            if "Note / 20" in df_filtered.columns:
+                df_sorted = df_filtered.sort_values(by="Note / 20", ascending=False)
+            else:
+                df_sorted = df_filtered
+
+            # Build comparison string (reuse format_response if possible, else custom)
+            res_str = format_response(
+                df_sorted[df_sorted["Catégorie"] == "Public"],
+                df_sorted[df_sorted["Catégorie"] == "Privé"],
+                len(canonical_names),
+                not self.city_detected
+            )
+
+            # Add note about the best institution
+            best_row = df_sorted.iloc[0] if not df_sorted.empty else None
+            best_note = ""
+            if best_row is not None:
+                best_note = (f"<br><b>L'établissement le mieux classé est :</b> {best_row['Etablissement']}.")
+
+            # Generate and append ranking links for both public and private
+            links = self.data_processor.generate_response_links(df_sorted)
+            from app.utility.formatting_helpers import format_links
+            res_str = format_links(res_str, links)
+
+            comparison_msg = "Comparaison explicite" if mode == "explicit" else "Comparaison des établissements mentionnés"
+            return self._create_response_and_log(comparison_msg, res_str + best_note + message_extra, prompt, METHODOLOGY_WEB_LINK)
+        except Exception as e:
+            logger.exception(f"Exception in compare_institutions: {e}")
+            return "Erreur lors de la comparaison des établissements."
+
     def get_costs_and_tokens(self, sanity_checks_results, query_analyst_results, conversation_analyst_results=None):
         """
         Aggregate total costs and token usage from sanity checks, query analyst, and conversation analyst.
@@ -535,7 +576,7 @@ class PipelineOrchestrator:
             }
             self.data_processor.create_csv(result_data=csv_data)
             logger.info("Sanity check failed, returning error message and halting pipeline.")
-            return error_msg, None
+            return error_msg, []
         if isinstance(sanity_result, dict) and not sanity_result.get("passed", True):
             error_msg = sanity_result.get("error", ERROR_MESSAGES['general_error'])
             aggregation = self.get_costs_and_tokens(getattr(self, 'sanity_checks_analyst_result', None), None, None)
@@ -565,7 +606,7 @@ class PipelineOrchestrator:
             self.data_processor.create_csv(result_data=csv_data)
             logger.info("Sanity check failed, returning error message and halting pipeline.")
 
-            return error_msg, None
+            return error_msg, []
         
 
         # Specialty selection logic
@@ -613,6 +654,38 @@ class PipelineOrchestrator:
                 "multiple_specialties": specialty_list
             }, None
 
+        # Handle explicit institution mentions with intent before ranking logic
+        # if self.institution_names and self.institution_names_intent in ["single", "multi", "compare"]:
+        if self.institution_name_mentioned and self.institution_names_intent in ["single", "multi", "compare"]: 
+            logger.info(
+                f"Institution(s) detected with intent={self.institution_names_intent}: "
+                f"{self.institution_names}"
+            )
+            # Add specialty to all HospitalInfo instances if detected
+            if self.specialty:
+                for hospital in self.institution_names:
+                    hospital.specialty = self.specialty
+
+            if self.institution_names_intent == "single":
+                # Only one institution explicitly mentioned → fetch its ranking directly
+                inst_name = self.institution_names[0].name
+                logger.debug(f"Fetching ranking for single institution: {inst_name}")
+                res = self.get_filtered_and_sorted_df(df=None, max_radius_km=max_radius_km, number_institutions=1, prompt=prompt, institution_name=inst_name)
+                return res, self.link or []
+
+            elif self.institution_names_intent == "multi":
+                # Multiple institutions explicitly mentioned → return comparison view
+                inst_names = [i.name for i in self.institution_names]
+                logger.debug(f"Fetching ranking for multiple institutions: {inst_names}")
+                res = self.compare_institutions(inst_names, prompt)
+                return res, self.link or []
+
+            elif self.institution_names_intent == "compare":
+                # Explicit request to compare institutions → always trigger comparison UI
+                inst_names = [i.name for i in self.institution_names]
+                logger.debug(f"Comparing institutions (explicit compare intent): {inst_names}")
+                res = self.compare_institutions(inst_names, prompt, mode="explicit")
+                return res, self.link or []
         # Build DataFrame with ranking and distances
         logger.debug("Calling build_ranking_dataframe_with_distances")
         try:
@@ -620,20 +693,20 @@ class PipelineOrchestrator:
             logger.debug(f"build_ranking_dataframe_with_distances returned DataFrame: {type(df)}")
         except Exception as e:
             logger.exception(f"Exception in build_ranking_dataframe_with_distances: {e}")
-            return ERROR_MESSAGES['general_ranking_error'], None
+            return ERROR_MESSAGES['general_ranking_error'], []
 
         # Check if DataFrame is None and return error message if so
         logger.debug("Checking if DataFrame is None")
         if df is None:
             logger.error("build_ranking_dataframe_with_distances returned None. Aborting response generation.")
-            return ERROR_MESSAGES['general_ranking_error'], None
+            return ERROR_MESSAGES['general_ranking_error'], []
         logger.debug(f"Retrieved DataFrame shape: {df.shape if hasattr(df, 'shape') else 'N/A'}")
 
         # Handle geolocation API errors
         logger.debug("Checking for geolocation API errors")
         if self.data_processor.geolocation_api_error:
             logger.error("Geopy API error encountered, cannot calculate distances")
-            return ERROR_MESSAGES['geopy_error'], None
+            return ERROR_MESSAGES['geopy_error'], []
 
         # Get ranking link for UI
         logger.debug("Getting ranking link for UI")
@@ -670,39 +743,37 @@ class PipelineOrchestrator:
                             else:
                                 res_str = format_response(None, top_fallback, self.number_institutions, not self.data_processor.city_detected)
                                 message = self._format_response_with_specialty(NON_ERROR_MESSAGES['no_public_institutions'] + "\nCependant, voici les établissements privés disponibles :", self.number_institutions, max_radius_km, self.city)
-                            return self._create_response_and_log(message, res_str, prompt, METHODOLOGY_WEB_LINK), self.link
+                            return self._create_response_and_log(message, res_str, prompt, METHODOLOGY_WEB_LINK), self.link or []
                         else:
                             public_exists = not fallback_df[fallback_df["Catégorie"] == "Public"].empty if "Catégorie" in fallback_df.columns else False
                             private_exists = not fallback_df[fallback_df["Catégorie"] == "Privé"].empty if "Catégorie" in fallback_df.columns else False
                             if not public_exists and not private_exists:
-                                return "Aucun établissement (ni public ni privé) est disponible pour votre query.", self.link
+                                return "Aucun établissement (ni public ni privé) est disponible pour votre query.", []
                             elif fallback_type == 'Privé' and not private_exists:
-                                return NON_ERROR_MESSAGES['no_private_institutions'], self.link
+                                return NON_ERROR_MESSAGES['no_private_institutions'], []
                             elif fallback_type == 'Public' and not public_exists:
-                                return NON_ERROR_MESSAGES['no_public_institutions'], self.link
+                                return NON_ERROR_MESSAGES['no_public_institutions'], []
                     else:
                         logger.warning("Fallback DataFrame missing 'Catégorie' column or is malformed. Returning fallback error message.")
-                        return "Aucun établissement (ni public ni privé) est disponible pour votre query.", self.link
+                        return "Aucun établissement (ni public ni privé) est disponible pour votre query.", []
                 except Exception as e:
                     logger.exception(f"Exception in fallback to {fallback_type} institutions: {e}")
-                    return "Aucun établissement (ni public ni privé) est disponible pour votre query.", self.link
+                    return "Aucun établissement (ni public ni privé) est disponible pour votre query.", []
             if self.data_processor.institution_type == 'Public':
-                return NON_ERROR_MESSAGES['no_public_institutions'], self.link
+                return NON_ERROR_MESSAGES['no_public_institutions'], []
             elif self.data_processor.institution_type == 'Privé':
-                return NON_ERROR_MESSAGES['no_private_institutions'], self.link
-
+                return NON_ERROR_MESSAGES['no_private_institutions'], []
         # If institution is mentioned, return its ranking and link
         logger.debug("Checking if institution is mentioned")
-        if self.institution_mentioned:
+        if self.institution_name_mentioned:
             logger.info("Returning result for mentioned institution")
             try:
                 res = self.get_filtered_and_sorted_df(df, max_radius_km, self.number_institutions, prompt)
                 logger.debug(f"Result from get_filtered_and_sorted_df: {res}, Links: {self.link}")
             except Exception as e:
                 logger.exception(f"Exception in get_filtered_and_sorted_df: {e}")
-                return ERROR_MESSAGES['general_error'], self.link
-            return res, self.link
-
+                return ERROR_MESSAGES['general_error'], []
+            return res, self.link or []
         # If city found and Distance column exists, use multi-radius search utility to get enough results
         logger.debug("Checking if city is detected")
         logger.debug(f"[DF COLUMNS] DataFrame columns before city/distance selection: {df.columns.tolist()}")
@@ -722,7 +793,7 @@ class PipelineOrchestrator:
             selected_df, used_radius = self.data_processor.select_hospitals(df, query_city, self.number_institutions, query_coords, radii)
             if selected_df is None or selected_df.empty:
                 logger.warning("No results found for city or by distance.")
-                return NON_ERROR_MESSAGES['no_results_found_in_location'], self.link
+                return NON_ERROR_MESSAGES['no_results_found_in_location'], []
             institution_type = getattr(self, 'institution_type', None)
             public_df = selected_df[selected_df["Catégorie"] == "Public"] if "Catégorie" in selected_df.columns else None
             private_df = selected_df[selected_df["Catégorie"] == "Privé"] if "Catégorie" in selected_df.columns else None
@@ -736,8 +807,7 @@ class PipelineOrchestrator:
                 f"Voici les meilleurs établissements (rayon utilisé : {used_radius} km)",
                 self.number_institutions, used_radius, self.city
             )
-            return self._create_response_and_log(message, res_str, prompt, METHODOLOGY_WEB_LINK), self.link
-
+            return self._create_response_and_log(message, res_str, prompt, METHODOLOGY_WEB_LINK), self.link or []
         # General ranking response if no city found
         logger.info("No city detected, returning general ranking")
         try:
@@ -759,8 +829,8 @@ class PipelineOrchestrator:
             response = self._create_response_and_log(message, res_str, prompt, METHODOLOGY_WEB_LINK)
             logger.info(f"General ranking response created successfully")
             logger.info(f"Detected variables: specialty={self.specialty}, city={self.city}, institution_type={self.institution_type}, institution_names={self.institution_names}, number_institutions={self.number_institutions}")
-            return response, self.link
+            return response, self.link or []
         except Exception as e:
             logger.exception(f"Exception in general ranking response: {e}")
             logger.info(f"Detected variables: specialty={self.specialty}, city={self.city}, institution_type={self.institution_type}, institution_names={self.institution_names}, number_institutions={self.number_institutions}")
-            return ERROR_MESSAGES['general_ranking_error'], self.link
+            return ERROR_MESSAGES['general_ranking_error'], []

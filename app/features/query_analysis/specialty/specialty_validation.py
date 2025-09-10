@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import List
 from app.utility.specialty_dicts_lists import specialty_categories_dict as default_dict
 import unidecode
 

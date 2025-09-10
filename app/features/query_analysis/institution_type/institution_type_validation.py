@@ -21,14 +21,14 @@ class InstitutionTypeValidator:
         is_institution_type_valid(institution_type: str) -> bool:
             Checks if the institution type is valid.
     """
-    def __init__(self, institution_list: str):
-        self.institution_list = institution_list
+    # def __init__(self):
+    #     self.institution_list = institution_list
 
-    def is_valid_institution(self, institution_names: str) -> bool:
-        if not institution_names or institution_names == "aucune correspondance":
-            return False
-        institution_names_ = [name.strip() for name in self.institution_list.split(",")]
-        return institution_names in institution_names_
+    # def is_valid_institution(self, institution_names: str) -> bool:
+    #     if not institution_names or institution_names == "aucune correspondance":
+    #         return False
+    #     institution_names_ = [name.strip() for name in self.institution_list.split(",")]
+    #     return institution_names in institution_names_
 
     def normalize_institution_type(self, institution_type: str) -> str:
         if not institution_type or institution_type in ["no match", "aucune correspondance"]:

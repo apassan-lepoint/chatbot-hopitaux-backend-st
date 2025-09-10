@@ -23,16 +23,11 @@ class InstitutionTypeAnalyst:
             and returns a summary dictionary containing the raw institution type, normalized institution type,
             and validation status.  
     """
-    def __init__(self, model, institution_list: str):
-        self.detector = InstitutionTypeDetector(model, institution_list)
-        self.validator = InstitutionTypeValidator(institution_list)
+    def __init__(self, model=None):
+        self.model = model
+        self.detector = InstitutionTypeDetector(model)
+        self.validator = InstitutionTypeValidator()
 
-    def set_institution_list(self, institution_list: str):
-        """
-        Updates the institution list for both detector and validator.
-        """
-        self.detector.institution_list = institution_list
-        self.validator.institution_list = institution_list
 
     def detect_and_validate_institution_type(self, prompt: str, conv_history: str = "") -> Dict[str, Optional[str]]:
         """

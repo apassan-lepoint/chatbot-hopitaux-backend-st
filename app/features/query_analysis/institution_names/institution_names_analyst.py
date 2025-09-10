@@ -18,18 +18,16 @@ class InstitutionNamesAnalyst:
         detect_and_validate_instution_name(prompt, conv_history): Detects and validates the institution name from the prompt
             and conversation history, returning a dictionary with the result.
     """
-    def __init__(self, model, institution_list: str = ""):
+    def __init__(self, model=None):
         self.detector = InstitutionNamesDetector(model)
-        # self.validator = InstitutionNamesValidator(institution_list)
         self.validator = InstitutionNamesValidator()
-        self.institution_list = institution_list or {}
 
-    def set_institution_list(self, institution_list: str) -> None:
-        """
-        Updates the institution list used for validation.
-        """
-        self.validator.set_institution_list(institution_list)
-        logger.debug(f"Institution list updated with {len(self.institution_list)} institutions")
+    # def set_institution_list(self, institution_list: str) -> None:
+    #     """
+    #     Updates the institution list used for validation.
+    #     """
+    #     self.validator.set_institution_list(institution_list)
+    #     logger.debug(f"Institution list updated with {len(self.institution_list)} institutions")
 
     # def detect_and_validate_institution_names(self, prompt: str, conv_history: str = "") -> Dict[str, Optional[str]]:
     #     """
@@ -58,11 +56,7 @@ class InstitutionNamesAnalyst:
         and returns a dictionary including names, types, and metadata.
         """
         # 1Detect institutions + intent
-        detected_result = self.detector.detect_institution_names(
-            prompt,
-            institution_list=None,  # Detector does not need the canonical list anymore
-            conv_history=conv_history
-        )
+        detected_result = self.detector.detect_institution_names(prompt, conv_history=conv_history)
 
         detected_names = detected_result.get('institution_names', [])
         intent = detected_result.get('intent', 'none')
@@ -71,10 +65,8 @@ class InstitutionNamesAnalyst:
         detected_token_usage = detected_result.get('token_usage', {}).get('total_tokens', 0) if isinstance(detected_result.get('token_usage'), dict) else 0.0
 
         # 2️ Validate against canonical list with types
-        validated_institutions = self.validator.validate_institution_names(
-            detected_names,
-            self.institution_list
-        )
+        validated_institutions = self.validator.validate_institution_names(detected_names)
+        self.validator.validate_intent(intent)
 
         # 3️ Build final detection result including types
         result = self.validator.build_detection_result(validated_institutions)

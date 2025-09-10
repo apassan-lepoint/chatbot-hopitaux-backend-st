@@ -15,6 +15,6 @@ class MessageLengthChecker:
         Checks if the message exceeds the maximum allowed length.
         """
         if len(message) > self.max_length:
-            return {"passed": False, "error": f"Message exceeds maximum length of {self.max_length} characters.", "detection_method": "rule", "warning": ERROR_MESSAGES.get("message_length", "")}
+            return {"passed": False, "error": ERROR_MESSAGES.get("message_length", "").format(self.max_length), "detection_method": "rule", "warning": ERROR_MESSAGES.get("message_length")}
         else:
             return {"passed": True}

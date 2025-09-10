@@ -297,10 +297,10 @@ INSTRUCTIONS:
    - "none" : Pas d'intention claire. S'il y a au moins un établissement qui n'est pas dans la liste, retourne "none".
 
 3. Retourne toujours un objet JSON :
-   {
+   {{
      "institutions": [...],
      "intent": "single|multi|compare|none"
-   }
+   }}
 
 ---
 
@@ -308,46 +308,46 @@ INSTRUCTIONS:
 EXEMPLES :
 
 1. "Est-ce que l'Hôpital Edouard-Herriot est bon ?"  
-{"institutions": ["Hôpital Edouard-Herriot"], "intent": "single"}
+{{"institutions": ["Hôpital Edouard-Herriot"], "intent": "single"}}
 
 2. "Montre-moi les classements pour Hôpital A, Hôpital B et Hôpital C"  
-{"institutions": ["Hôpital A", "Hôpital B", "Hôpital C"], "intent": "multi"}
+{{"institutions": ["Hôpital A", "Hôpital B", "Hôpital C"], "intent": "multi"}}
 
 3. "Hôpital Saint-Louis ou Clinique Pasteur, lequel est meilleur ?"  
-{"institutions": ["Hôpital Saint-Louis", "Clinique Pasteur"], "intent": "compare"}
+{{"institutions": ["Hôpital Saint-Louis", "Clinique Pasteur"], "intent": "compare"}}
 
 4. "Je cherche un hôpital à Toulon"  
-{"institutions": [], "intent": "none"}
+{{"institutions": [], "intent": "none"}}
 
 5. “Est-ce que l’Hôpital Edouard-Herriot est bien pour la cardiologie ?”
-{"institutions": ["Hôpital Edouard-Herriot"], "intent": "single"}
+{{"institutions": ["Hôpital Edouard-Herriot"], "intent": "single"}}
 
 6. “Le CHU de Lille est-il recommandé pour la pédiatrie ?”
-{"institutions": ["CHU de Lille"], "intent": "single"}
+{{"institutions": ["CHU de Lille"], "intent": "single"}}
 
 7. “Hôpital Saint-Louis ou Clinique Pasteur, lequel est meilleur pour la neurologie ?”
-{"institutions": ["Hôpital Saint-Louis", "Clinique Pasteur"], "intent": "compare"}
+{{"institutions": ["Hôpital Saint-Louis", "Clinique Pasteur"], "intent": "compare"}}
 
 8. “CH de Toulon vs CHU de Bordeaux, lequel est le mieux classé ?”
-{"institutions": ["CH de Toulon", "CHU de Bordeaux"], "intent": "compare"}
+{{"institutions": ["CH de Toulon", "CHU de Bordeaux"], "intent": "compare"}}
 
 9. “Montre-moi les classements pour CHU de Toulouse, Hôpital Pompidou et CHU de Nantes”
-{"institutions": ["CHU de Toulouse", "Hôpital Pompidou", "CHU de Nantes"], "intent": "multi"}
+{{"institutions": ["CHU de Toulouse", "Hôpital Pompidou", "CHU de Nantes"], "intent": "multi"}}
 
 10. “Je cherche un hôpital à Rouen pour la chirurgie cardiaque”
-{"institutions": [], "intent": "none"}
+{{"institutions": [], "intent": "none"}}
 
 11. “Classement CH Roubaix ?”
-{"institutions": ["CH Roubaix"], "intent": "single"}
+{{"institutions": ["CH Roubaix"], "intent": "single"}}
 
 12. “Quels sont les meilleurs hôpitaux pour les urgences en France ?”
-{"institutions": [], "intent": "none"}
+{{"institutions": [], "intent": "none"}}
 
 13. “Le CHU de Grenoble est-il bon en oncologie ?”
-{"institutions": ["CHU de Grenoble"], "intent": "single"}
+{{"institutions": ["CHU de Grenoble"], "intent": "single"}}
 
 14. “Classement CHU de Lyon et Hôpital Pitié-Salpêtrière pour la neurologie ?”
-{"institutions": ["CHU de Lyon", "Hôpital Pitié-Salpêtrière"], "intent": "multi"}
+{{"institutions": ["CHU de Lyon", "Hôpital Pitié-Salpêtrière"], "intent": "multi"}}
 
 Réponds UNIQUEMENT avec un JSON.
 
