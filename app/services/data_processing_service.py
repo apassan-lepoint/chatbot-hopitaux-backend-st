@@ -1,7 +1,6 @@
 import os
 import pandas as pd
 import csv
-from datetime import datetime
 import unicodedata
 
 from app.config.file_paths_config import PATHS
@@ -24,7 +23,7 @@ class DataProcessor:
         ranking_df (pd.DataFrame): DataFrame containing hospital rankings.
         llm_handler_service (LLMHandler): Service for handling LLM interactions.
         specialty_df (pd.DataFrame): DataFrame for the specific specialty rankings.
-        institution_name (str): Name of the institution mentioned in the query.
+        institution_names (list): List of institutions mentioned in the query.
         specialty_ranking_unavailable (bool): Flag indicating if the specialty ranking is unavailable.      
         web_ranking_link (list): List of generated web links for rankings.
         geolocation_api_error (bool): Flag indicating if there was an error with geolocation API
@@ -33,7 +32,7 @@ class DataProcessor:
         city (str): City extracted from the query.      
         city_detected (bool): Flag indicating if a city was detected in the query.
         df_with_cities (pd.DataFrame): DataFrame containing hospitals with city information.
-        institution_mentioned (str): Institution mentioned in the query.
+        institution_name_mentioned (str): Institution mentioned in the query.
         number_institutions (int): Number of institutions mentioned in the query.
         weblinks (dict): Predefined links for public and private rankings.
         institution_coordinates_df (pd.DataFrame): DataFrame containing hospital coordinates.
@@ -65,7 +64,7 @@ class DataProcessor:
         self.ranking_df = None
         self.llm_handler_service = LLMHandler()
         self.specialty_df = None
-        self.institution_name = None
+        self.institution_names = []
         self.specialty_ranking_unavailable = False
         self.web_ranking_link = []
         self.geolocation_api_error = False
@@ -74,7 +73,7 @@ class DataProcessor:
         self.city = None
         self.city_detected = False
         self.df_with_cities = None
-        self.institution_mentioned = None
+        self.institution_name_mentioned = None
         self.number_institutions = None
         # Predefined links for public/private rankings
         self.weblinks={
@@ -267,21 +266,11 @@ class DataProcessor:
         return INSTITUTION_TYPE_URL_MAPPING.get(institution_type, institution_type.lower())
     
     
-    def set_detection_results(self, specialty, city, city_detected, institution_type, number_institutions=None, institution_name=None, institution_mentioned=None):
+    def set_detection_results(self, specialty, city, city_detected, institution_type, number_institutions=None, institution_names=[], institution_name_mentioned=None, institution_names_with_types=None, institution_names_intent="none"):
         """
         Sets detection results from orchestrator.
-        Args:
-            specialty (str): The medical specialty detected in the query.
-            city (str): The city detected in the query.
-            city_detected (bool): Flag indicating if a city was detected.
-            institution_type (str): The type of institution (public/private) detected.
-            number_institutions (int, optional): Number of institutions mentioned in the query.
-            institution_name (str, optional): Name of the institution mentioned in the query.
-            institution_mentioned (str, optional): Institution mentioned in the query.
-        Returns:
-            None
         """
-        logger.debug(f"set_detection_results: specialty={specialty!r}, city={city!r}, city_detected={city_detected!r}, institution_type={institution_type!r}, number_institutions={number_institutions!r}, institution_name={institution_name!r}, institution_mentioned={institution_mentioned!r}")
+        logger.debug(f"set_detection_results: specialty={specialty!r}, city={city!r}, city_detected={city_detected!r}, institution_type={institution_type!r}, number_institutions={number_institutions!r}, institution_names={institution_names!r}, institution_name_mentioned={institution_name_mentioned!r}")
         invalid_specialties = ["no match", "no specialty match", "aucune correspondance", ""]
         if specialty not in invalid_specialties and specialty is not None:
             self.specialty = specialty
@@ -290,16 +279,28 @@ class DataProcessor:
             logger.debug(f"Specialty value '{specialty}' is invalid, not overwriting existing specialty: {getattr(self, 'specialty', None)!r}")
         self.city = city
         logger.debug(f"DataProcessor.city set to: {self.city!r}")
+        
         self.city_detected = city_detected
         logger.debug(f"DataProcessor.city_detected set to: {self.city_detected!r}")
+        
         self.institution_type = institution_type
         logger.debug(f"DataProcessor.institution_type set to: {self.institution_type!r}")
+        
         self.number_institutions = number_institutions
         logger.debug(f"DataProcessor.number_institutions set to: {self.number_institutions!r}")
-        self.institution_name = institution_name
-        logger.debug(f"DataProcessor.institution_name set to: {self.institution_name!r}")
-        self.institution_mentioned = institution_mentioned
-        logger.debug(f"DataProcessor.institution_mentioned set to: {self.institution_mentioned!r}")
+
+        self.institution_names = institution_names or []
+        logger.debug(f"DataProcessor.institution_names set to: {self.institution_names!r}")
+
+        self.institution_names_with_types = institution_names_with_types or []
+        logger.debug(f"DataProcessor.institution_names_with_types set to: {self.institution_names_with_types!r}")
+
+        self.institution_names_intent = institution_names_intent or "none"
+        logger.debug(f"DataProcessor.institution_names_intent set to: {self.institution_names_intent!r}")
+            
+        self.institution_name_mentioned = institution_name_mentioned
+        logger.debug(f"DataProcessor.institution_name_mentioned set to: {self.institution_name_mentioned!r}")
+        
         try:
             self.institution_coordinates_df = pd.read_excel(self.paths["hospital_coordinates_path"])
         except Exception as e:
@@ -345,7 +346,7 @@ class DataProcessor:
                 self.web_ranking_link = [self.weblinks["privé"]]
             else:
                 self.web_ranking_link = [self.weblinks["public"], self.weblinks["privé"]]
-            return None
+            return self.web_ranking_link  # Always return the list, not None
         # If ranking not found, suggest the opposite type
         if self.specialty_ranking_unavailable:
             logger.debug("Specialty ranking unavailable, generating opposite type links")

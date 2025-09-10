@@ -1,6 +1,6 @@
 from .city.city_analyst import CityAnalyst
 from .city.city_validation import CityCheckException
-from .institution_name.institution_name_analyst import InstitutionNameAnalyst
+from .institution_names.institution_names_analyst import InstitutionNamesAnalyst
 from .institution_type.institution_type_analyst import InstitutionTypeAnalyst
 from .number_institutions.number_institutions_analyst import NumberInstitutionsAnalyst
 from .specialty.specialty_analyst import SpecialtyAnalyst
@@ -24,12 +24,12 @@ class QueryAnalyst:
             Analyzes the provided text and conversation history to detect city, institution name,
             institution type, specialty, and number of institutions.    
     """
-    def __init__(self, model=None, institution_list=None, llm_handler_service=None):
+    def __init__(self, model=None, llm_handler_service=None):
         logger.info("Initializing QueryAnalyst")
         self.model = model
         self.city_service = CityAnalyst(llm_handler_service, model)
-        self.institution_name_service = InstitutionNameAnalyst(model, institution_list or "")
-        self.institution_type_service = InstitutionTypeAnalyst(model, institution_list or "")
+        self.institution_names_service = InstitutionNamesAnalyst(model)
+        self.institution_type_service = InstitutionTypeAnalyst(model)
         all_specialties = [s for specs in specialty_categories_dict.values() for s in specs]
         self.specialty_analyst = SpecialtyAnalyst(model, all_specialties, specialty_categories_dict)
         self.number_institutions_service = NumberInstitutionsAnalyst(model)
@@ -42,7 +42,6 @@ class QueryAnalyst:
         logger.info(f"QueryAnalyst running all detections for text: {text}, conv_history: {conv_history}")
 
         specialty_result = self.specialty_analyst.detect_and_validate_specialty(text, conv_history)
-        number_institutions_result = self.number_institutions_service.process_number_institutions(text, conv_history)
 
         try:
             city_result = self.city_service.detect_and_validate_city(text, conv_history)
@@ -56,19 +55,25 @@ class QueryAnalyst:
             logger.error(f"QueryAnalyst.run_all_detections: Unexpected exception: {e}")
             city_result = {"city": None, "city_detected": False, "detection_method": None, "cost": 0.0}
 
-        institution_name_result = self.institution_name_service.detect_and_validate_institution_name(text, conv_history)
+        institution_names_result = self.institution_names_service.detect_and_validate_institution_names(text, conv_history)
         institution_type_result = self.institution_type_service.detect_and_validate_institution_type(text, conv_history)
+
+        number_institutions_result = self.number_institutions_service.process_number_institutions(text, conv_history)
+        if institution_names_result.get("institutions"): # If institution names are detected, override number_institutions_result
+            number_institutions = len(institution_names_result["institutions"])
+        else:
+            number_institutions = number_institutions_result.get("number_institutions")
 
         total_cost = (
             city_result.get("cost", 0.0)
-            + institution_name_result.get("cost", 0.0)
+            + institution_names_result.get("cost", 0.0)
             + institution_type_result.get("cost", 0.0)
             + specialty_result.get("cost", 0.0)
             + number_institutions_result.get("cost", 0.0)
         )
         total_token_usage = (
             city_result.get("token_usage", 0)
-            + institution_name_result.get("token_usage", 0)
+            + institution_names_result.get("token_usage", 0)
             + institution_type_result.get("token_usage", 0)
             + specialty_result.get("token_usage", 0)
             + number_institutions_result.get("token_usage", 0)
@@ -79,10 +84,12 @@ class QueryAnalyst:
             "city_detection_method": city_result.get("detection_method"),
             "city_cost": city_result.get("cost", 0.0),
             "city_token_usage": city_result.get("token_usage", 0),
-            "institution_name": institution_name_result.get("institution_name"),
-            "institution_name_detection_method": institution_name_result.get("detection_method"),
-            "institution_name_cost": institution_name_result.get("cost", 0.0),
-            "institution_name_token_usage": institution_name_result.get("token_usage", 0),
+            "institution_name_mentioned": institution_names_result.get("institution_name_mentioned"),
+            "institution_names": institution_names_result.get("institutions"),  # list of {name,type}
+            "institution_names_detection_method": institution_names_result.get("detection_method"),
+            "institution_names_cost": institution_names_result.get("cost", 0.0),
+            "institution_names_token_usage": institution_names_result.get("token_usage", 0),
+            "institution_names_intent": institution_names_result.get("intent"),
             "institution_type": institution_type_result.get("institution_type"),
             "institution_type_detection_method": institution_type_result.get("detection_method"),
             "institution_type_cost": institution_type_result.get("cost", 0.0),
@@ -91,7 +98,7 @@ class QueryAnalyst:
             "specialty_detection_method": specialty_result.get("detection_method"),
             "specialty_cost": specialty_result.get("cost", 0.0),
             "specialty_token_usage": specialty_result.get("token_usage", 0),
-            "number_institutions": number_institutions_result.get("number_institutions"),
+            "number_institutions": number_institutions,
             "number_institutions_detection_method": number_institutions_result.get("detection_method"),
             "number_institutions_cost": number_institutions_result.get("cost", 0.0),
             "number_institutions_token_usage": number_institutions_result.get("token_usage", 0),
@@ -99,8 +106,20 @@ class QueryAnalyst:
             "total_token_usage": total_token_usage
         }
 
-        logger.info(f"QueryAnalyst detected: specialty={specialty_result.get('specialty')}, city={city_result.get('city')}, institution_name={institution_name_result.get('institution_name')}, institution_type={institution_type_result.get('institution_type')}, number_institutions={number_institutions_result.get('number_institutions')}")
-        logger.info(f"QueryAnalyst costs/tokens: specialty_cost={specialty_result.get('cost')}, city_cost={city_result.get('cost')}, institution_name_cost={institution_name_result.get('cost')}, institution_type_cost={institution_type_result.get('cost')}, number_institutions_cost={number_institutions_result.get('cost')}")
-        logger.info(f"QueryAnalyst tokens: specialty_tokens={specialty_result.get('token_usage')}, city_tokens={city_result.get('token_usage')}, institution_name_tokens={institution_name_result.get('token_usage')}, institution_type_tokens={institution_type_result.get('token_usage')}, number_institutions_tokens={number_institutions_result.get('token_usage')}")
+        logger.info(f"QueryAnalyst detected: specialty={specialty_result.get('specialty')}, city={city_result.get('city')}, institution_names={institution_names_result.get('institution_names')}, institution_type={institution_type_result.get('institution_type')}, number_institutions={number_institutions_result.get('number_institutions')}")
+        logger.info(f"QueryAnalyst costs/tokens: specialty_cost={specialty_result.get('cost')}, city_cost={city_result.get('cost')}, institution_names_cost={institution_names_result.get('cost')}, institution_type_cost={institution_type_result.get('cost')}, number_institutions_cost={number_institutions_result.get('cost')}")
+        logger.info(f"QueryAnalyst tokens: specialty_tokens={specialty_result.get('token_usage')}, city_tokens={city_result.get('token_usage')}, institution_names_tokens={institution_names_result.get('token_usage')}, institution_type_tokens={institution_type_result.get('token_usage')}, number_institutions_tokens={number_institutions_result.get('token_usage')}")
 
         return results
+    
+
+    #  # Logging for debugging and analysis
+    # logger.info(
+    #     f"Institution names detected: {results['institution_names_with_types']}, "
+    #     f"intent={results['institution_names_intent']}, "
+    #     f"detection method={results['institution_names_detection_method']}"
+    # )
+    # logger.info(
+    #     f"Costs/tokens: cost={results['institution_names_cost']}, "
+    #     f"tokens={results['institution_names_token_usage']}"
+    # )

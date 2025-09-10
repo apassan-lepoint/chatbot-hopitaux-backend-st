@@ -1,7 +1,7 @@
 import pandas as pd
 import unidecode
 from app.config.file_paths_config import PATHS
-from typing import Optional, List, Tuple
+from typing import List, Tuple
 from app.utility.logging import get_logger
 from app.utility.llm_helpers import invoke_llm_with_error_handling
 from app.utility.wrappers import parse_llm_response, prompt_formatting

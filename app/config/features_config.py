@@ -42,7 +42,10 @@ ERROR_MESSAGES = {
     "institution_not_found": "Le nom de l'établissement que vous avez indiqué n'a pas été évalué dans le classement des hôpitaux. Merci de reformuler votre question.",
     "geopy_error": "Dû à une surutilisation de l'API de Geopy, le service de calcul des distances est indisponible pour le moment, merci de réessayer plus tard ou de recommencer avec une question sans localisation spécifique.",
     "general_error": "Je ne peux pas traiter votre demande. Merci de reformuler une question relative aux classements des hôpitaux.",
-    "internal_server_error": "Internal server error."
+    "internal_server_error": "Internal server error.",
+    "not_comparable": "Ce n'est pas possible à comparer ces établissements car ils ne sont pas tous publics ou privés. Les critères des établissements publics sont différents des établissements privés.",
+    "institution_name_not_in_list": "Un ou plusieurs établissements mentionné dans votre query ne sont pas associé avec la bonne pathologie ou type d'établissement (public/privé).",
+    "institution_name_intent_None": "Votre message mentionne un établissement de santé mais ce n'est pas clair si vous voudriez une liste des classements ou faire une comparaison des établissements. Merci de reformuler votre question en précisant ce que vous souhaitez savoir sur cet établissement."
 }
 
 
@@ -112,4 +115,4 @@ INSTITUTION_TYPE_CODES = {
 SEARCH_RADIUS_KM = [5, 10, 50, 100] 
 
 # CSV Specific constants
-CSV_FIELDNAMES = ['uuid', 'date', 'question', 'response', 'conversation_list', 'city', 'institution_type', 'institution_name', 'specialty', 'number_institutions', 'total_cost_sanity_checks', 'total_cost_query_analyst', 'total_cost_conversation_analyst', 'total_cost', 'total_tokens_sanity_checks', 'total_tokens_query_analyst', 'total_tokens_conversation_analyst', 'total_tokens']
+CSV_FIELDNAMES = ['uuid', 'date', 'question', 'response', 'conversation_list', 'city', 'institution_type', 'institution_names', 'specialty', 'number_institutions', 'total_cost_sanity_checks', 'total_cost_query_analyst', 'total_cost_conversation_analyst', 'total_cost', 'total_tokens_sanity_checks', 'total_tokens_query_analyst', 'total_tokens_conversation_analyst', 'total_tokens']

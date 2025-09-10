@@ -28,10 +28,10 @@ BackendChatbotHopitaux/
 │   │   │  │   ├── city_analyst.py
 │   │   │  │   ├── city_detection.py
 │   │   │  │   └── city_validation.py
-│   │   │  ├── institution_name/
-│   │   │  │   ├── institution_name_analyst.py
-│   │   │  │   ├── institution_name_detection.py
-│   │   │  │   └── institution_name_validation.py
+│   │   │  ├── institution_names/
+│   │   │  │   ├── institution_names_analyst.py
+│   │   │  │   ├── institution_names_detection.py
+│   │   │  │   └── institution_names_validation.py
 │   │   │  ├── institution_type/
 │   │   │  │   ├── institution_type_analyst.py
 │   │   │  │   ├── institution_type_detection.py

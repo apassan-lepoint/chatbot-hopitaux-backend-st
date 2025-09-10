@@ -1,7 +1,7 @@
 from app.utility.logging import get_logger
 from app.utility.llm_helpers import invoke_llm_with_error_handling
 from app.utility.wrappers import parse_llm_response, prompt_formatting
-from app.config.features_config import CITY_MENTIONED, CITY_FOREIGN, CITY_AMBIGUOUS, CITY_NO_CITY_MENTIONED, STATUS_DESCRIPTIONS_DICT
+from app.config.features_config import CITY_MENTIONED, CITY_FOREIGN, CITY_AMBIGUOUS, CITY_NO_CITY_MENTIONED
 
 logger = get_logger(__name__)
 
