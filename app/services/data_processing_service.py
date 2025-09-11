@@ -181,7 +181,7 @@ class DataProcessor:
         column_1 = self.institution_coordinates_df.iloc[:, 0]
         institution_list = [element.split(",")[0] for element in column_1]
         institution_list = list(set(institution_list))
-        institution_list = [element for element in institution_list if element not in ("CHU", "CH")]
+        institution_list = [element for element in institution_list if element not in ("CHU", "CH", "CHR", "CHRU")]
         institution_list = ", ".join(map(str, institution_list))
         return institution_list
 

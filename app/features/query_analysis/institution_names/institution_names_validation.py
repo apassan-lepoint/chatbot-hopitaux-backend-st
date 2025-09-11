@@ -5,6 +5,7 @@ from app.config.features_config import ERROR_MESSAGES
 from app.config.file_paths_config import PATHS
 import pandas as pd
 from app.features.query_analysis.institution_names.institution_names_model import HospitalInfo
+import re
 
 
 logger = get_logger(__name__)
@@ -24,31 +25,62 @@ class InstitutionNamesValidator:
         self.institution_list = []
         self._load_institution_data()
 
+    def _clean_hospital_name(self, etablissement: str) -> str:
+        """
+        Cleans the hospital name according to the following rules:
+        - If the name starts with CH, CHU, CHR, or CHRU (case-insensitive), keep up to (but not including) the first parentheses with exactly two digits.
+        - Otherwise, keep up to the first comma.
+        """
+        if not isinstance(etablissement, str):
+            return etablissement
+        etablissement = etablissement.strip()
+        if re.match(r'^(CHU?|CHR?U?)\b', etablissement, re.IGNORECASE):
+            match = re.search(r'\([0-9]{2}\)', etablissement)
+            if match:
+                start = match.start()
+                return etablissement[:start].strip()
+            else:
+                return etablissement  # fallback: return full string if no match
+        else:
+            return etablissement.split(',')[0].strip()
+
+    def _normalize_name(self, name: str) -> str:
+        """
+        Removes common French articles and extra spaces from the name for robust matching.
+        """
+        if not isinstance(name, str):
+            return name
+        # Remove articles and commas, collapse spaces
+        name = re.sub(r"\b(de|du|des|la|le|les|l')\b", "", name, flags=re.IGNORECASE)
+        name = name.replace(",", " ")
+        name = re.sub(r"\s+", " ", name)
+        return name.strip().lower()
+
     def _load_institution_data(self):
         """
-        Loads the hospital DataFrame and builds a list of (cleaned_name, original_full_name) tuples for matching.
+        Loads the hospital DataFrame and builds a list of (normalized_cleaned_name, original_full_name) tuples for matching.
         """
         institution_df = pd.read_excel(PATHS["hospital_coordinates_path"])
-        self.match_tuples = []  # List of (cleaned_name, original_full_name)
+        self.match_tuples = []  # List of (normalized_cleaned_name, original_full_name)
         for original in institution_df.iloc[:, 0]:
             if not isinstance(original, str):
                 continue
-            cleaned = original.split(",")[0].strip()
-            if cleaned not in ["CHU", "CH"]:
-                self.match_tuples.append((cleaned, original))
+            cleaned = self._clean_hospital_name(original)
+            normalized = self._normalize_name(cleaned)
+            if normalized not in [self._normalize_name(x) for x in ["CHU", "CH", "CHR", "CHRU"]]:
+                self.match_tuples.append((normalized, original))
         self.institution_list = list(set([t[0] for t in self.match_tuples]))
 
     def format_hospital_list(self, institution_df) -> str:
-        institution_list = [element.split(",")[0] for element in institution_df.iloc[:, 0]]
+        institution_list = [self._normalize_name(self._clean_hospital_name(element)) for element in institution_df.iloc[:, 0]]
         institution_list = list(set(institution_list))
-        institution_list = [element for element in institution_list if element != "CHU"]
-        institution_list = [element for element in institution_list if element != "CH"]
+        institution_list = [element for element in institution_list if element not in [self._normalize_name(x) for x in ("CHU", "CH", "CHR", "CHRU")]]
         return institution_list
 
     def clean_etablissement_column(self, df):
         df = df.copy()
-        df["Etablissement_clean"] = df["Etablissement"].apply(lambda x: x.split(",")[0].strip() if isinstance(x, str) else x)
-        df = df[~df["Etablissement_clean"].isin(["CHU", "CH"])]
+        df["Etablissement_clean"] = df["Etablissement"].apply(lambda x: self._normalize_name(self._clean_hospital_name(x)))
+        df = df[~df["Etablissement_clean"].isin([self._normalize_name(x) for x in ["CHU", "CH", "CHR", "CHRU"]])]
         return df
 
     def get_institution_type_from_df(self, institution_name: str) -> str:
@@ -69,7 +101,7 @@ class InstitutionNamesValidator:
 
     def validate_institution_names(self, detected_names: List[str]) -> List[HospitalInfo]:
         """
-        For each detected name, fuzzy match on cleaned_name, but always return the full original Etablissement value.
+        For each detected name, fuzzy match on normalized_cleaned_name, but always return the full original Etablissement value.
         """
         logger.debug(f"validate_institution_names called with detected_names={detected_names} and institution_list length={len(self.institution_list)})")
         if not self.institution_list:
@@ -78,11 +110,12 @@ class InstitutionNamesValidator:
         validated = []
         for name in detected_names:
             logger.debug(f"Processing detected name: '{name}'")
-            match = process.extractOne(name, self.institution_list, score_cutoff=80)
+            normalized_name = self._normalize_name(self._clean_hospital_name(name))
+            match = process.extractOne(normalized_name, self.institution_list, score_cutoff=80)
             if match:
                 cleaned_name = match[0]
-                # Find all original_full_names for this cleaned_name
-                canonical_names = [orig for (clean, orig) in self.match_tuples if clean == cleaned_name]
+                # Find all original_full_names for this normalized_cleaned_name
+                canonical_names = [orig for (norm, orig) in self.match_tuples if norm == cleaned_name]
                 for canonical_name in canonical_names:
                     hospital_info = HospitalInfo(name=canonical_name)
                     hospital_info.type = self.get_institution_type_from_df(cleaned_name)
@@ -112,7 +145,8 @@ class InstitutionNamesValidator:
         """
         if validated_institutions and isinstance(validated_institutions[0], str) and validated_institutions[0].startswith("No valid match"):
             return {"institutions": None, "institution_name_mentioned":True, "error": validated_institutions[0]}
-        if validated_institutions:
+        # Only set institution_name_mentioned True if all are real HospitalInfo objects
+        if validated_institutions and all(hasattr(h, "name") for h in validated_institutions):
             logger.info(f"Specific institutions mentioned: {', '.join([h.name for h in validated_institutions])}")
             return {"institutions": validated_institutions, "institution_name_mentioned": True}
         else:

@@ -283,19 +283,29 @@ class PipelineOrchestrator:
             str: The formatted response string with the institution's ranking and details.  
         """
         logger.info(f"Institution mentioned in query: {self.institution_names}")
-        # Check if institution is present in DataFrame
-        if not df['Etablissement'].str.contains(self.institution_names).any():
-            logger.warning(f"Institution {self.institution_names} not found in DataFrame")
+        # Extract the institution name string for matching
+        if isinstance(self.institution_names, list) and self.institution_names:
+            inst_name = getattr(self.institution_names[0], 'name', str(self.institution_names[0]))
+        else:
+            inst_name = str(self.institution_names)
+        # Check if institution is present in DataFrame (literal match)
+        if not df['Etablissement'].str.contains(inst_name, case=False, na=False, regex=False).any():
+            logger.warning(f"Institution {inst_name} not found in DataFrame")
             display_specialty, is_no_match = self._normalize_specialty_for_display(self.specialty)
             if is_no_match:
                 return f"Cet établissement ne fait pas partie des {number_institutions} meilleurs établissements du palmarès global"
             else:
                 return f"Cet établissement n'est pas présent pour la pathologie {display_specialty}, vous pouvez cependant consulter le classement suivant:"
-        # Find institution's position in sorted DataFrame
+        # Find institution's position in sorted DataFrame (literal match)
         df_sorted = df.sort_values(by='Note / 20', ascending=False).reset_index(drop=True)
-        position = df_sorted.index[df_sorted["Etablissement"].str.contains(self.institution_names, case=False, na=False)][0] + 1
+        match_idx = df_sorted["Etablissement"].str.contains(inst_name, case=False, na=False, regex=False)
+        position = df_sorted.index[match_idx][0] + 1
+        note = df_sorted.loc[match_idx, 'Note / 20'].values[0] if 'Note / 20' in df_sorted.columns else None
         display_specialty, is_no_match = self._normalize_specialty_for_display(self.specialty)
-        response = f"{self.institution_names} est classé n°{position} "
+        response = f"{inst_name} est classé n°{position}"
+        if note is not None:
+            response += f" avec une note de {note:.2f}/20"
+        response += " "
         if is_no_match:
             response += "du palmarès général"
         else:
@@ -670,7 +680,8 @@ class PipelineOrchestrator:
                 # Only one institution explicitly mentioned → fetch its ranking directly
                 inst_name = self.institution_names[0].name
                 logger.debug(f"Fetching ranking for single institution: {inst_name}")
-                res = self.get_filtered_and_sorted_df(df=None, max_radius_km=max_radius_km, number_institutions=1, prompt=prompt, institution_name=inst_name)
+                df_single_institution = self.build_ranking_dataframe_with_distances(prompt, relevant_file, self.specialty)
+                res = self.get_filtered_and_sorted_df(df=df_single_institution, max_radius_km=max_radius_km, number_institutions=1, prompt=prompt)
                 return res, self.link or []
 
             elif self.institution_names_intent == "multi":

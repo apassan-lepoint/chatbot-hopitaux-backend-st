@@ -25,7 +25,14 @@ pipeline = PipelineOrchestrator()
 
 
 # === Single-turn endpoint ===
-@router.post("/ask", response_model=AskResponse)
+@router.post(
+    "/ask",
+    response_model=AskResponse,
+    tags=["Chatbot"],
+    summary="Ask a single-turn question",
+    description="Submit a one-off question about hospitals. "
+                "Returns the best response and relevant hospital links."
+)
 def ask_question(query: UserQuery):
     """
     Handles single-turn queries using the pipeline only.
@@ -50,7 +57,14 @@ def ask_question(query: UserQuery):
 
 
 # === Multi-turn endpoint ===
-@router.post("/chat", response_model=ChatResponse)
+@router.post(
+    "/chat",
+    response_model=ChatResponse,
+    tags=["Chatbot"],
+    summary="Chat with multi-turn support",
+    description="Engage in a back-and-forth conversation with the hospital chatbot. "
+                "Uses the conversation service if multi-turn is enabled in config."
+)
 def chat(request: ChatRequest):
     """
     Handles multi-turn conversations. Routes to ConversationService if multi-turn

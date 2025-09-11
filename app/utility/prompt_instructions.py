@@ -220,7 +220,6 @@ Répondez avec:
 Exemples avec contexte conversationnel:
 - Avec historique mentionnant Paris, 'Et à Lyon ?' → 3 (Lyon est mentionné)
 - Avec historique sur Marseille, 'Merci' → 0 (aucune nouvelle localisation)
-- Avec historique général, 'À Londres ?' → 1 (ville étrangère)
 """,
 
     "second_detect_city_prompt": """
@@ -272,8 +271,7 @@ Exemples avec contexte conversationnel:
 """,
 
     "detect_institutions_prompt": """
-Ton rôle est d'extraire les noms exacts d'établissements mentionnés dans une question
-et de déterminer l'intention de la demande.
+Ton rôle est d'extraire les noms exacts d'établissements mentionnés dans une question et de déterminer l'intention de la demande.
 
 ---
 
@@ -289,11 +287,14 @@ INSTRUCTIONS:
 1. Extrait tous les noms d'établissements tels qu'ils apparaissent dans le message (même avec fautes ou variantes).
    - Retourne-les tels que l'utilisateur les a écrits, sans corriger ni compléter.
    - Si aucun établissement n'est mentionné, retourne une liste vide.
+   - NE RETOURNE PAS de mots génériques ou de catégories comme "hôpital", "hôpitaux", "clinique", "cliniques", "établissement", "établissements", "centre", "centres", "hôpital public", "hôpital privé", "hôpitaux publics", "hôpitaux privés", "cliniques privées", "cliniques publiques", ni de noms de villes ou régions.
+   - NE RETOURNE PAS de sigles ou abréviations génériques comme "CH", "CHU", "CHR", "CHRU" s'ils sont seuls, sans nom de ville ou de site associé (ex: "CH de Vannes" est correct, mais "CH" seul ne l'est pas).
+   - Ne considère comme établissement que les noms propres ou dénominations précises d'un hôpital ou d'une clinique (ex: "CH de Vannes", "Hôpital Edouard-Herriot", "Clinique Pasteur").
 
 2. Détermine l'intention de la question :
-   - "single" : L'utilisateur parle d'un seul établissement.
+   - "single" : L'utilisateur parle d'un seul établissement (même si le mot "classement" est utilisé, s'il n'y a qu'un seul nom d'établissement, l'intention est "single").
    - "multi" : L'utilisateur demande des infos sur plusieurs établissements (mais sans comparaison).
-   - "compare" : L'utilisateur compare ou demande un classement.
+   - "compare" : L'utilisateur compare ou demande un classement entre plusieurs établissements (utilise des formulations comme "lequel est meilleur", "vs", "comparaison", etc. ET il y a au moins deux établissements mentionnés).
    - "none" : Pas d'intention claire. S'il y a au moins un établissement qui n'est pas dans la liste, retourne "none".
 
 3. Retourne toujours un objet JSON :
@@ -303,7 +304,6 @@ INSTRUCTIONS:
    }}
 
 ---
-
 
 EXEMPLES :
 
