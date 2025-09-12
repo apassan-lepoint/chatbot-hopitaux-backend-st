@@ -38,7 +38,7 @@ class DataProcessor:
         institution_coordinates_df (pd.DataFrame): DataFrame containing hospital coordinates.
     Methods:
         __init__: Initializes the DataProcessor class, sets up file paths, loads the LLM service, and prepares variables for query processing.
-        _load_ranking_dataframe: Loads and prepares a ranking DataFrame with category.
+        _load_ranking_dataframe: Loads and prepares a ranking DataFrame from a CSV file and add the category.
         _generate_web_link: Generates a single web ranking link based on    specialty and institution type.     
         _normalize_str: Normalizes strings for matching.
         _is_no_specialty: Checks if the specialty is empty or no match.
@@ -148,7 +148,9 @@ class DataProcessor:
             bool: True if specialty is empty or indicates no match, False otherwise.    
         """
         logger.debug(f"Checking if specialty is 'no match': {specialty}")
-        return not specialty or specialty in ["no match", "no specialty match", "aucune correspondance"] or specialty.strip() == ""
+        if isinstance(specialty, list):
+            return not specialty or not specialty[0].strip()
+        return not specialty or specialty in ["no match", "no specialty match", "aucune correspondance"] or not specialty.strip()
 
 
     def _parse_specialty_list(self, specialty: str) -> list:
@@ -209,7 +211,10 @@ class DataProcessor:
         # Normalize the Spécialité column once if not already present
         if 'Spécialité_norm' not in self.ranking_df.columns:
             self.ranking_df['Spécialité_norm'] = self.ranking_df['Spécialité'].apply(self._normalize_str)
-        # logger.debug(f"Normalized specialties in DataFrame: {[repr(s) for s in self.ranking_df['Spécialité_norm'].unique()]}")
+        # Debug: Log all normalized specialties and the normalized query
+        logger.debug(f"All normalized specialties in DataFrame: {self.ranking_df['Spécialité_norm'].unique()}")
+        norm_query = self._normalize_str(specialty)
+        logger.debug(f"Normalized specialty from query: '{norm_query}'")
         matching_rows = pd.DataFrame()
         # Handle multiple specialties
         if ',' in specialty or specialty.startswith(('plusieurs correspondances:', 'multiple matches:')):
