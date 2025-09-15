@@ -120,6 +120,13 @@ At a high level, here is how the chatbot works:
 
 The above process is managed by the PipelineOrchestrator class in app/services/pipeline_orchestrator.py which is called when creating both the Streamlit and FastAPI applications.
 
+# Swagger Documentation 
+To open Swagger UI on your browser: http://127.0.0.1:8000/docs
+It will show the request/response schemas from your pydantic_models.
+
+To open the ReDoc UI (spec-style documentation) in your browser: http://127.0.0.1:8000/redoc
+
+
 # Contact
 Anuradha (Annie) Passan - apassan@ext.lepoint.fr, apassan@eulidia.com
 Benjamin L'Hyver - blhyver@eulidia.com
