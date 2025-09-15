@@ -29,6 +29,7 @@ class PipelineOrchestrator:
         self.city = None
         self.city_detected = False  # Flag to indicate if a city was detected
         self.df_gen = None # DF for results 
+        self.number_institutions = 3 # Default number of institutions to return
         self.institution_name_mentioned=None
         self.institution_names=[]
         self.data_processor=DataProcessor() # Instance of DataProcessor for data extraction and transformation
