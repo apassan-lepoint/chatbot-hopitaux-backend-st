@@ -39,13 +39,13 @@ def ask_question(query: UserQuery):
     """
     try:
         result, links = pipeline.generate_response(prompt=query.prompt, selected_specialty=getattr(query, "selected_specialty", None))
-
+        if isinstance(result, tuple): # Defensive: unpack again if needed
+            result, links = result
         # Handle multiple specialties if returned by the pipeline
         if isinstance(result, dict) and "multiple_specialties" in result:
             return AskResponse(
                 result=result["message"],
                 links=[],
-                ambiguous=True,
                 multiple_specialties=result["multiple_specialties"]
             )
 
@@ -65,7 +65,7 @@ def ask_question(query: UserQuery):
     description="Engage in a back-and-forth conversation with the hospital chatbot. "
                 "Uses the conversation service if multi-turn is enabled in config."
 )
-def chat(request: ChatRequest):
+def chat(request: ChatRequest): # TODO: adjust once multi-turn is fully implemented
     """
     Handles multi-turn conversations. Routes to ConversationService if multi-turn
     is enabled in config, otherwise falls back to single-turn logic.
