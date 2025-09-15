@@ -1,17 +1,19 @@
 import pandas as pd
 from datetime import datetime
 from uuid import uuid4
+import unicodedata
 ## Accent-insensitive matching removed
 from app.services.data_processing_service import DataProcessor
 from app.features.query_analysis.query_analyst import QueryAnalyst
 from app.config.file_paths_config import PATHS
 from app.config.features_config import (SEARCH_RADIUS_KM, NON_ERROR_MESSAGES, ERROR_MESSAGES, METHODOLOGY_WEB_LINK)
 from app.utility.logging import get_logger
-from app.utility.formatting_helpers import format_response
+from app.utility.formatting_helpers import format_response, extract_links_from_text
 from app.features.sanity_checks.message_pertinence_check import MessagePertinenceCheckException
 from app.features.sanity_checks.message_length_check import MessageLengthCheckException
 from app.features.sanity_checks.conversation_limit_check import ConversationLimitCheckException
 from app.features.sanity_checks.sanity_checks_analyst import SanityChecksAnalyst
+from app.pydantic_models.response_model import AskResponse, ChatResponse
 
 logger = get_logger(__name__)
 
@@ -32,7 +34,7 @@ class PipelineOrchestrator:
         self.data_processor=DataProcessor() # Instance of DataProcessor for data extraction and transformation
         self.sanity_checks_analyst_results = SanityChecksAnalyst(self.data_processor.llm_handler_service)
         self.query_analyst_results = None
-        self.link = None
+        self.link = []
 
     def _normalize_specialty_for_display(self, specialty: str) -> str:
         """
@@ -121,7 +123,8 @@ class PipelineOrchestrator:
         }
         self.data_processor.create_csv(result_data=csv_data)
         logger.debug(f"Formatted response: {response}")
-        return response
+        self.link = extract_links_from_text(response)
+        return response, self.link
 
 
     def _try_radius_search(self, df: pd.DataFrame, radius: int, number_institutions: int, prompt: str) -> str:
@@ -223,6 +226,17 @@ class PipelineOrchestrator:
         return detections
 
 
+    def _normalize_str(self, s: str) -> str:
+        """
+        Normalize a string for comparison: lowercase, strip, remove accents.
+        """
+        if not isinstance(s, str):
+            return s
+        s = s.strip().lower()
+        s = unicodedata.normalize('NFD', s)
+        s = ''.join(c for c in s if unicodedata.category(c) != 'Mn')
+        return s
+
     def build_ranking_dataframe_with_distances(self, prompt: str, excel_path: str, detected_specialty: str = None, conv_history: list = None) -> pd.DataFrame:
         """
         Retrieves the ranking DataFrame based on the user query, including distance calculations if a city is specified.
@@ -238,25 +252,47 @@ class PipelineOrchestrator:
         # Centralized detection and data setup
         detections = self.extract_query_parameters(prompt, detected_specialty, conv_history)
         logger.info(f"Detected variables: specialty={self.specialty}, city={self.city}, institution_type={self.institution_type}, institution_names={self.institution_names}, number_institutions={self.number_institutions}")
-        
         # Generate main DataFrame
         self.df_gen = self.data_processor.generate_data_response()
+        # Add normalized specialty column for robust filtering
+        if self.df_gen is not None and 'Spécialité' in self.df_gen.columns:
+            self.df_gen['__norm_specialty__'] = self.df_gen['Spécialité'].apply(self._normalize_str)
+            norm_specialty = self._normalize_str(self.specialty)
+            logger.debug(f"[DEBUG] All normalized specialties: {self.df_gen['__norm_specialty__'].unique()}")
+            logger.debug(f"[DEBUG] Normalized search specialty: {norm_specialty}")
+            specialty_matches = self.df_gen[self.df_gen['__norm_specialty__'] == norm_specialty]
+            logger.debug(f"[DEBUG] Specialty match count: {specialty_matches.shape[0]}")
+            if specialty_matches is not None:
+                logger.debug(f"[DEBUG] Specialty match rows: {specialty_matches}")
+            # If we have matches, filter df_gen to only those rows
+            if specialty_matches.shape[0] > 0:
+                self.df_gen = specialty_matches.drop(columns=['__norm_specialty__'])
+            else:
+                self.df_gen = self.df_gen.drop(columns=['__norm_specialty__'])
         # Debug: Log unique specialties and institution types in the loaded DataFrame
-        if self.df_gen is not None:
-            logger.debug(f"[DEBUG] Unique specialties in DataFrame: {self.df_gen['Spécialité'].unique() if 'Spécialité' in self.df_gen.columns else 'N/A'}")
+        if self.df_gen is not None and 'Spécialité' in self.df_gen.columns:
+            logger.debug(f"[DEBUG] Unique specialties in DataFrame: {self.df_gen['Spécialité'].unique()}")
             logger.debug(f"[DEBUG] Unique institution types in DataFrame: {self.df_gen['Catégorie'].unique() if 'Catégorie' in self.df_gen.columns else 'N/A'}")
             logger.debug(f"[DEBUG] DataFrame columns: {self.df_gen.columns}")
             logger.debug(f"[DEBUG] DataFrame head: {self.df_gen.head(10)}")
             logger.debug(f"[DEBUG] Filtering for specialty: '{self.specialty}' and city: '{self.city}'")
-            specialty_matches = self.df_gen[self.df_gen['Spécialité'] == self.specialty] if 'Spécialité' in self.df_gen.columns else None
-            logger.debug(f"[DEBUG] Specialty match count: {specialty_matches.shape[0] if specialty_matches is not None else 'N/A'}")
+            # Normalize specialties for robust matching
+            norm_specialty = self._normalize_str(self.specialty)
+            self.df_gen['__norm_specialty__'] = self.df_gen['Spécialité'].apply(self._normalize_str)
+            specialty_matches = self.df_gen[self.df_gen['__norm_specialty__'] == norm_specialty]
+            logger.debug(f"[DEBUG] Specialty match count: {specialty_matches.shape[0]}")
             if specialty_matches is not None:
                 logger.debug(f"[DEBUG] Specialty match rows: {specialty_matches}")
-            if self.city:
-                city_matches = self.df_gen[self.df_gen['Ville'] == self.city] if 'Ville' in self.df_gen.columns else None
-                logger.debug(f"[DEBUG] City match count: {city_matches.shape[0] if city_matches is not None else 'N/A'}")
+            if self.city and 'Ville' in self.df_gen.columns:
+                city_matches = self.df_gen[self.df_gen['Ville'] == self.city]
+                logger.debug(f"[DEBUG] City match count: {city_matches.shape[0]}")
                 if city_matches is not None:
                     logger.debug(f"[DEBUG] City match rows: {city_matches}")
+            # If we have matches, filter df_gen to only those rows
+            if specialty_matches.shape[0] > 0:
+                self.df_gen = specialty_matches.drop(columns=['__norm_specialty__'])
+            else:
+                self.df_gen = self.df_gen.drop(columns=['__norm_specialty__'])
         # If ranking unavailable for specialty/type, return general DataFrame
         if self.data_processor.specialty_ranking_unavailable:
             logger.warning("Ranking not found for requested specialty/type")
@@ -283,26 +319,37 @@ class PipelineOrchestrator:
             str: The formatted response string with the institution's ranking and details.  
         """
         logger.info(f"Institution mentioned in query: {self.institution_names}")
-        # Check if institution is present in DataFrame
-        if not df['Etablissement'].str.contains(self.institution_names).any():
-            logger.warning(f"Institution {self.institution_names} not found in DataFrame")
+        # Extract the institution name string for matching
+        if isinstance(self.institution_names, list) and self.institution_names:
+            inst_name = getattr(self.institution_names[0], 'name', str(self.institution_names[0]))
+        else:
+            inst_name = str(self.institution_names)
+        # Check if institution is present in DataFrame (literal match)
+        if not df['Etablissement'].str.contains(inst_name, case=False, na=False, regex=False).any():
+            logger.warning(f"Institution {inst_name} not found in DataFrame")
             display_specialty, is_no_match = self._normalize_specialty_for_display(self.specialty)
             if is_no_match:
                 return f"Cet établissement ne fait pas partie des {number_institutions} meilleurs établissements du palmarès global"
             else:
                 return f"Cet établissement n'est pas présent pour la pathologie {display_specialty}, vous pouvez cependant consulter le classement suivant:"
-        # Find institution's position in sorted DataFrame
+        # Find institution's position in sorted DataFrame (literal match)
         df_sorted = df.sort_values(by='Note / 20', ascending=False).reset_index(drop=True)
-        position = df_sorted.index[df_sorted["Etablissement"].str.contains(self.institution_names, case=False, na=False)][0] + 1
+        match_idx = df_sorted["Etablissement"].str.contains(inst_name, case=False, na=False, regex=False)
+        position = df_sorted.index[match_idx][0] + 1
+        note = df_sorted.loc[match_idx, 'Note / 20'].values[0] if 'Note / 20' in df_sorted.columns else None
         display_specialty, is_no_match = self._normalize_specialty_for_display(self.specialty)
-        response = f"{self.institution_names} est classé n°{position} "
+        response = f"{inst_name} est classé n°{position}"
+        if note is not None:
+            response += f" avec une note de {note:.2f}/20"
+        response += " "
         if is_no_match:
             response += "du palmarès général"
         else:
             response += f"du palmarès {display_specialty}."
         if self.institution_type not in ['aucune correspondance', 'no match'] and self.institution_type:
             response += f" {self.institution_type}."
-        return response
+        self.link = extract_links_from_text(response)
+        return response, self.link
 
 
     def get_filtered_and_sorted_df(self, df: pd.DataFrame, max_radius_km: int, number_institutions: int, prompt:str) -> str:
@@ -443,8 +490,10 @@ class PipelineOrchestrator:
 
         try:
             df = self.build_ranking_dataframe_with_distances(prompt, self.ranking_file_path, self.specialty)
+            logger.info(f"[compare_institutions] DataFrame columns at start: {df.columns.tolist() if hasattr(df, 'columns') else 'N/A'}")
             # Only filter using canonical (full/original) names
             df_filtered = df[df["Etablissement"].isin(canonical_names)]
+            logger.info(f"[compare_institutions] DataFrame columns after filtering: {df_filtered.columns.tolist()}")
             found_names = set(df_filtered["Etablissement"]) if not df_filtered.empty else set()
             not_found = [name for name in canonical_names if name not in found_names]
             logger.debug(f"compare_institutions: df_filtered shape: {df_filtered.shape}, columns: {df_filtered.columns.tolist()}, head: {df_filtered.head()}")
@@ -454,6 +503,7 @@ class PipelineOrchestrator:
                                  "mais peuvent être présents dans d'autres classements/pathologies :<br>- " + "<br>- ".join(not_found) +
                                  "<br>Leur classement ne peut donc pas être comparé ici.")
             if df_filtered.empty:
+                logger.info(f"[compare_institutions] df_filtered is empty. Columns: {df_filtered.columns.tolist()}")
                 return f"Aucun classement trouvé pour les établissements mentionnés: {', '.join(canonical_names)}" + message_extra
 
             # Sort by score descending
@@ -461,7 +511,11 @@ class PipelineOrchestrator:
                 df_sorted = df_filtered.sort_values(by="Note / 20", ascending=False)
             else:
                 df_sorted = df_filtered
+            logger.info(f"[compare_institutions] DataFrame columns after sorting: {df_sorted.columns.tolist()}")
 
+            # Ensure 'Spécialité' column exists for link generation if possible
+            if "Spécialité" not in df_sorted.columns and self.specialty:
+                df_sorted["Spécialité"] = self.specialty
             # Build comparison string (reuse format_response if possible, else custom)
             res_str = format_response(
                 df_sorted[df_sorted["Catégorie"] == "Public"],
@@ -611,7 +665,7 @@ class PipelineOrchestrator:
 
         # Specialty selection logic
         if selected_specialty:
-            # User selected a specialty, use it directly and skip detection
+            # User selected a specialty from a provided list, use it directly and skip detection
             logger.info(f"User selected specialty: {selected_specialty}, using for ranking.")
             self.specialty = selected_specialty
             self.data_processor.specialty = selected_specialty
@@ -626,34 +680,20 @@ class PipelineOrchestrator:
         specialty_list = []
         # Check for multiple specialties in detections (only if not selected_specialty)
         if not selected_specialty and detections:
-            # Case 1: explicit multiple_specialties list
-            if "multiple_specialties" in detections and detections["multiple_specialties"]:
-                specialty_list = detections["multiple_specialties"]
-            # Case 2: specialty is a list
-            elif "specialty" in detections and isinstance(detections["specialty"], list) and len(detections["specialty"]) > 1:
+            # If specialty is a list with more than one item, treat as multiple specialties
+            if "specialty" in detections and isinstance(detections["specialty"], list) and len(detections["specialty"]) > 1:
                 specialty_list = detections["specialty"]
-            # Case 3: specialty is a string starting with 'multiple matches:' (robust to spaces)
+            # If specialty is a string, treat as a single specialty
             elif "specialty" in detections and isinstance(detections["specialty"], str):
-                specialty_str = detections["specialty"].lower().replace(" ","")
-                if specialty_str.startswith("multiplematches:"):
-                    matches_str = detections["specialty"][detections["specialty"].find(":")+1:].strip()
-                    if "," in matches_str:
-                        specialty_list = [s.strip() for s in matches_str.split(",") if s.strip()]
-                    else:
-                        specialty_list = [matches_str] if matches_str else []
+                specialty_list = [detections["specialty"]]
 
-        # Always block if specialty_list has more than one item
-        if specialty_list and len(specialty_list) > 1:
-            logger.info("Multiple specialty matches detected (robust), returning for UI selection")
-            formatted_response = (
-                NON_ERROR_MESSAGES['multiple_specialties'] + "\n- " + "\n- ".join(specialty_list)
-            )
-            logger.debug(f"Returning multiple matches response: {formatted_response}")
-            return {
-                "message": formatted_response,
-                "multiple_specialties": specialty_list
-            }, None
-
+            # Always block if specialty_list has more than one item
+            if specialty_list and len(specialty_list) > 1:
+                logger.info("Multiple specialty matches detected, returning for UI selection")
+                formatted_response = (NON_ERROR_MESSAGES['multiple_specialties'] + "\n- " + "\n- ".join(specialty_list))
+                logger.debug(f"Returning multiple matches response: {formatted_response}")
+                return {"message": formatted_response, "multiple_specialties": specialty_list}, None
+            
         # Handle explicit institution mentions with intent before ranking logic
         # if self.institution_names and self.institution_names_intent in ["single", "multi", "compare"]:
         if self.institution_name_mentioned and self.institution_names_intent in ["single", "multi", "compare"]: 
@@ -670,7 +710,8 @@ class PipelineOrchestrator:
                 # Only one institution explicitly mentioned → fetch its ranking directly
                 inst_name = self.institution_names[0].name
                 logger.debug(f"Fetching ranking for single institution: {inst_name}")
-                res = self.get_filtered_and_sorted_df(df=None, max_radius_km=max_radius_km, number_institutions=1, prompt=prompt, institution_name=inst_name)
+                df_single_institution = self.build_ranking_dataframe_with_distances(prompt, relevant_file, self.specialty)
+                res = self.get_filtered_and_sorted_df(df=df_single_institution, max_radius_km=max_radius_km, number_institutions=1, prompt=prompt)
                 return res, self.link or []
 
             elif self.institution_names_intent == "multi":
@@ -814,6 +855,7 @@ class PipelineOrchestrator:
             if 'Distance' in self.df_gen.columns:
                 logger.debug("Dropping Distance column from df_gen")
                 self.df_gen = self.df_gen.drop(columns=['Distance'])
+            logger.debug(f"[GENERAL RANKING] DataFrame columns: {self.df_gen.columns.tolist()}")
             public_df = self.df_gen[self.df_gen["Catégorie"] == "Public"].nlargest(self.number_institutions, "Note / 20")
             private_df = self.df_gen[self.df_gen["Catégorie"] == "Privé"].nlargest(self.number_institutions, "Note / 20")
             res_str = format_response(public_df, private_df, self.number_institutions, not self.data_processor.city_detected)
@@ -829,7 +871,8 @@ class PipelineOrchestrator:
             response = self._create_response_and_log(message, res_str, prompt, METHODOLOGY_WEB_LINK)
             logger.info(f"General ranking response created successfully")
             logger.info(f"Detected variables: specialty={self.specialty}, city={self.city}, institution_type={self.institution_type}, institution_names={self.institution_names}, number_institutions={self.number_institutions}")
-            return response, self.link or []
+            self.link = extract_links_from_text(response)
+            return response, self.link
         except Exception as e:
             logger.exception(f"Exception in general ranking response: {e}")
             logger.info(f"Detected variables: specialty={self.specialty}, city={self.city}, institution_type={self.institution_type}, institution_names={self.institution_names}, number_institutions={self.number_institutions}")

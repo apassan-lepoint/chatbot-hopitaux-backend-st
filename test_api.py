@@ -5,9 +5,12 @@ API_URL = "http://localhost:8000"
 # Test /ask endpoint
 def test_ask():
     payload = {
-        "prompt": "Quel est le meilleur hôpital entre Clinique Belledonne et Nouvelle clinique de Tours ? ",
-        # "prompt": "Quel est le meilleur hôpital entre Clinique Belledonne, Clinique Jean Causse, et Polyclinique de Kerio ?"
-        # "prompt": "Quels sont les meilleurs hôpitaux à Paris pour la cancer de la vessie ?" pour les problèmes auditifs
+        # "prompt": "Quel est le meilleur hôpital entre Clinique Belledonne et Nouvelle clinique de Tours ? ",
+        # "prompt": "Quel est le classement de CH de Vannes pour la cancer au sein ?",
+        # "prompt": "Quel est le meilleur hôpital entre Clinique Belledonne, Clinique Jean Causse, et Polyclinique de Kerio pour les problèmes auditifs ?"
+        # "prompt": "Quels sont les meilleurs hôpitaux à Paris pour la cancer du vessie ?",
+        "prompt": "Quels sont les meilleurs hôpitaux à Paris pour la cancer de la vessie ?"
+        #   pour les problèmes auditifs
     }
     response = requests.post(f"{API_URL}/ask", json=payload)
     print("/ask response:", response.status_code, response.json())

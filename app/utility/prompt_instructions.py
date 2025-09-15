@@ -47,38 +47,30 @@ Exemples avec contexte conversationnel:
 """,
 
     "second_detect_specialty_prompt": """
-Voici un message pour lequel tu vas devoir trouver la ou les pathologie(s) qui correspondent le plus.
+Voici un message pour lequel tu vas devoir détecter la ou les pathologie(s) ou spécialité(s) médicale(s) mentionnées ou sous-entendues.
 
 HISTORIQUE DE CONVERSATION:
 {conv_history}
 
 MESSAGE À ANALYSER: '{prompt}'
 
-Si un historique de conversation est fourni ci-dessus, analysez le nouveau message en tenant compte du contexte conversationnel. Une spécialité peut être mentionnée de manière implicite si le contexte de la conversation montre qu'on parle d'une spécialité spécifique.
+Si un historique de conversation est fourni ci-dessus, analyse le nouveau message en tenant compte du contexte conversationnel. Une spécialité ou pathologie peut être mentionnée de manière implicite si le contexte montre qu'on parle d'un sujet médical spécifique.
 
-Voici la liste des pathologies et des mots clés associés pour t'aider: {mapping_words}
+Ta tâche :
+- Liste toutes les pathologies ou spécialités médicales que tu détectes dans le message (même si elles sont implicites ou sous-entendues).
+- Si tu détectes plusieurs spécialités/pathologies, liste-les séparées par une virgule.
+- Si aucune spécialité/pathologie médicale n'est détectée, réponds exactement : 'aucune correspondance'.
+- N'invente pas de spécialité ou pathologie qui n'est pas mentionnée ou sous-entendue dans le message.
 
-Si une seule spécialité de la liste correspond à ma demande, réponds UNIQUEMENT avec la spécialité exacte de la liste. 
-Exemple: Pour le message 'Je veux soigner mon AVC?', tu me répondras 'Accidents vasculaires cérébraux'.
+Exemples :
+- Pour le message 'Je veux soigner mon AVC?', tu répondras 'Accidents vasculaires cérébraux'.
+- Pour le message 'Je cherche un hôpital pour un accouchement', tu répondras 'Accouchements à risques, Accouchements normaux' (si les deux sont sous-entendus).
+- Pour le message 'J'ai mal au genou', tu répondras 'genou' (si les deux sont sous-entendus).
+- Pour le message 'Quel est le classement de CH de Vannes pour la cancer au sein ?', tu répondras 'Cancer du sein'.
+- Pour le message 'Quels sont les meilleurs hôpitaux pour la cataracte ?', tu répondras 'Cataracte'.
+- Pour le message 'Quels sont les meilleurs hôpitaux à Paris ?', tu répondras 'aucune correspondance'.
 
-Si plusieurs spécialités de la liste peuvent correspondre ou sont liées au message, réponds UNIQUEMENT avec les spécialités exactes de la liste et sous le format suivant: 'plusieurs correspondances: spécialité 1, spécialité 2'.
-Exemple: pour le message 'Je cherche un hôpital pour un accouchement', tu me répondras 'plusieurs correspondances: Accouchements à risques, Accouchements normaux'.
-Exemple: pour le message 'J'ai mal au genou', tu me répondras 'plusieurs correspondances: Prothèse de genou, Ligaments du genou'.
-
-Si aucune spécialité de la liste est liée à ma demande, renvoie moi EXACTEMENT ces deux mots: 'aucune correspondance'
-
-ATTENTION: Soyez attentif aux problèmes digestifs et gastro-intestinaux. Les termes comme 'gastro-entérite', 'diarrhée', 'vomissements', 'maux de ventre', 'troubles digestifs' peuvent correspondre à des spécialités comme 'Proctologie', 'Maladies inflammatoires chroniques de l'intestin (MICI)', ou autres spécialités digestives de la liste.
-
-Exemples spécifiques:
-- 'J'ai une gastro-entérite' → 'Proctologie' (si cette spécialité existe dans la liste)
-- 'J'ai des troubles digestifs' → 'Maladies inflammatoires chroniques de l'intestin (MICI)' (si cette spécialité existe dans la liste)
-- 'J'ai mal au ventre' → 'Proctologie' (si cette spécialité existe dans la liste)
-
-Exemples avec contexte conversationnel:
-- Avec historique sur la cardiologie, 'et privé?' → 'Cardiologie interventionnelle' (si cette spécialité existe dans la liste)
-- Avec historique sur plusieurs spécialités du genou, 'pour les enfants' → 'plusieurs correspondances: Orthopédie pédiatrique, Prothèse de genou' (si ces spécialités existent)
-
-N'invente pas de spécialité qui n'est pas dans la liste
+N'invente pas de spécialité qui n'est pas dans le message ou le contexte.
 """,
 
     "sanity_check_medical_pertinence_prompt": """
@@ -220,7 +212,6 @@ Répondez avec:
 Exemples avec contexte conversationnel:
 - Avec historique mentionnant Paris, 'Et à Lyon ?' → 3 (Lyon est mentionné)
 - Avec historique sur Marseille, 'Merci' → 0 (aucune nouvelle localisation)
-- Avec historique général, 'À Londres ?' → 1 (ville étrangère)
 """,
 
     "second_detect_city_prompt": """
@@ -272,8 +263,7 @@ Exemples avec contexte conversationnel:
 """,
 
     "detect_institutions_prompt": """
-Ton rôle est d'extraire les noms exacts d'établissements mentionnés dans une question
-et de déterminer l'intention de la demande.
+Ton rôle est d'extraire les noms exacts d'établissements mentionnés dans une question et de déterminer l'intention de la demande.
 
 ---
 
@@ -289,11 +279,14 @@ INSTRUCTIONS:
 1. Extrait tous les noms d'établissements tels qu'ils apparaissent dans le message (même avec fautes ou variantes).
    - Retourne-les tels que l'utilisateur les a écrits, sans corriger ni compléter.
    - Si aucun établissement n'est mentionné, retourne une liste vide.
+   - NE RETOURNE PAS de mots génériques ou de catégories comme "hôpital", "hôpitaux", "clinique", "cliniques", "établissement", "établissements", "centre", "centres", "hôpital public", "hôpital privé", "hôpitaux publics", "hôpitaux privés", "cliniques privées", "cliniques publiques", ni de noms de villes ou régions.
+   - NE RETOURNE PAS de sigles ou abréviations génériques comme "CH", "CHU", "CHR", "CHRU" s'ils sont seuls, sans nom de ville ou de site associé (ex: "CH de Vannes" est correct, mais "CH" seul ne l'est pas).
+   - Ne considère comme établissement que les noms propres ou dénominations précises d'un hôpital ou d'une clinique (ex: "CH de Vannes", "Hôpital Edouard-Herriot", "Clinique Pasteur").
 
 2. Détermine l'intention de la question :
-   - "single" : L'utilisateur parle d'un seul établissement.
+   - "single" : L'utilisateur parle d'un seul établissement (même si le mot "classement" est utilisé, s'il n'y a qu'un seul nom d'établissement, l'intention est "single").
    - "multi" : L'utilisateur demande des infos sur plusieurs établissements (mais sans comparaison).
-   - "compare" : L'utilisateur compare ou demande un classement.
+   - "compare" : L'utilisateur compare ou demande un classement entre plusieurs établissements (utilise des formulations comme "lequel est meilleur", "vs", "comparaison", etc. ET il y a au moins deux établissements mentionnés).
    - "none" : Pas d'intention claire. S'il y a au moins un établissement qui n'est pas dans la liste, retourne "none".
 
 3. Retourne toujours un objet JSON :
@@ -303,7 +296,6 @@ INSTRUCTIONS:
    }}
 
 ---
-
 
 EXEMPLES :
 

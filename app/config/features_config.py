@@ -40,6 +40,7 @@ ERROR_MESSAGES = {
     "ambiguous_city": "Je ne parviens pas à détecter votre localisation, merci de reformuler avec une autre ville.",
     "general_ranking_error": "Une erreur est survenue lors de la génération de votre réponse.",
     "institution_not_found": "Le nom de l'établissement que vous avez indiqué n'a pas été évalué dans le classement des hôpitaux. Merci de reformuler votre question.",
+    "specialty_not_found": "La spécialité que vous avez indiquée n'a pas été évaluée dans le classement des hôpitaux. Merci de reformuler votre question.",
     "geopy_error": "Dû à une surutilisation de l'API de Geopy, le service de calcul des distances est indisponible pour le moment, merci de réessayer plus tard ou de recommencer avec une question sans localisation spécifique.",
     "general_error": "Je ne peux pas traiter votre demande. Merci de reformuler une question relative aux classements des hôpitaux.",
     "internal_server_error": "Internal server error.",

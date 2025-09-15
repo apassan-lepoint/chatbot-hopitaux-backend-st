@@ -7,6 +7,8 @@ This file provides helpers to convert DataFrames to text, remove accents,
 
 import pandas as pd
 import unicodedata
+import re
+from typing import List
 
 def format_mapping_words_csv(file_path: str) -> str:
     """
@@ -110,3 +112,14 @@ def format_links(result: str, links: list) -> str:
             result += f"<br>[🔗Page du classement]({l})"
 
     return result
+
+
+def extract_links_from_text(text: str) -> List[str]:
+    """
+    Extract all URLs from a given string using regex.
+    Deduplicates automatically.
+    """
+    # Regex with no capturing groups
+    url_pattern = r"https?://[^\s\"'>]+"
+    matches = re.findall(url_pattern, text)
+    return list(set(matches))
