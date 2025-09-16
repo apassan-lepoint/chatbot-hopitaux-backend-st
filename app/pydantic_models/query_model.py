@@ -19,7 +19,6 @@ class UserQuery(BaseModel):
     selected_specialty: str = None  # Optional field for user-selected specialty
 
 
-
 class ChatRequest(BaseModel):
     """
     Data model for chat requests to the chatbot.

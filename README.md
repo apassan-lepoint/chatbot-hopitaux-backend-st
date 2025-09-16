@@ -126,6 +126,13 @@ It will show the request/response schemas from your pydantic_models.
 
 To open the ReDoc UI (spec-style documentation) in your browser: http://127.0.0.1:8000/redoc
 
+# Docker
+To build the docker image run: docker build -t my-chatbot:latest .
+To run the Docker image locally: docker run -p 8000:8000 my-chatbot:latest
+Health check: curl http://localhost:8000/health
+Test API: http://localhost:8000/docs 
+To test with curl in another terminal: curl -X POST "http://localhost:8000/ask" -H "Content-Type: application/json" -d '{"prompt": "Quel est le meilleur hopitqux a Paris ?"}'
+
 
 # Contact
 Anuradha (Annie) Passan - apassan@ext.lepoint.fr, apassan@eulidia.com

@@ -64,6 +64,7 @@ def ask_question(query: UserQuery):
     summary="Chat with multi-turn support",
     description="Engage in a back-and-forth conversation with the hospital chatbot. "
                 "Uses the conversation service if multi-turn is enabled in config."
+                "Please note that this endpoint is still under development and may not fully support multi-turn interactions yet."
 )
 def chat(request: ChatRequest): # TODO: adjust once multi-turn is fully implemented
     """
