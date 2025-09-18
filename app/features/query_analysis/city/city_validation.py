@@ -1,25 +1,27 @@
-from app.utility.logging import get_logger
+""" 
+city_validation.py
+-------------------
+This module defines the CityValidator class, which validates user input for non-French cities.
+"""
+
 from app.config.features_config import ERROR_MESSAGES
+from app.utility.logging import get_logger
+
 
 logger = get_logger(__name__)
 
 class CityCheckException(Exception):
-    """
-    Custom exception for city validation checks.
-    """
     pass
 
 
 class CityValidator:
     """
-    Class for city validation and non-French city checks.
-
+    Class to validate user input for non-French cities.
     Attributes:
-        detector: An instance of a city detection service.      
-        llm_handler_service: Optional service for handling LLM interactions.
+        llm_handler_service: Service for handling LLM interactions (optional).
+        detector: Instance of CityDetector for city detection.
     Methods:
         check(user_input, conv_history=""): Checks for non-French cities in user input.
-        Raises CityCheckException if a foreign or ambiguous city is detected.
     """
     def __init__(self, detector, llm_handler_service=None):
         logger.info("Initializing CityValidator")

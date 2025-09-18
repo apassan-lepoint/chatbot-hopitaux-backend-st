@@ -1,28 +1,32 @@
+""" 
+city_analyst.py
+----------------
+This module defines the CityAnalyst class, which detects and validates city names from user prompts.
+"""
+
 from app.features.query_analysis.city.city_detection import CityDetector
 from app.features.query_analysis.city.city_validation import CityValidator
 from app.utility.logging import get_logger
+
 
 logger = get_logger(__name__)
 
 
 class CityAnalyst:
     """
-    Service to detect, validate, and finalize city results for query_analysis_manager.
-
+    Class to detect and validate city names from user prompts.
     Attributes:
-        llm_handler_service: Optional service for handling language model interactions
-        model: Optional model for city detection, defaults to None
-        detector: Instance of CityDetector for detecting city names
-        checker: Instance of CityValidator for validating detected cities
+        detector (CityDetector): Component to detect city names.
+        validator (CityValidator): Component to validate detected city names.
     Methods:
-        detect_and_validate_city(prompt: str, conv_history: str = "") -> dict:
-            Detects and validates the city from the prompt, returning both city and detection status.
-            Raises CityCheckException if the city is foreign or ambiguous.
+        detect_and_validate_city(prompt, conv_history=""):
+            Detects and validates the city from the prompt, returning both city and detection status.   
     """
     def __init__(self, llm_handler_service=None, model=None):
         logger.info("Initializing CityAnalyst")
         self.detector = CityDetector(model)
         self.validator = CityValidator(self.detector, llm_handler_service)
+
 
     def detect_and_validate_city(self, prompt: str, conv_history: str = ""):
         """

@@ -1,25 +1,61 @@
-import pandas as pd
+""" 
+pipeline_orchestrator_service.py
+---------------------------------
+This file contains the PipelineOrchestrator class which orchestrates the processing of user queries related to hospital rankings.
+"""
+
 from datetime import datetime
-from uuid import uuid4
+import pandas as pd
 import unicodedata
-## Accent-insensitive matching removed
-from app.services.data_processing_service import DataProcessor
-from app.features.query_analysis.query_analyst import QueryAnalyst
-from app.config.file_paths_config import PATHS
+from uuid import uuid4
 from app.config.features_config import (SEARCH_RADIUS_KM, NON_ERROR_MESSAGES, ERROR_MESSAGES, METHODOLOGY_WEB_LINK)
+from app.config.file_paths_config import PATHS
+from app.features.query_analysis.query_analyst import QueryAnalyst
+from app.features.sanity_checks.conversation_limit_check import ConversationLimitCheckException
+from app.features.sanity_checks.message_length_check import MessageLengthCheckException
+from app.features.sanity_checks.message_pertinence_check import MessagePertinenceCheckException
+from app.features.sanity_checks.sanity_checks_analyst import SanityChecksAnalyst
+from app.services.data_processing_service import DataProcessor
 from app.utility.logging import get_logger
 from app.utility.formatting_helpers import format_response, extract_links_from_text
-from app.features.sanity_checks.message_pertinence_check import MessagePertinenceCheckException
-from app.features.sanity_checks.message_length_check import MessageLengthCheckException
-from app.features.sanity_checks.conversation_limit_check import ConversationLimitCheckException
-from app.features.sanity_checks.sanity_checks_analyst import SanityChecksAnalyst
-from app.pydantic_models.response_model import AskResponse, ChatResponse
 
 logger = get_logger(__name__)
 
 class PipelineOrchestrator:
     """
-    REWRITE THIS DOCSTRING   
+    Orchestrates the processing of user queries related to hospital rankings.
+    Attributes:
+        ranking_file_path (str): Path to the hospital ranking Excel file.
+        specialty (str): The medical specialty detected from the user query.
+        institution_type (str): The type of institution (e.g., public, private) detected from the user query.
+        city (str): The city detected from the user query.
+        city_detected (bool): Flag indicating if a city was detected in the user query.
+        df_gen (pd.DataFrame): The DataFrame containing hospital rankings.
+        number_institutions (int): The number of institutions to return based on the user query.
+        institution_name_mentioned (str): The name of the institution mentioned in the user query, if any.
+        institution_names (list): List of institution names detected in the user query.
+        data_processor (DataProcessor): Instance of DataProcessor for data extraction and transformation.
+        sanity_checks_analyst (SanityChecksAnalyst): Instance of SanityChecksAnalyst for performing sanity checks on queries.
+        query_analyst_results (dict): Results from the QueryAnalyst containing detected parameters from the user query.
+        link (list): List of hyperlinks extracted from the response text.       
+    Methods:    
+        __init__: Initializes the PipelineOrchestrator with default values and instances of helper classes.
+        extract_query_parameters: Extracts parameters from the user query using QueryAnalyst and sets them in DataProcessor.
+        build_ranking_dataframe_with_distances: Builds the ranking DataFrame, including distance calculations if a city is specified.
+        get_filtered_and_sorted_df: Filters and sorts the ranking DataFrame by distance and score, and formats the response.
+        compare_institutions: Compares multiple institutions based on their rankings and formats the comparison response.
+        reset_attributes: Resets the orchestrator's attributes for a new user query.
+        _normalize_specialty_for_display: Normalizes specialty format for display purposes and checks for no match.
+        _format_response_with_specialty: Formats response messages with specialty context.
+        _create_response_and_log: Creates final response, logs it, and saves to CSV.
+        _try_radius_search: Tries to find results within a specific radius.
+        _institution_ranking_response: Helper for institution ranking response.
+        sum_keys_with_substring: Sums values in a dictionary where keys contain a specific substring.
+        _normalize_str: Normalizes a string for comparison by lowercasing, stripping, and removing accents.
+        get_costs_and_tokens: Aggregates costs and token usage from various analysts.
+        build_comparison_dataframe: Builds a DataFrame for comparing multiple institutions.
+        handle_sanity_check_exceptions: Handles exceptions from sanity checks and formats error responses.
+        run_sanity_checks: Runs sanity checks on the user query using SanityChecksAnalyst.
     """
     def __init__(self):
         logger.info("Initializing PipelineOrchestrator")
@@ -36,6 +72,7 @@ class PipelineOrchestrator:
         self.sanity_checks_analyst_results = SanityChecksAnalyst(self.data_processor.llm_handler_service)
         self.query_analyst_results = None
         self.link = []
+
 
     def _normalize_specialty_for_display(self, specialty: str) -> str:
         """

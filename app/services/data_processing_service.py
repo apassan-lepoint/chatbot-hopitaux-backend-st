@@ -1,61 +1,69 @@
+""" 
+data_processing_service.py
+---------------------------------
+This file contains the DataProcessor class which handles data processing tasks
+related to hospital rankings, including loading data, filtering based on user queries,
+and calculating distances.
+"""
+
+import csv
 import os
 import pandas as pd
-import csv
 import unicodedata
-
-from app.config.file_paths_config import PATHS
 from app.config.features_config import (PUBLIC_RANKING_URL, PRIVATE_RANKING_URL, INSTITUTION_TYPE_URL_MAPPING, CSV_FIELDNAMES)
+from app.config.file_paths_config import PATHS
 from app.services.llm_handler_service import LLMHandler
-from app.utility.formatting_helpers import remove_accents
 from app.utility.distance_calc_helpers import exget_coordinates, distance_to_query, multi_radius_search
+from app.utility.formatting_helpers import remove_accents
 from app.utility.logging import get_logger
 
 
 logger = get_logger(__name__)
 
+
 class DataProcessor:
     """
-    Processes hospital ranking data based on user queries. Extracts query information using LLM services, 
-    loads and filters ranking data by specialty and institution type, and calculates distances to provide relevant results.
-
+    Service class for processing hospital ranking data based on user queries.   
     Attributes:
-        paths (dict): Paths to various data files and resources.
-        ranking_df (pd.DataFrame): DataFrame containing hospital rankings.
-        llm_handler_service (LLMHandler): Service for handling LLM interactions.
-        specialty_df (pd.DataFrame): DataFrame for the specific specialty rankings.
-        institution_names (list): List of institutions mentioned in the query.
-        specialty_ranking_unavailable (bool): Flag indicating if the specialty ranking is unavailable.      
+        paths (dict): Dictionary of file paths for data files.
+        ranking_df (pd.DataFrame): DataFrame containing the hospital ranking data.
+        llm_handler_service (LLMHandler): Instance of LLMHandler for language model interactions.
+        specialty_df (pd.DataFrame): DataFrame containing filtered specialty data.
+        institution_names (list): List of institution names mentioned in the query.
+        specialty_ranking_unavailable (bool): Flag indicating if specialty ranking is unavailable.
         web_ranking_link (list): List of generated web links for rankings.
-        geolocation_api_error (bool): Flag indicating if there was an error with geolocation API
-        specialty (str): Medical specialty extracted from the query.
-        institution_type (str): Type of institution (public/private) extracted from the query.
-        city (str): City extracted from the query.      
+        geolocation_api_error (bool): Flag indicating if there was an error with geolocation API.
+        specialty (str): Detected medical specialty from the query.
+        institution_type (str): Detected institution type (public/private) from the query.
+        city (str): Detected city from the query.
         city_detected (bool): Flag indicating if a city was detected in the query.
-        df_with_cities (pd.DataFrame): DataFrame containing hospitals with city information.
-        institution_name_mentioned (str): Institution mentioned in the query.
-        number_institutions (int): Number of institutions mentioned in the query.
-        weblinks (dict): Predefined links for public and private rankings.
-        institution_coordinates_df (pd.DataFrame): DataFrame containing hospital coordinates.
+        df_with_cities (pd.DataFrame): DataFrame containing ranking data merged with city information.
+        institution_name_mentioned (str): Specific institution name mentioned in the query, if any.
+        number_institutions (int): Number of institutions requested in the query, if specified.
+        weblinks (dict): Predefined links for public/private rankings.
+        institution_coordinates_df (pd.DataFrame): DataFrame containing hospital coordinates data.
+        institution_list (str): Formatted, deduplicated list of institutions present in the rankings.
     Methods:
-        __init__: Initializes the DataProcessor class, sets up file paths, loads the LLM service, and prepares variables for query processing.
-        _load_ranking_dataframe: Loads and prepares a ranking DataFrame from a CSV file and add the category.
-        _generate_web_link: Generates a single web ranking link based on    specialty and institution type.     
-        _normalize_str: Normalizes strings for matching.
-        _is_no_specialty: Checks if the specialty is empty or no match.
-        _parse_specialty_list: Parses multiple specialties from a string.
-        _get_institution_list: Returns a formatted, deduplicated list of institutions present in the rankings.
-        _filter_ranking_by_criteria: Filters ranking DataFrame by specialty and optionally by institution type.
-        get_institution_type_for_url: Converts institution type to format expected by web URLs.
+        __init__: Initializes the DataProcessor instance.
         set_detection_results: Sets detection results from orchestrator.
-        generate_response_links: Generates web links to the relevant ranking pages based on specialty and institution type.
-        _concat_dataframes: Concatenates a list of DataFrames.
-        load_and_transform_for_no_specialty: Loads and merges the general tables (tableau d'honneur) for queries that do not mention a specific specialty.
-        load_excel_sheets: Loads the Excel sheets corresponding to the matched specialties and categories.
-        find_excel_sheet_with_specialty: Finds and loads ranking data based only on the specialty if no public/private criterion is provided.
+        generate_response_links: Generates web links to relevant ranking pages.
+        load_and_transform_for_no_specialty: Loads and merges general ranking tables for queries without a specific specialty.
+        load_excel_sheets: Loads Excel sheets corresponding to matched specialties and categories.  
+        find_excel_sheet_with_specialty: Finds and loads ranking data based only on specialty.
         generate_data_response: Main entry point for generating the data response (DataFrame) for a user query.
-        extract_local_hospitals: Merges ranking data with hospital location data to associate each institution with its city and coordinates.
-        get_df_with_distances: Calculates the distances between hospitals and the city specified in the user's query.
-        create_csv: Saves the user's query and the system's response to a CSV file for history tracking.
+        extract_local_hospitals: Merges ranking data with hospital location data.
+        get_df_with_distances: Calculates distances between hospitals and the city specified in the user's query.
+        select_hospitals: Selects hospitals based on city first, then expands by distance if needed.
+        create_csv: Saves the user's query and the system's response to a CSV file.
+        _load_ranking_dataframe: Helper method to load a ranking DataFrame from a CSV file and add the category.
+        _generate_web_link: Helper method to generate a single web ranking link.
+        _normalize_str: Utility to normalize strings for matching.
+        _is_no_specialty: Utility to check if specialty is empty or no match.
+        _parse_specialty_list: Utility to parse multiple specialties from a string.
+        _get_institution_list: Returns a formatted, deduplicated list of institutions present in the rankings.
+        _filter_ranking_by_criteria: Helper method to filter ranking DataFrame by specialty and optionally by institution type.
+        _concat_dataframes: Utility to concatenate DataFrames.
+        get_institution_type_for_url: Convert institution type to format expected by web URLs.
     """
     
     def __init__(self):
@@ -655,7 +663,7 @@ class DataProcessor:
         return combined, used_radius
     
 
-    def create_csv(self, result_data: dict):
+    def create_csv(self, result_data: dict): # TODO eventually send to Snowflake
         """
         Saves the user's query and the system's response (and metadata) to a CSV file for history tracking.
 

@@ -1,17 +1,17 @@
 """
-Utility functions for geolocation and distance calculations.
-
-This file provides helpers to compute distances between cities and hospitals,
-    and to retrieve geographic coordinates for use in ranking/filtering.
+Utility functions for distance calculations and geocoding using geopy.
 """
 
-import pandas as pd
-from geopy.geocoders import Nominatim  
-from geopy.distance import geodesic 
-from typing import List, Tuple
-import logging
-import ssl
 import certifi
+from geopy.distance import geodesic 
+from geopy.geocoders import Nominatim  
+import logging
+import pandas as pd
+import ssl
+from typing import List, Tuple
+
+
+
 
 
 def multi_radius_search(public_df: pd.DataFrame, private_df: pd.DataFrame,number_institutions: int,city_not_specified: bool,radii: List[int]) -> Tuple[pd.DataFrame, pd.DataFrame, int]:

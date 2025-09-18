@@ -1,22 +1,25 @@
-from app.utility.logging import get_logger
-from app.utility.llm_helpers import invoke_llm_with_error_handling
-from app.utility.wrappers import parse_llm_response, prompt_formatting
+"""
+city_detection.py
+-----------------
+This module defines the CityDetector class, which detects cities mentioned in user queries.
+"""
+
 from app.config.features_config import CITY_MENTIONED, CITY_FOREIGN, CITY_AMBIGUOUS, CITY_NO_CITY_MENTIONED
+from app.utility.llm_helpers import invoke_llm_with_error_handling
+from app.utility.logging import get_logger
+from app.utility.wrappers import prompt_formatting
+
 
 logger = get_logger(__name__)
 
 class CityDetector:
     """
-    Service for detecting cities mentioned in user queries.
-    Handles detection of French, foreign, ambiguous, or missing city references.
-
+    Class to detect cities mentioned in user queries.
     Attributes:
-        model: The language model used for city detection.  
+        model: The language model to use for detection.
     Methods:
-        detect_city(prompt: str, conv_history: str = "") -> dict:
-            Detects the city from the given prompt using the LLM.
-        get_city_description(city_status: int) -> str:
-            Gets a human-readable description of the city response based on its status.
+        detect_city(prompt, conv_history=""): Detects the city in the given prompt and conversation history.
+        get_city_status_type(city_status): Returns a string representing the type of city status.   
     """
 
     def __init__(self, model):

@@ -3,24 +3,12 @@ Generic wrappers for sanity checks in Streamlit and FastAPI apps.
 Use these to handle exceptions and apply framework-specific logic.
 """
 
-
-from app.utility.prompt_instructions import PROMPT_INSTRUCTIONS
+from app.config.features_config import (CITY_NO_CITY_MENTIONED, CITY_FOREIGN, CITY_AMBIGUOUS, CITY_MENTIONED, MODIFICATION_NEW_QUESTION, MODIFICATION_MODIFICATION, MODIFICATION_AMBIGUOUS, SPECIALTY_NO_SPECIALTY_MENTIONED, SPECIALTY_SINGLE_SPECIALTY, SPECIALTY_MULTIPLE_SPECIALTIES)
 from app.utility.logging import get_logger
+from app.utility.prompt_instructions import PROMPT_INSTRUCTIONS
+
 
 logger = get_logger(__name__)
-
-from app.config.features_config import (
-    CITY_NO_CITY_MENTIONED,
-    CITY_FOREIGN,
-    CITY_AMBIGUOUS,
-    CITY_MENTIONED,
-    MODIFICATION_NEW_QUESTION,
-    MODIFICATION_MODIFICATION,
-    MODIFICATION_AMBIGUOUS,
-    SPECIALTY_NO_SPECIALTY_MENTIONED,
-    SPECIALTY_SINGLE_SPECIALTY,
-    SPECIALTY_MULTIPLE_SPECIALTIES
-)
 
 
 def parse_llm_response(response: str, response_type: str, default=None):
@@ -93,33 +81,3 @@ def prompt_formatting(mode, **kwargs):
     except KeyError as e:
         logger.error(f"Missing key in prompt_formatting: {e}, kwargs: {kwargs}")
         raise
-
-
-
-
-# def prompt_formatting_new(mode, **kwargs):
-#     """
-#     Formats prompts for LLM operations based on mode and keyword arguments.
-#     """
-#     from app.utility.prompt_instructions import PROMPT_INSTRUCTIONS
-#     if mode in PROMPT_INSTRUCTIONS:
-#         return PROMPT_INSTRUCTIONS[mode].format(**kwargs)
-#     # Fallback to previous behavior for legacy modes
-#     if mode == "continue_conversation_prompt":
-#         prompt = kwargs.get("prompt", "")
-#         conv_history = kwargs.get("conv_history", [])
-#         return f"Continue conversation: {prompt} | History: {conv_history}"
-#     elif mode == "detect_modification_prompt":
-#         prompt = kwargs.get("prompt", "")
-#         conv_history = kwargs.get("conv_history", [])
-#         return f"Detect modification: {prompt} | History: {conv_history}"
-#     elif mode == "merge_query_rewrite_prompt":
-#         prompt = kwargs.get("prompt", "")
-#         conv_history = kwargs.get("conv_history", "")
-#         return f"Merge query rewrite: {prompt} | History: {conv_history}"
-#     elif mode == "add_query_rewrite_prompt":
-#         prompt = kwargs.get("prompt", "")
-#         conv_history = kwargs.get("conv_history", "")
-#         return f"Add query rewrite: {prompt} | History: {conv_history}"
-#     # If mode is unknown, raise error for safety
-#     raise ValueError(f"Unknown prompt formatting mode: {mode}")

@@ -1,7 +1,14 @@
-import json
+""" 
+institution_names_detection.py
+---------------------------------
+This module contains the InstitutionNamesDetector class which is responsible for detecting institution names
+from user prompts using a language model (LLM).
+"""
+
+import json 
 import re
-from app.utility.logging import get_logger
 from app.utility.llm_helpers import invoke_llm_with_error_handling
+from app.utility.logging import get_logger
 from app.utility.wrappers import prompt_formatting
 
 
@@ -10,20 +17,16 @@ logger = get_logger(__name__)
 
 class InstitutionNamesDetector:
     """
-    Responsible for extracting institution name or type from prompt using LLM.
-
+    Class to detect institution names from user prompts using a language model (LLM).   
     Attributes:
-        model: The language model used for detection
-        institution_list: Comma-separated list of valid institution names
-        conv_history: Conversation history for context      
-
+        model: The language model to be used for detection.         
     Methods:
-        detect_institution_names(prompt: str, institution_list: str, conv_history: str = "")
+        detect_institution_names(prompt: str, conv_history: str = "") -> dict:
             Detects if a specific institution is mentioned in the prompt.
-            Returns the institution name or "aucune correspondance" if not found.       
     """
     def __init__(self, model):
         self.model = model
+
 
     def detect_institution_names(self, prompt: str, conv_history: str = "") -> dict:  # TODO : double check that i dont need institution list here
         """
@@ -66,7 +69,7 @@ class InstitutionNamesDetector:
         token_usage = llm_call_result.get('token_usage', 0.0) if isinstance(llm_call_result, dict) else 0.0
 
         logger.debug(f"Detected institutions: {institution_names}, intent: {intent}, cost: {cost}, token_usage: {token_usage}")
-        logger.debug(f"Type and value of institution_names before validation: {type(institution_names)} | {institution_names}") #TODO: DELETE LATER
+        # logger.debug(f"Type and value of institution_names before validation: {type(institution_names)} | {institution_names}") 
         
         return {'institution_names': institution_names, 'intent': intent, 'detection_method': 'llm', 'cost': cost, 'token_usage': token_usage}
 

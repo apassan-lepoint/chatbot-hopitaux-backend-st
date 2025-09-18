@@ -1,10 +1,13 @@
 """
-Snowflake database connection utilities.
+snowflake_connector.py
+---------------------------------
+This file contains utilities for connecting to the Snowflake database.  
 """
 
 import snowflake.connector
 import os
 from dotenv import load_dotenv
+
 
 # Load environment variables from a .env file
 load_dotenv()

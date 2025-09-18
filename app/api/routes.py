@@ -1,20 +1,21 @@
 """
-This file registers the main routes for user queries, health checks, and other
-API functionalities, and organizes them using FastAPI's router system.
+routes.py
+---------------------------------
+Defines API endpoints for single-turn and multi-turn interactions with the hospital chatbot.
+Utilizes FastAPI for routing and request handling.
 """
 
 from fastapi import APIRouter, HTTPException
-
-from app.services.pipeline_orchestrator_service import PipelineOrchestrator
+from app.config.features_config import ENABLE_MULTI_TURN
 from app.pydantic_models.query_model import UserQuery, ChatRequest
 from app.pydantic_models.response_model import AskResponse, ChatResponse
-from app.utility.logging import get_logger
 from app.services.conversation_service import ConversationService
-from app.config.features_config import ENABLE_MULTI_TURN
+from app.services.pipeline_orchestrator_service import PipelineOrchestrator
+from app.utility.logging import get_logger
+
 
 # Initialize logger for this module
 logger = get_logger(__name__)
-
 
 # Initialize the API router instance to define and group related endpoints
 router = APIRouter()

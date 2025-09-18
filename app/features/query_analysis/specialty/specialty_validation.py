@@ -1,22 +1,38 @@
+""" 
+specialty_validation.py
+---------------------------------
+This module provides functionality to validate and map medical specialties
+using fuzzy matching techniques.
+"""
+
+import pandas as pd
+import re 
 from typing import List
-from app.utility.specialty_dicts_lists import specialty_categories_dict as default_dict, category_variations
+import unidecode
 from app.config.features_config import ERROR_MESSAGES
 from app.config.file_paths_config import PATHS
-from app.utility.specialty_dicts_lists import specialty_categories_dict
-import pandas as pd
-import unidecode
-import re 
+from app.utility.specialty_dicts_lists import specialty_categories_dict as default_dict, category_variations
+
 
 class SpecialtyValidatorCheckException(Exception):
-    """
-    Custom exception for specialty validation checks.
-    """
     pass
 
 
 class SpecialtyValidator:
     """
-    REDO
+    Class to validate and map medical specialties using fuzzy matching. 
+    It uses a predefined list of specialties and categories to perform the matching.    
+    Attributes:
+        specialty_list (List[str]): List of canonical specialties.
+        specialty_categories_dict (dict): Dictionary mapping categories to sub-specialties.
+        key_words (str): Formatted string of specialty-keyword mappings for LLM prompts.    
+    Methods:
+        validate_specialty(raw_specialty: str or List[str]) -> List[str]:
+            Validates and maps the input specialty string or list to canonical specialties. Returns a list of matched specialties or raises an exception if no match is found.  
+        _map_llm_output_to_specialties(llm_output: str) -> dict:
+            Internal method to map raw LLM output to specialties using fuzzy matching logic.  
+        _fuzzy_match_any(text: str) -> str:
+            Internal method to perform permissive fuzzy matching against specialties and categories.    
     """
     def __init__(self, specialty_list: List[str], specialty_categories_dict=None):
         # Normalize specialty list: lowercase, no accents, strip
@@ -135,7 +151,6 @@ class SpecialtyValidator:
         else:
             raise SpecialtyValidatorCheckException(ERROR_MESSAGES["specialty_not_found"])
 
-    
 
     def validate_specialty(self, raw_specialty) -> List[str]:
         """

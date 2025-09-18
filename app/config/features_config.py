@@ -1,5 +1,7 @@
-"""
-Configuration constants for the chatbot hopitaux.
+""" 
+features_config.py
+---------------------------------
+This file contains configuration settings for various features of the application.
 """
 
 

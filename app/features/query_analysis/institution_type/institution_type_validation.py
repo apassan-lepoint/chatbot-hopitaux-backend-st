@@ -1,40 +1,29 @@
-from typing import Optional
-from app.config.features_config import INSTITUTION_TYPE_MAPPING,INSTITUTION_TYPE_CODES
+""" 
+institution_type_validation.py
+----------------------------------
+Module for validating and normalizing institution types.
+"""
+
 
 class InstitutionTypeValidator:
     """
-    Handles validation and normalization of institution type values.
-
+    Class to validate and normalize institution types. 
     Attributes:
-        institution_list (str): A comma-separated string of valid institution names.        
+        INSTITUTION_TYPE_MAPPING (dict): A mapping of institution type strings to their normalized forms.
+        INSTITUTION_TYPE_CODES (dict): A mapping of institution type strings to their corresponding codes.
     Methods:
-        is_valid_institution(institution_names: str) -> bool:
-            Checks if the given institution name is valid based on the provided list.
-        normalize_institution_type(institution_type: str) -> str:
-            Normalizes the institution type to a standard format.
-        get_institution_type_code(institution_type: str) -> int:            
-            Returns the code for the institution type based on the normalized value.
-        is_public_institution(institution_type: Optional[str]) -> bool:
-            Checks if the institution type is public.
-        is_private_institution(institution_type: Optional[str]) -> bool:
-            Checks if the institution type is private.  
-        is_institution_type_valid(institution_type: str) -> bool:
-            Checks if the institution type is valid.
+        normalize_institution_type(institution_type: str) -> str: Normalizes the institution type string.
+        get_institution_type_code(institution_type: str) -> int: Returns the code for the institution type.
+        is_public_institution(institution_type: Optional[str]) -> bool: Checks if the institution type is public.
+        is_private_institution(institution_type: Optional[str]) -> bool: Checks if the institution type is private.
+        is_institution_type_valid(institution_type
     """
-    # def __init__(self):
-    #     self.institution_list = institution_list
-
-    # def is_valid_institution(self, institution_names: str) -> bool:
-    #     if not institution_names or institution_names == "aucune correspondance":
-    #         return False
-    #     institution_names_ = [name.strip() for name in self.institution_list.split(",")]
-    #     return institution_names in institution_names_
-
     def normalize_institution_type(self, institution_type: str) -> str:
         if not institution_type or institution_type in ["no match", "aucune correspondance"]:
             return "aucune correspondance"
         type_lower = institution_type.lower().strip()
         return INSTITUTION_TYPE_MAPPING.get(type_lower, "aucune correspondance")
+
 
     def get_institution_type_code(self, institution_type: str) -> int:
         normalized = self.normalize_institution_type(institution_type)
@@ -45,17 +34,20 @@ class InstitutionTypeValidator:
         else:
             return INSTITUTION_TYPE_CODES["no_match"]
 
+
     def is_public_institution(self, institution_type: Optional[str]) -> bool:
         """
         Checks if the institution type is public.
         """
         return self.normalize_institution_type(institution_type) == "Public"
 
+
     def is_private_institution(self, institution_type: Optional[str]) -> bool:
         """
         Checks if the institution type is private.
         """
         return self.normalize_institution_type(institution_type) == "Privé"
+
 
     def is_institution_type_valid(self, institution_type: str) -> bool:
         """

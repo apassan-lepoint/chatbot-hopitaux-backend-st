@@ -1,14 +1,12 @@
 """
 Utility functions for formatting chatbot responses and data.
-
-This file provides helpers to convert DataFrames to text, remove accents,
-    and format lists or mappings for display or prompt injection.
 """
 
 import pandas as pd
-import unicodedata
 import re
 from typing import List
+import unicodedata
+
 
 def format_mapping_words_csv(file_path: str) -> str:
     """
@@ -25,9 +23,9 @@ def format_mapping_words_csv(file_path: str) -> str:
     column = df['Valeurs'].dropna()
     
     # Concatenate all values into a single string separated by newlines  
-    resultat = column.astype(str).str.cat(sep="\n")
-    
-    return resultat
+    result = column.astype(str).str.cat(sep="\n")
+
+    return result
 
     
 def remove_accents(original_string: str)-> str:

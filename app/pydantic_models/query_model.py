@@ -1,12 +1,12 @@
 """
-Pydantic models for user queries.
-
-This file defines data validation and serialization models for incoming user queries,
-    ensuring correct structure and types for API endpoints.
+query_model.py
+---------------------------------
+Pydantic models for handling user queries and chat requests in a chatbot application.
 """
 
 from typing import List
 from pydantic import BaseModel
+
 
 class UserQuery(BaseModel):
     """

@@ -1,3 +1,9 @@
+""" 
+conversation_service.py
+---------------------------------
+This file contains the ConversationService class that handles multi-turn conversation logic.
+"""
+
 from fastapi import HTTPException
 from app.services.pipeline_orchestrator_service import PipelineOrchestrator
 from app.services.llm_handler_service import LLMHandler
@@ -11,9 +17,20 @@ from app.utility.formatting_helpers import format_links
 
 class ConversationService:
     """
-    Handles all multi-turn conversation logic extracted from routes.py.
+    Class to handle multi-turn conversation logic.  
+    Replicates the original /chat endpoint logic.   
+    Uses ConversationAnalyst for conversation checks and LLMHandler for LLM interactions.
+    Integrates with PipelineOrchestrator to generate responses.
+    Attributes:
+        pipeline (PipelineOrchestrator): Instance to manage the response generation pipeline.
+        llm_handler (LLMHandler): Instance to handle LLM interactions.
+        conv_manager (ConversationAnalyst): Instance to analyze conversation context.
+        logger: Logger instance for logging.    
+    Methods:
+        handle_chat(request: ChatRequest) -> ChatResponse: Main method to process chat requests.
+        _build_response(prompt: str, answer: str, history: list) -> ChatResponse: Helper to build ChatResponse objects.
+        _history_to_str(history: list) -> str: Helper to convert conversation history to string format.     
     """
-
     def __init__(self):
         self.pipeline = PipelineOrchestrator()
         self.llm_handler = LLMHandler()

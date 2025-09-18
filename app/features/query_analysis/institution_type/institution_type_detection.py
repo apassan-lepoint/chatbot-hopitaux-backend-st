@@ -1,20 +1,26 @@
-from app.utility.logging import get_logger
+"""
+institution_type_detection.py
+----------------------------------
+Module for detecting institution type (public/private) from user prompts using LLM.
+"""
+
 from app.utility.llm_helpers import invoke_llm_with_error_handling
+from app.utility.logging import get_logger
 from app.utility.wrappers import prompt_formatting
 from app.utility.wrappers import parse_llm_response
 
+
 logger = get_logger(__name__)
+
 
 class InstitutionTypeDetector:
     """
-    Handles only detection/extraction of institution name and type from prompt using LLM.
+    Class to detect institution type (public/private) from user prompts using LLM.
     Attributes:
-        model: The model used for detection.
-        institution_list: A string representing the list of institutions.
+        model: The LLM model to use for detection.  
     Methods:
-        detect_institution_type(prompt: str, conv_history: str = "") -> str:
+        detect_institution_type(prompt: str, conv_history: str = "") -> dict:
             Detects if the user has a preference for public or private institutions.
-            Returns the raw LLM output (e.g., 'public', 'private', 'no match', etc.).
     """
     def __init__(self, model):
         self.model = model
