@@ -13,8 +13,9 @@ import unicodedata
 from app.config.features_config import (PUBLIC_RANKING_URL, PRIVATE_RANKING_URL, INSTITUTION_TYPE_URL_MAPPING, CSV_FIELDNAMES)
 from app.config.file_paths_config import PATHS
 from app.services.llm_handler_service import LLMHandler
+from app.snowflake_db.snowflake_query import convert_snowflake_to_pandas_df
 from app.utility.distance_calc_helpers import exget_coordinates, distance_to_query, multi_radius_search
-from app.utility.formatting_helpers import remove_accents
+from app.utility.formatting_helpers import normalize_text
 from app.utility.logging import get_logger
 
 
@@ -23,52 +24,14 @@ logger = get_logger(__name__)
 
 class DataProcessor:
     """
-    Service class for processing hospital ranking data based on user queries.   
-    Attributes:
-        paths (dict): Dictionary of file paths for data files.
-        ranking_df (pd.DataFrame): DataFrame containing the hospital ranking data.
-        llm_handler_service (LLMHandler): Instance of LLMHandler for language model interactions.
-        specialty_df (pd.DataFrame): DataFrame containing filtered specialty data.
-        institution_names (list): List of institution names mentioned in the query.
-        specialty_ranking_unavailable (bool): Flag indicating if specialty ranking is unavailable.
-        web_ranking_link (list): List of generated web links for rankings.
-        geolocation_api_error (bool): Flag indicating if there was an error with geolocation API.
-        specialty (str): Detected medical specialty from the query.
-        institution_type (str): Detected institution type (public/private) from the query.
-        city (str): Detected city from the query.
-        city_detected (bool): Flag indicating if a city was detected in the query.
-        df_with_cities (pd.DataFrame): DataFrame containing ranking data merged with city information.
-        institution_name_mentioned (str): Specific institution name mentioned in the query, if any.
-        number_institutions (int): Number of institutions requested in the query, if specified.
-        weblinks (dict): Predefined links for public/private rankings.
-        institution_coordinates_df (pd.DataFrame): DataFrame containing hospital coordinates data.
-        institution_list (str): Formatted, deduplicated list of institutions present in the rankings.
-    Methods:
-        __init__: Initializes the DataProcessor instance.
-        set_detection_results: Sets detection results from orchestrator.
-        generate_response_links: Generates web links to relevant ranking pages.
-        load_and_transform_for_no_specialty: Loads and merges general ranking tables for queries without a specific specialty.
-        load_excel_sheets: Loads Excel sheets corresponding to matched specialties and categories.  
-        find_excel_sheet_with_specialty: Finds and loads ranking data based only on specialty.
-        generate_data_response: Main entry point for generating the data response (DataFrame) for a user query.
-        extract_local_hospitals: Merges ranking data with hospital location data.
-        get_df_with_distances: Calculates distances between hospitals and the city specified in the user's query.
-        select_hospitals: Selects hospitals based on city first, then expands by distance if needed.
-        create_csv: Saves the user's query and the system's response to a CSV file.
-        _load_ranking_dataframe: Helper method to load a ranking DataFrame from a CSV file and add the category.
-        _generate_web_link: Helper method to generate a single web ranking link.
-        _normalize_str: Utility to normalize strings for matching.
-        _is_no_specialty: Utility to check if specialty is empty or no match.
-        _parse_specialty_list: Utility to parse multiple specialties from a string.
-        _get_institution_list: Returns a formatted, deduplicated list of institutions present in the rankings.
-        _filter_ranking_by_criteria: Helper method to filter ranking DataFrame by specialty and optionally by institution type.
-        _concat_dataframes: Utility to concatenate DataFrames.
-        get_institution_type_for_url: Convert institution type to format expected by web URLs.
+    REDO
     """
     
     def __init__(self):
         logger.info("Initializing DataProcessor")
         self.paths = PATHS
+        self.snowflake_palmares_df = self._load_snowflake_dataframe()
+
         self.ranking_df = None
         self.llm_handler_service = LLMHandler()
         self.specialty_df = None
@@ -93,8 +56,24 @@ class DataProcessor:
         except Exception as e:
             logger.error(f"Failed to load hospital coordinates Excel: {e}")
             raise
-    
-    
+
+
+    def _load_snowflake_dataframe(self) -> pd.DataFrame:
+        """
+        """
+        query = f"""
+        SELECT *
+        FROM DATATABLES_PROD.PATRIMOINE_CLASSE1.DT_PALMARES_HOPITAUX
+        """
+        df = convert_snowflake_to_pandas_df(query)
+        df['CLASSEMENT_TYPE_NORM'] = df['CLASSEMENT_TYPE'].apply(normalize_text, mode="string_matching")
+        df['ETABLISSEMENT_NOM_NORM'] = df['ETABLISSEMENT_NOM'].apply(normalize_text, mode="string_matching")
+
+        return df
+
+
+
+
     def _load_ranking_dataframe(self, file_path: str, category: str) -> pd.DataFrame:
         """
         Helper method to load a ranking DataFrame from a CSV file and add the category.
@@ -128,7 +107,7 @@ class DataProcessor:
         web_link = specialty.replace(' ', '-')
         web_link = f'https://www.lepoint.fr/hopitaux/classements/{web_link}-{institution_type}.php'
         web_link = web_link.lower()
-        return remove_accents(web_link)
+        return normalize_text(string=web_link, mode="web_link")
 
 
     def _normalize_str(self, s: str) -> str:

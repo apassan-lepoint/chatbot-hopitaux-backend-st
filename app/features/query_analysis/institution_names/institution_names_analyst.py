@@ -44,10 +44,9 @@ class InstitutionNamesAnalyst:
 
         # 2️ Validate against canonical list with types
         validated_institutions = self.validator.validate_institution_names(detected_names)
-        self.validator.validate_intent(intent)
 
-        # 3️ Build final detection result including types
-        result = self.validator.build_detection_result(validated_institutions)
+        # 3️ Build final result including types
+        result = self.validator.build_validated_result(validated_institutions)
         result.update({
             "intent": intent,
             "detection_method": detection_method,

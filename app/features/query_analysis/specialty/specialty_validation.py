@@ -11,7 +11,7 @@ from typing import List
 import unidecode
 from app.config.features_config import ERROR_MESSAGES
 from app.config.file_paths_config import PATHS
-from app.utility.specialty_dicts_lists import specialty_categories_dict as default_dict, category_variations
+from app.utility.specialty_dicts_lists import specialty_categories_dict, category_variations, specialty_list
 
 
 class SpecialtyValidatorCheckException(Exception):
@@ -23,34 +23,21 @@ class SpecialtyValidator:
     Class to validate and map medical specialties using fuzzy matching. 
     It uses a predefined list of specialties and categories to perform the matching.    
     Attributes:
-        specialty_list (List[str]): List of canonical specialties.
-        specialty_categories_dict (dict): Dictionary mapping categories to sub-specialties.
-        key_words (str): Formatted string of specialty-keyword mappings for LLM prompts.    
+    - specialty_list: List of canonical specialties.
+    - specialty_categories_dict: Dict mapping categories to lists of specialties.
+    - key_words: Pre-built string mapping specialties to keywords for LLM prompts.  
     Methods:
-        validate_specialty(raw_specialty: str or List[str]) -> List[str]:
-            Validates and maps the input specialty string or list to canonical specialties. Returns a list of matched specialties or raises an exception if no match is found.  
-        _map_llm_output_to_specialties(llm_output: str) -> dict:
-            Internal method to map raw LLM output to specialties using fuzzy matching logic.  
-        _fuzzy_match_any(text: str) -> str:
-            Internal method to perform permissive fuzzy matching against specialties and categories.    
+    - validate_specialty: Main interface to validate and map specialties.       
+    - _map_llm_output_to_specialties: Core logic to map LLM output to specialties.
+    - _fuzzy_match_any: Permissive fuzzy matching against specialties and categories.
+    - _is_no_match: Check if specialty string indicates no match.
+    - _build_default_key_words: Build default keywords mapping from CSV or fallback.
     """
-    def __init__(self, specialty_list: List[str], specialty_categories_dict=None):
+    def __init__(self):
         # Normalize specialty list: lowercase, no accents, strip
-        self.specialty_list = [unidecode.unidecode(s).lower().strip() for s in self._load_specialty_list_from_excel(PATHS["ranking_file_path"])]
-        self.specialty_categories_dict = specialty_categories_dict or default_dict
+        self.specialty_list = specialty_list
+        self.specialty_categories_dict = specialty_categories_dict
         self.key_words = self._build_default_key_words(PATHS["mapping_word_path"])
-
-
-    def _load_specialty_list_from_excel(self, path: str, sheet_name: str = "Palmarès") -> List[str]:
-        import pandas as pd
-        try:
-            df_specialty = pd.read_excel(path, sheet_name=sheet_name)
-            return df_specialty.iloc[:, 0].drop_duplicates().dropna().tolist()
-        except Exception:
-            all_specialties = []
-            for specialties in default_dict.values():
-                all_specialties.extend(specialties)
-            return list(set(all_specialties))
 
 
     def _build_default_key_words(self, mapping_word_path: str) -> str:
@@ -77,36 +64,25 @@ class SpecialtyValidator:
         return not specialty or specialty.lower() in {"no specialty match", "aucune correspondance", "no match", ""}
     
 
-    def _normalize(self, s):
-        if not s:
-            return ""
-        s = unidecode.unidecode(s.lower())
-        # Remove common French articles/prepositions
-        s = re.sub(r"\b(du|de la|de l'|de|la|le|les|au|aux|a la|a l'|a|des|pour|sur|concernant|au niveau du|au niveau de|au niveau des|question|la|le|les)\b", "", s)
-        s = re.sub(r"[^a-z0-9 ]", " ", s)  # Remove punctuation
-        s = re.sub(r"\s+", " ", s).strip()
-        return s
-
-
     def _fuzzy_match_any(self, text: str) -> str:
         """
         Fuzzy match input text to canonical specialties, sub-specialties, and category variations using substring matching.
         Returns the first match found, or a 'multiple matches:' string if a category variation matches, else None.
         """
-        norm_text = self._normalize(text)
+        norm_text = self.normalize_text(text)
         # 1. Check specialty list (substring match)
         for specialty in self.specialty_list:
-            if self._normalize(specialty) in norm_text:
+            if self.normalize_text(specialty) in norm_text:
                 return specialty
         # 2. Check specialty_categories_dict (sub-specialties, substring match)
         for category, keywords in self.specialty_categories_dict.items():
             for keyword in keywords:
-                if self._normalize(keyword) in norm_text:
+                if self.normalize_text(keyword) in norm_text:
                     return keyword
         # 3. Check category_variations (substring match)
         for category, variations in category_variations.items():
             for variation in variations:
-                if self._normalize(variation) in norm_text:
+                if self.normalize_text(variation) in norm_text:
                     return "multiple matches:" + ",".join(self.specialty_categories_dict.get(category.title(), []))
         return None
 
@@ -168,3 +144,23 @@ class SpecialtyValidator:
         else:
             return []
 
+    # def _load_specialty_list_from_excel(self, path: str, sheet_name: str = "Palmarès") -> List[str]:
+    #     import pandas as pd
+    #     try:
+    #         df_specialty = pd.read_excel(path, sheet_name=sheet_name)
+    #         return df_specialty.iloc[:, 0].drop_duplicates().dropna().tolist()
+    #     except Exception:
+    #         all_specialties = []
+    #         for specialties in default_dict.values():
+    #             all_specialties.extend(specialties)
+    #         return list(set(all_specialties))
+
+    # def _normalize(self, s):
+    #     if not s:
+    #         return ""
+    #     s = unidecode.unidecode(s.lower())
+    #     # Remove common French articles/prepositions
+    #     s = re.sub(r"\b(du|de la|de l'|de|la|le|les|au|aux|a la|a l'|a|des|pour|sur|concernant|au niveau du|au niveau de|au niveau des|question|la|le|les)\b", "", s)
+    #     s = re.sub(r"[^a-z0-9 ]", " ", s)  # Remove punctuation
+    #     s = re.sub(r"\s+", " ", s).strip()
+    #     return s

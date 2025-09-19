@@ -5,51 +5,30 @@ Utility functions for formatting chatbot responses and data.
 import pandas as pd
 import re
 from typing import List
-import unicodedata
+import unidecode
 
 
-def format_mapping_words_csv(file_path: str) -> str:
+def normalize_text(string, mode="string_matching"):
     """
-    Convert a CSV file of specialty mapping words into a string for prompt injection.
-
-    Args:
-        file_path (str): Path to the CSV file containing specialty mapping words.
-
-    Returns:
-        str: A string with each value separated by a newline.
+    Normalizes text for different use cases using unidecode for accent removal.
+    mode="string_matching": robust matching (accents, lowercase, remove French articles/prepositions, punctuation, collapse spaces)
+    mode="web_link": accent removal and apostrophe-to-hyphen for web links
     """
-    # Read the CSV file and extract the 'Valeurs' column, dropping any NaN values
-    df = pd.read_csv(file_path)
-    column = df['Valeurs'].dropna()
-    
-    # Concatenate all values into a single string separated by newlines  
-    result = column.astype(str).str.cat(sep="\n")
-
-    return result
-
-    
-def remove_accents(original_string: str)-> str:
-    """
-    Remove accents from a string and replace apostrophes with hyphens.
-
-    Args:
-        chaine (str): Input string.
-
-    Returns:
-        str: Normalized string without accents.
-    """
-    # Normalize the string to separate accents
-    normalized_string = unicodedata.normalize('NFD', original_string)
-    
-    # Remove all accent characters
-    string_no_accents = ''.join(c for c in normalized_string if unicodedata.category(c) != 'Mn')
-    
-    # Replace apostrophes with hyphens
-    string_no_accents = string_no_accents.replace("'", '-')
-    
-    return string_no_accents
+    if not isinstance(string, str):
+        return ""
+    # Remove accents using unidecode
+    string_no_accents = unidecode.unidecode(string)
+    if mode == "web_link":
+        return string_no_accents.replace("'", '-')
+    elif mode == "string_matching":
+        string_lower = string_no_accents.lower()
+        string_no_prepositions = re.sub(r"\b(du|de la|de l'|de|la|le|les|au|aux|a la|a l'|a|des|pour|sur|concernant|au niveau du|au niveau de|au niveau des|question|l')\b", "", string_lower)
+        string_letters_numbers = re.sub(r"[^a-z0-9 ]", " ", string_no_prepositions)
+        string_fin = re.sub(r"\s+", " ", string_letters_numbers).strip()
+        return string_fin
 
 
+# TODO: REFACTOR
 def format_response(public_df: pd.DataFrame, private_df: pd.DataFrame, number_institutions: int, city_not_specified: bool) -> str:
     """
     Format public and private DataFrames into a chatbot response, with count checks and user messages.
@@ -97,18 +76,10 @@ def format_response(public_df: pd.DataFrame, private_df: pd.DataFrame, number_in
 def format_links(result: str, links: list) -> str:
     """
     Appends formatted ranking links to the result string.
-
-    Args:
-        result (str): The main result string.
-        links (list): List of links to append.
-
-    Returns:
-        str: The formatted result string with links.
     """
     if links:
         for l in links:
             result += f"<br>[🔗Page du classement]({l})"
-
     return result
 
 
@@ -117,7 +88,6 @@ def extract_links_from_text(text: str) -> List[str]:
     Extract all URLs from a given string using regex.
     Deduplicates automatically.
     """
-    # Regex with no capturing groups
     url_pattern = r"https?://[^\s\"'>]+"
     matches = re.findall(url_pattern, text)
     return list(set(matches))

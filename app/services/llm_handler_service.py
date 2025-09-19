@@ -10,7 +10,6 @@ from langchain_openai.chat_models import ChatOpenAI
 from app.config.features_config import OPENAI_MODEL
 from app.config.file_paths_config import PATHS
 from app.features.conversation.conversation_analyst import ConversationAnalyst
-from app.utility.formatting_helpers import format_mapping_words_csv
 from app.utility.logging import get_logger
 
 
@@ -23,7 +22,6 @@ class LLMHandler:
     Attributes:
         model (ChatOpenAI): The ChatOpenAI model instance.
         paths (dict): A dictionary containing file paths.       
-        key_words (dict): A dictionary of keywords loaded from the mapping words CSV.
         conversation_manager (ConversationAnalyst): An instance of ConversationAnalyst for managing conversations.
     Methods:
         init_model(): Initializes and returns the ChatOpenAI model.
@@ -46,7 +44,6 @@ class LLMHandler:
         else:
             logger.warning(f"Data directory does not exist: {data_dir}")
 
-        self.key_words = format_mapping_words_csv(self.paths["mapping_word_path"])
         self.conversation_manager = ConversationAnalyst(self.model)
 
         

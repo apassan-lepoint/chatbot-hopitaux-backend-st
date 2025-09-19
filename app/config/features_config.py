@@ -66,7 +66,6 @@ STATUS_DESCRIPTIONS_DICT = {
     CITY_MENTIONED: "French city mentioned"
     }
 
-
 # Constants for checks
 MAX_MESSAGES = 0 # Keep as 0 for single-turn conversation
 MAX_LENGTH = 200
@@ -83,7 +82,6 @@ MODIFICATION_AMBIGUOUS = 2
 SPECIALTY_NO_SPECIALTY_MENTIONED = 0
 SPECIALTY_SINGLE_SPECIALTY = 1
 SPECIALTY_MULTIPLE_SPECIALTIES = 2
-
 
 # Checks to run for sanity checks
 CHECKS_TO_RUN_Q1 = ["message_length", "message_pertinence"]

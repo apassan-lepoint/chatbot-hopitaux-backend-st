@@ -65,6 +65,7 @@ def parse_llm_response(response: str, response_type: str, default=None):
         }
         return fallback.get(response_type, default)
 
+
 def prompt_formatting(mode, **kwargs):
     """
     Generic wrapper for prompt formatting.
