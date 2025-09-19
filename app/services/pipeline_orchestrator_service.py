@@ -781,7 +781,7 @@ class PipelineOrchestrator:
             return ERROR_MESSAGES['general_ranking_error'], []
         logger.debug(f"Retrieved DataFrame shape: {df.shape if hasattr(df, 'shape') else 'N/A'}")
 
-        # Handle geolocation API errors
+        # Handle geolocation API errors # TODO WONT NEED
         logger.debug("Checking for geolocation API errors")
         if self.data_processor.geolocation_api_error:
             logger.error("Geopy API error encountered, cannot calculate distances")
