@@ -10,7 +10,7 @@ from app.config.features_config import ENABLE_MULTI_TURN, ERROR_MESSAGES, CHECKS
 from app.features.conversation.llm_responder import LLMResponder
 from app.features.conversation.multi_turn import MultiTurn
 from app.features.sanity_checks.sanity_checks_analyst import SanityChecksAnalyst
-from app.utility.logging import get_logger
+from app.utility.functions.logging import get_logger
 
 
 logger = get_logger(__name__)

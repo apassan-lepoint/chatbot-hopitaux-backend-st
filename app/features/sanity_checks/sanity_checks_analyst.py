@@ -8,7 +8,7 @@ from app.config.features_config import MAX_MESSAGES, MAX_LENGTH
 from app.features.sanity_checks.conversation_limit_check import ConversationLimitChecker, ConversationLimitCheckException
 from app.features.sanity_checks.message_length_check import MessageLengthChecker, MessageLengthCheckException
 from app.features.sanity_checks.message_pertinence_check import MessagePertinenceChecker, MessagePertinenceCheckException
-from app.utility.logging import get_logger
+from app.utility.functions.logging import get_logger
 
 
 logger = get_logger(__name__)

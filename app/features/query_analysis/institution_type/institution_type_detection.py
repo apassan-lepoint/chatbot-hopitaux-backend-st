@@ -4,10 +4,9 @@ institution_type_detection.py
 Module for detecting institution type (public/private) from user prompts using LLM.
 """
 
-from app.utility.llm_helpers import invoke_llm_with_error_handling
-from app.utility.logging import get_logger
-from app.utility.wrappers import prompt_formatting
-from app.utility.wrappers import parse_llm_response
+from app.utility.functions.llm_helpers import invoke_llm_with_error_handling
+from app.utility.functions.logging import get_logger
+from app.utility.functions.llm_helpers import prompt_formatting, parse_llm_response
 
 
 logger = get_logger(__name__)
@@ -41,7 +40,3 @@ class InstitutionTypeDetector:
         logger.debug(f"Institution type detection result: {institution_type}, {cost}, {token_usage}")
         
         return {'institution_type': institution_type, 'detection_method': 'llm', 'cost': cost, 'token_usage': token_usage}
-
-    
-
-    

@@ -7,9 +7,9 @@ from user prompts using a language model (LLM).
 
 import json 
 import re
-from app.utility.llm_helpers import invoke_llm_with_error_handling
-from app.utility.logging import get_logger
-from app.utility.wrappers import prompt_formatting
+from app.utility.functions.llm_helpers import invoke_llm_with_error_handling
+from app.utility.functions.logging import get_logger
+from app.utility.functions.llm_helpers import prompt_formatting
 
 
 logger = get_logger(__name__)

@@ -1,7 +1,7 @@
 """ 
 llm_handler_service.py
 ---------------------------------
-This file contains the LLMHandler service for interacting with the language model (LLM).
+This file contains the LLMHandlerService for interacting with the language model (LLM).
 """
 
 import os
@@ -10,13 +10,13 @@ from langchain_openai.chat_models import ChatOpenAI
 from app.config.features_config import OPENAI_MODEL
 from app.config.file_paths_config import PATHS
 from app.features.conversation.conversation_analyst import ConversationAnalyst
-from app.utility.logging import get_logger
+from app.utility.functions.logging import get_logger
 
 
 logger = get_logger(__name__)
 
 
-class LLMHandler:
+class LLMHandlerService:
     """
     Service for interacting with the language model (LLM).
     Attributes:
@@ -30,8 +30,8 @@ class LLMHandler:
         rewrite_query_add(prompt, conv_history): Rewrites the query using the add approach (Case 3).        
     """
     def __init__(self):
-        logger.info("LLMHandler __init__ called")
-        logger.info("Initializing LLMHandler")
+        logger.info("LLMHandlerService __init__ called")
+        logger.info("Initializing LLMHandlerService")
         load_dotenv(override=False) 
         self.model = self.init_model()
         self.paths = PATHS

@@ -5,11 +5,8 @@ Detects the number of establishments (number_institutions) requested by users.
 """
 
 from app.config.features_config import number_institutions_DEFAULT, number_institutions_MIN, number_institutions_MAX
-from app.utility.llm_helpers import invoke_llm_with_error_handling
-from app.utility.logging import get_logger
-from app.utility.wrappers import prompt_formatting
-from app.utility.wrappers import parse_llm_response
-
+from app.utility.functions.llm_helpers import invoke_llm_with_error_handling, prompt_formatting, parse_llm_response
+from app.utility.functions.logging import get_logger
 
 logger = get_logger(__name__)
 

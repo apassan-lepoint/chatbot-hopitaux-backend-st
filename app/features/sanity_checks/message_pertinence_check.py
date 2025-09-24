@@ -5,10 +5,9 @@ This module defines the MessagePertinenceChecker class, which checks the pertine
 using a large language model (LLM). 
 """
 
-from app.config.features_config import ERROR_MESSAGES, METHODOLOGY_WEB_LINK
-from app.utility.llm_helpers import invoke_llm_with_error_handling
-from app.utility.logging import get_logger
-from app.utility.wrappers import prompt_formatting, parse_llm_response
+from app.config.features_config import ERROR_MESSAGES
+from app.utility.functions.llm_helpers import invoke_llm_with_error_handling, prompt_formatting, parse_llm_response
+from app.utility.functions.logging import get_logger
 
 
 logger = get_logger(__name__)

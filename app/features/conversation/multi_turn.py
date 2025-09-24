@@ -6,9 +6,8 @@ Module for handling multi-turn conversation logic.
 
 from typing import Dict, Any
 from app.config.features_config import ERROR_MESSAGES
-from app.utility.logging import get_logger
-from app.utility.wrappers import prompt_formatting
-from app.utility.llm_helpers import invoke_llm_and_parse_boolean
+from app.utility.functions.logging import get_logger
+from app.utility.functions.llm_helpers import invoke_llm_and_parse_boolean, prompt_formatting
 
 
 logger = get_logger(__name__)

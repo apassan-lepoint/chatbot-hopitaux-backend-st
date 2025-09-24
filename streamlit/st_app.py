@@ -14,7 +14,7 @@ from app.utility.logging import get_logger
 from st_config import (SESSION_STATE_KEYS, SESSION_STATE_DEFAULTS, MAX_MESSAGES, UI_CHAT_INPUT_PLACEHOLDER)
 from st_utility import (display_conversation_history, get_conversation_list, get_conversation_length, get_session_state_value, handle_specialty_selection, process_message)
 from st_ui_components import UIComponents
-from app.services.llm_handler_service import LLMHandler
+from app.services.llm_handler_service import LLMHandlerService
 
 
 
@@ -30,7 +30,7 @@ class StreamlitChatbot:
         logger.info("Initializing StreamlitChatbot")
         self.ui_components = UIComponents(self._reset_session_state)
         self.max_messages = MAX_MESSAGES
-        self.llm_handler = LLMHandler()
+        self.llm_handler = LLMHandlerService()
 
 
     def _reset_session_state(self) -> None:
@@ -75,8 +75,8 @@ class StreamlitChatbot:
         logger.info(f"Subsequent message user_input: '{user_input}'")
         st.session_state.prompt = user_input
         prompt = get_session_state_value(SESSION_STATE_KEYS["prompt"], "")
-        selected_specialty = st.session_state.get("selected_specialty", None)
-        process_message(prompt, selected_specialty)
+        user_selected_specialty = st.session_state.get("user_selected_specialty", None)
+        process_message(prompt, user_selected_specialty)
 
 
 

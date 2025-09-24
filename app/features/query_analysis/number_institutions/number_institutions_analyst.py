@@ -8,7 +8,7 @@ the number of establishments (number_institutions) requested by users in their p
 from app.config.features_config import number_institutions_DEFAULT, number_institutions_MIN, number_institutions_MAX
 from .number_institutions_detection import number_institutionsDetector
 from .number_institutions_validation import NumberInstitutionsValidator
-from app.utility.logging import get_logger
+from app.utility.functions.logging import get_logger
 
 
 logger = get_logger(__name__)

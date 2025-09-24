@@ -5,14 +5,19 @@ This module provides functionality to validate and map medical specialties
 using fuzzy matching techniques.
 """
 
+import difflib
 import pandas as pd
 import re 
+import spacy
 from typing import List
 import unidecode
 from app.config.features_config import ERROR_MESSAGES
 from app.config.file_paths_config import PATHS
-from app.utility.specialty_dicts_lists import specialty_categories_dict, category_variations, specialty_list
+from app.utility.dicts_lists.specialty_dicts_lists import specialty_categories_dict, category_variations, specialty_list, generic_words
+from app.utility.functions.formatting_helpers import normalize_text
+from app.utility.functions.logging import get_logger
 
+logger = get_logger(__name__)
 
 class SpecialtyValidatorCheckException(Exception):
     pass
@@ -64,26 +69,113 @@ class SpecialtyValidator:
         return not specialty or specialty.lower() in {"no specialty match", "aucune correspondance", "no match", ""}
     
 
+    def _remove_generic_words(self, text: str) -> str:
+        """
+        Remove generic French medical words/phrases (with fuzzy matching for minor typos) from the input string.
+        """
+        # Tokenize by space and also check for multi-word phrases
+        words = text.split()
+        # Remove exact and fuzzy matches (threshold 0.85)
+        filtered_words = []
+        for i, word in enumerate(words):
+            # Check for multi-word phrases (up to 3 words)
+            found = False
+            for n in [3,2,1]:
+                if i + n <= len(words):
+                    phrase = " ".join(words[i:i+n]).lower()
+                    # Fuzzy match against generic_words
+                    matches = difflib.get_close_matches(phrase, generic_words, n=1, cutoff=0.85)
+                    if matches:
+                        found = True
+                        break
+            if not found:
+                filtered_words.append(word)
+        return " ".join(filtered_words)
+
+    def _lemmatize_french(self, text: str) -> str:
+        """
+        Lemmatize French text using spaCy (fr_core_news_sm). Returns the lemmatized string.
+        """
+        try:
+            nlp = spacy.load("fr_core_news_sm")
+            doc = nlp(text)
+            return " ".join([token.lemma_ for token in doc])
+        except Exception as e:
+            logger.warning(f"spaCy lemmatization failed: {e}")
+            return text
+
     def _fuzzy_match_any(self, text: str) -> str:
         """
-        Fuzzy match input text to canonical specialties, sub-specialties, and category variations using substring matching.
+        Fuzzy match input text to canonical specialties, sub-specialties, and category variations using substring matching and difflib similarity.
         Returns the first match found, or a 'multiple matches:' string if a category variation matches, else None.
         """
-        norm_text = self.normalize_text(text)
-        # 1. Check specialty list (substring match)
+        import difflib
+        # Remove generic words before matching
+        text = self._remove_generic_words(text)
+        # Lemmatize before matching
+        text = self._lemmatize_french(text)
+        norm_text = normalize_text(text)
+        logger.debug(f"Normalized text for fuzzy matching: {norm_text}")
+
+        # 3. Check category_variations (bidirectional substring match)
+        for category in category_variations.keys():
+            norm_category = normalize_text(category)
+            ratio = difflib.SequenceMatcher(None, norm_text, norm_category).ratio()
+            if ratio >= 0.8:
+                logger.debug(f"Fuzzy match found to category key '{category}' (ratio={ratio})")
+                return "multiple matches:" + ",".join(self.specialty_categories_dict.get(category, []))
+            
+        # 1. Check specialty list (bidirectional substring match)
         for specialty in self.specialty_list:
-            if self.normalize_text(specialty) in norm_text:
+            norm_specialty = normalize_text(specialty)
+            if norm_specialty in norm_text or norm_text in norm_specialty:
+                logger.debug(f"Fuzzy match found in specialty list: {specialty}")
                 return specialty
-        # 2. Check specialty_categories_dict (sub-specialties, substring match)
+        # 2. Check specialty_categories_dict (sub-specialties, bidirectional substring match)
         for category, keywords in self.specialty_categories_dict.items():
             for keyword in keywords:
-                if self.normalize_text(keyword) in norm_text:
+                norm_keyword = normalize_text(keyword)
+                if norm_keyword in norm_text or norm_text in norm_keyword:
+                    logger.debug(f"Fuzzy match found in category '{category}': {keyword}")
                     return keyword
-        # 3. Check category_variations (substring match)
+        
+            
         for category, variations in category_variations.items():
             for variation in variations:
-                if self.normalize_text(variation) in norm_text:
+                norm_variation = normalize_text(variation)
+                if norm_variation in norm_text or norm_text in norm_variation:
+                    logger.debug(f"Fuzzy match found in category variations '{category}': {variation}")
                     return "multiple matches:" + ",".join(self.specialty_categories_dict.get(category.title(), []))
+        
+        # 4. Fuzzy match using difflib for specialty_list
+        best_match = None
+        best_ratio = 0.0
+        for specialty in self.specialty_list:
+            norm_specialty = normalize_text(specialty)
+            ratio = difflib.SequenceMatcher(None, norm_text, norm_specialty).ratio()
+            if ratio > best_ratio:
+                best_ratio = ratio
+                best_match = specialty
+        if best_ratio >= 0.8:
+            logger.debug(f"difflib fuzzy match found in specialty list: {best_match} (ratio={best_ratio})")
+            return best_match
+        # 5. Fuzzy match using difflib for specialty_categories_dict
+        for category, keywords in self.specialty_categories_dict.items():
+            for keyword in keywords:
+                norm_keyword = normalize_text(keyword)
+                ratio = difflib.SequenceMatcher(None, norm_text, norm_keyword).ratio()
+                if ratio >= 0.8:
+                    logger.debug(f"difflib fuzzy match found in category '{category}': {keyword} (ratio={ratio})")
+                    return keyword
+        # 6. Fuzzy match using difflib for category_variations
+        for category, variations in category_variations.items():
+            for variation in variations:
+                norm_variation = normalize_text(variation)
+                ratio = difflib.SequenceMatcher(None, norm_text, norm_variation).ratio()
+                if ratio >= 0.8:
+                    logger.debug(f"difflib fuzzy match found in category variations '{category}': {variation} (ratio={ratio})")
+                    return "multiple matches:" + ",".join(self.specialty_categories_dict.get(category.title(), []))
+        logger.debug("No fuzzy match found")
         return None
 
 
@@ -92,15 +184,13 @@ class SpecialtyValidator:
         Given the raw LLM output (comma-separated or string),
         normalize and map to canonical specialties, categories, or variations using permissive fuzzy matching.
         Implements the following logic:
-        1. Count the number of detected specialties.
-           a. If more than one, return the list for user selection.
-           b. If only one, continue.
-        2. Fuzzy match (permissive) against canonical specialties, sub-specialties, and category variations.
-           a. If found, return as final detected specialty or category specialties for user selection.
-           b. If not found, raise exception with error message.
+        1. If no specialty detected, continue (return empty).
+        2. If specialty detected but fuzzy match fails, raise error.
         """
+        # If no specialty detected, continue (return empty)
         if not llm_output or self._is_no_match(llm_output):
-            raise SpecialtyValidatorCheckException(ERROR_MESSAGES["specialty_not_found"])
+            return {"specialty": None}
+        
         # Split and normalize
         if isinstance(llm_output, str):
             candidates = [s.strip() for s in re.split(r'[;\,\n]', llm_output) if s.strip()]
@@ -108,24 +198,34 @@ class SpecialtyValidator:
             candidates = [str(s).strip() for s in llm_output if str(s).strip()]
         else:
             candidates = []
+
+        # If multiple specialties, return list    
         if len(candidates) > 1:
-            return {"multiple_specialties": sorted(set(candidates))}
+            return {
+                "multiple_specialties": sorted(set(candidates)),
+                "message": "Plusieurs spécialités correspondent à votre requête : " + ", ".join(sorted(set(candidates)))
+            }
+        # If single specialty, fuzzy match
         elif len(candidates) == 1:
             specialty = candidates[0]
-            # Fuzzy match any (permissive)
+            logger.debug(f"Fuzzy matching specialty: {specialty}")
             match = self._fuzzy_match_any(specialty)
+            logger.debug(f"Fuzzy match result: {match}")
             if match:
                 if match.startswith("multiple matches:"):
                     # Return associated values for user selection
                     specialties = match.replace("multiple matches:", "").strip()
                     specialties_list = [s.strip() for s in specialties.split(',') if s.strip()]
-                    return {"multiple_specialties": specialties_list}
+                    return {
+                        "multiple_specialties": specialties_list,
+                        "message": "Plusieurs spécialités correspondent à votre requête : " + ", ".join(specialties_list)
+                    }
                 else:
                     return {"specialty": match}
             # No match
             raise SpecialtyValidatorCheckException(ERROR_MESSAGES["specialty_not_found"])
         else:
-            raise SpecialtyValidatorCheckException(ERROR_MESSAGES["specialty_not_found"])
+            return {"specialty": None}
 
 
     def validate_specialty(self, raw_specialty) -> List[str]:
@@ -142,25 +242,4 @@ class SpecialtyValidator:
         elif 'multiple_specialties' in result:
             return result['multiple_specialties']
         else:
-            return []
-
-    # def _load_specialty_list_from_excel(self, path: str, sheet_name: str = "Palmarès") -> List[str]:
-    #     import pandas as pd
-    #     try:
-    #         df_specialty = pd.read_excel(path, sheet_name=sheet_name)
-    #         return df_specialty.iloc[:, 0].drop_duplicates().dropna().tolist()
-    #     except Exception:
-    #         all_specialties = []
-    #         for specialties in default_dict.values():
-    #             all_specialties.extend(specialties)
-    #         return list(set(all_specialties))
-
-    # def _normalize(self, s):
-    #     if not s:
-    #         return ""
-    #     s = unidecode.unidecode(s.lower())
-    #     # Remove common French articles/prepositions
-    #     s = re.sub(r"\b(du|de la|de l'|de|la|le|les|au|aux|a la|a l'|a|des|pour|sur|concernant|au niveau du|au niveau de|au niveau des|question|la|le|les)\b", "", s)
-    #     s = re.sub(r"[^a-z0-9 ]", " ", s)  # Remove punctuation
-    #     s = re.sub(r"\s+", " ", s).strip()
-    #     return s
+            return ['tableau d\'honneur']

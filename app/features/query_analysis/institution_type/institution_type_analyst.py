@@ -7,7 +7,7 @@ using the InstitutionTypeDetector and InstitutionTypeValidator classes."""
 from typing import Optional, Dict
 from .institution_type_detection import InstitutionTypeDetector
 from .institution_type_validation import InstitutionTypeValidator
-from app.utility.logging import get_logger
+from app.utility.functions.logging import get_logger
 
 
 logger = get_logger(__name__)

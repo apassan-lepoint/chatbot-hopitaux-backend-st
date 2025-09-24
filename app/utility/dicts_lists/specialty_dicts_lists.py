@@ -140,3 +140,15 @@ specialty_list = ['ablation varices',
  'tumeurs cerveau enfant et adolescent',
  'urgences main',
  'vesicule biliaire']
+
+
+generic_words = [
+            "problème", "problèmes", "trouble", "troubles", "maladie", "maladies", "pathologie", "pathologies",
+            "affection", "affections", "symptôme", "symptômes", "douleur", "douleurs", "soin", "soins",
+            "prise en charge", "cas", "cas de", "cas du", "cas des", "cas d'", "question", "questions",
+            "atteinte", "atteintes", "anomalie", "anomalies", "complication", "complications", "condition", "conditions",
+            "situation", "situations", "traitement", "traitements", "gestion", "gestion de", "prévention", "prévention de",
+            "risque", "risques", "manifestation", "manifestations", "syndrome", "syndromes", "infection", "infections",
+            "inflammation", "inflammations", "consultation", "consultations", "examen", "examens", "intervention", "interventions",
+            "chirurgie", "chirurgies", "suivi", "suivi de", "diagnostic", "diagnostics", "évaluation", "évaluations"
+        ]

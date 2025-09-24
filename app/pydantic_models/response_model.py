@@ -18,7 +18,7 @@ class AskResponse(BaseModel):
     """
     result: str
     links: Optional[List[str]] = None
-    multiple_specialties: Optional[List[str]] = None
+    multiple_specialty: Optional[List[str]] = None
 
 
 class ChatResponse(BaseModel):
@@ -33,4 +33,4 @@ class ChatResponse(BaseModel):
     response: str
     conversation: List[List[str]]
     ambiguous: bool = False
-    multiple_specialties: Optional[List[str]] = None
+    multiple_specialty: Optional[List[str]] = None

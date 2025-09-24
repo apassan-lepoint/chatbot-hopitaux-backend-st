@@ -17,7 +17,7 @@ def initialize_session_state():
         'selected_option': None,
         'prompt': '',
         'specialty': '',
-        'selected_specialty': None,
+        'user_selected_specialty': None,
         'specialty_context': None,
         'multiple_specialties': None,
         'original_prompt': ''
@@ -48,18 +48,18 @@ def handle_specialty_selection(prompt: str, key_suffix: str = "") -> str:
             return None
         # Use a stable key based on the prompt and specialties to avoid UI confusion
         radio_key = f"specialty_radio_{hash(str(multiple_specialties)+str(prompt))}"
-        selected_specialty = st.radio(
+        user_selected_specialty = st.radio(
             UI_SPECIALTY_SELECTION_PROMPT,
             multiple_specialties,
             index=None,
             key=radio_key
         )
-        logger.info(f"[handle_specialty_selection] selected_specialty: {selected_specialty}")
+        logger.info(f"[handle_specialty_selection] user_selected_specialty: {user_selected_specialty}")
         confirm_key = f"specialty_confirm_{hash(str(multiple_specialties)+str(prompt))}"
         confirmed = st.button("Valider", key=confirm_key)
         if confirmed:
-            if selected_specialty:
-                st.session_state[SESSION_STATE_KEYS["selected_specialty"]] = selected_specialty
+            if user_selected_specialty:
+                st.session_state[SESSION_STATE_KEYS["user_selected_specialty"]] = user_selected_specialty
                 st.session_state[SESSION_STATE_KEYS["multiple_specialties"]] = None
                 st.rerun()
             else:
@@ -80,16 +80,16 @@ def process_message(prompt: str) -> None:
         logger.info("[process_message] Blocking further processing due to multiple_specialties.")
         st.stop()
         return
-    # After rerun, if multiple_specialties is now None and selected_specialty is set, generate response and display conversation
-    prev_specialty = st.session_state.get("selected_specialty")
+    # After rerun, if multiple_specialties is now None and user_selected_specialty is set, generate response and display conversation
+    prev_specialty = st.session_state.get("user_selected_specialty")
     if prev_specialty and st.session_state.get("multiple_specialties") is None:
         normalized_specialty = unidecode.unidecode(str(prev_specialty)).strip().lower()
         logger.info(f"[process_message] Generating response after specialty selection: {prev_specialty} (normalized: {normalized_specialty})")
-        result, links = PipelineOrchestrator().generate_response(prompt=st.session_state.prompt, selected_specialty=prev_specialty)
+        result, links = PipelineOrchestratorService().generate_response(prompt=st.session_state.prompt, user_selected_specialty=prev_specialty)
         if isinstance(result, dict) and "multiple_specialties" in result:
             # Backend returned multiple_specialties again, force selection
             st.session_state[SESSION_STATE_KEYS["multiple_specialties"]] = result["multiple_specialties"]
-            st.session_state[SESSION_STATE_KEYS["selected_specialty"]] = None
+            st.session_state[SESSION_STATE_KEYS["user_selected_specialty"]] = None
             st.warning("Le backend n'a pas pu traiter la spécialité sélectionnée. Veuillez reformuler votre question ou choisir une spécialité différente.")
             handle_specialty_selection(st.session_state.prompt)
             st.stop()
@@ -100,7 +100,7 @@ def process_message(prompt: str) -> None:
         # Removed duplicate display_conversation_history() call
         return
     try:
-        result, links = PipelineOrchestrator().generate_response(prompt=st.session_state.prompt)
+        result, links = PipelineOrchestratorService().generate_response(prompt=st.session_state.prompt)
         if isinstance(result, dict) and "multiple_specialties" in result:
             st.session_state[SESSION_STATE_KEYS["multiple_specialties"]] = result["multiple_specialties"]
             handle_specialty_selection(st.session_state.prompt)

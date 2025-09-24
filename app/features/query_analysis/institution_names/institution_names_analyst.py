@@ -7,7 +7,7 @@ This module contains the InstitutionNamesAnalyst class which integrates detectio
 from typing import Optional, Dict
 from app.features.query_analysis.institution_names.institution_names_detection import InstitutionNamesDetector
 from app.features.query_analysis.institution_names.institution_names_validation import InstitutionNamesValidator
-from app.utility.logging import get_logger
+from app.utility.functions.logging import get_logger
 
 
 logger = get_logger(__name__)

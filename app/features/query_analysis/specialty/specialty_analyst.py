@@ -7,7 +7,7 @@ Handles specialty detection and validation using LLMs.
 from typing import Optional, Dict, List
 from .specialty_detection import SpecialtyDetector
 from .specialty_validation import SpecialtyValidator
-from app.utility.logging import get_logger
+from app.utility.functions.logging import get_logger
 
 
 logger = get_logger(__name__)
@@ -23,9 +23,9 @@ class SpecialtyAnalyst:
         detect_and_validate_specialty(prompt: str, conv_history: str = "") -> Dict[str[str, Optional[str]]:
             Detects and validates specialty from the prompt and returns a result dict.
     """
-    def __init__(self, model, specialty_list: List[str], specialty_categories_dict):
+    def __init__(self, model):
         self.detector = SpecialtyDetector(model)
-        self.validator = SpecialtyValidator(specialty_list, specialty_categories_dict)
+        self.validator = SpecialtyValidator()
 
     
     def detect_and_validate_specialty(self, prompt: str, conv_history: str = "") -> Dict[str, Optional[str]]:

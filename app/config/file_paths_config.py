@@ -13,9 +13,9 @@ HISTORY_DIR = os.path.join(REPO_ROOT, "history")
 
 PATHS={
     "mapping_word_path": os.path.join(DATA_DIR, "resultats_llm_v5.csv"),
-    "france_regions": os.path.join(DATA_DIR, "clean_france_regions.csv"),
-    "france_departments": os.path.join(DATA_DIR, "clean_france_departments.csv"),
-    "france_communes": os.path.join(DATA_DIR, "clean_france_communes.csv"),
+    "france_regions": os.path.join(DATA_DIR, "clean_france_region.csv"),
+    "france_departments": os.path.join(DATA_DIR, "clean_france_dept.csv"),
+    "france_communes": os.path.join(DATA_DIR, "clean_france_commune.csv"),
     "ranking_file_path": os.path.join(DATA_DIR, "classments-hopitaux-cliniques-2024.xlsx"), # TODO delete 
     "ranking_overall_private_path": os.path.join(DATA_DIR, "Tableaux_d'honneur_2024_PRIVE.csv"), # TODO delete
     "ranking_overall_public_path": os.path.join(DATA_DIR, "Tableaux_d'honneur_2024_PUBLIC.csv"), # TODO delete
