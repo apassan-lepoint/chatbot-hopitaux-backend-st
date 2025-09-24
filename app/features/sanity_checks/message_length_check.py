@@ -1,4 +1,10 @@
+"""message_length_check.py
+----------------------------
+This module defines a class to check if a message exceeds the maximum allowed length.
+"""
+
 from app.config.features_config import MAX_LENGTH, ERROR_MESSAGES
+
 
 class MessageLengthCheckException(Exception):
     pass

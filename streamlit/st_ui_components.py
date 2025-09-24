@@ -51,7 +51,7 @@ class UIComponents:
             logger.info("User requested new conversation")
             # Directly reset all relevant session state keys here
             st.session_state.conversation = []
-            st.session_state.selected_specialty = None
+            st.session_state.user_selected_specialty = None
             st.session_state.multiple_specialties = None
             st.session_state.prompt = ""
             st.session_state.specialty = ""

@@ -1,27 +1,28 @@
+""" 
+institution_type_analyst.py
+------------------------------
+This module contains the InstitutionTypeAnalyst class which orchestrates the detection and validation of institution types
+using the InstitutionTypeDetector and InstitutionTypeValidator classes."""
+
 from typing import Optional, Dict
 from .institution_type_detection import InstitutionTypeDetector
 from .institution_type_validation import InstitutionTypeValidator
-from app.utility.logging import get_logger
+from app.utility.functions.logging import get_logger
+
 
 logger = get_logger(__name__)
 
+
 class InstitutionTypeAnalyst:
     """
-    Orchestrates detection and validation of institution type only (public/privé/none).
-    Uses InstitutionTypeDetector for detection and InstitutionTypeValidator for validation.
-    
+    Class to detect and validate institution types.
     Attributes:
-        model: The model used for detection.
-        institution_list: A string representing the list of institutions.
+        model: The model to be used for detection.  
         detector: An instance of InstitutionTypeDetector.
-        validator: An instance of InstitutionTypeValidator. 
-
+        validator: An instance of InstitutionTypeValidator.
     Methods:
-        set_institution_list(institution_list: str): Updates the institution list for both detector and validator.
         detect_and_validate_institution_type(prompt: str, conv_history: str = "") -> Dict[str, Optional[str]]:
-            Detects the institution type from the prompt and conversation history, validates it,
-            and returns a summary dictionary containing the raw institution type, normalized institution type,
-            and validation status.  
+            Detects institution type, validates it, and returns a summary dict with cost, detection_method, and token_usage.    
     """
     def __init__(self, model=None):
         self.model = model

@@ -1,8 +1,13 @@
+"""
+message_pertinence_check.py
+--------------------------
+This module defines the MessagePertinenceChecker class, which checks the pertinence of messages
+using a large language model (LLM). 
+"""
 
-from app.config.features_config import ERROR_MESSAGES, METHODOLOGY_WEB_LINK
-from app.utility.logging import get_logger
-from app.utility.wrappers import prompt_formatting, parse_llm_response
-from app.utility.llm_helpers import invoke_llm_with_error_handling
+from app.config.features_config import ERROR_MESSAGES
+from app.utility.functions.llm_helpers import invoke_llm_with_error_handling, prompt_formatting, parse_llm_response
+from app.utility.functions.logging import get_logger
 
 
 logger = get_logger(__name__)
@@ -11,23 +16,14 @@ class MessagePertinenceCheckException(Exception):
 
 class MessagePertinenceChecker:
     """
-    Class to check the pertinence of messages using an LLM.
-    This class provides methods to check if a message is medically pertinent
-    and if it is relevant for the chatbot use case.
-    It uses the LLM handler service to invoke the model with formatted prompts
-    and parse the responses.
-
+    Class to check the pertinence of messages using a large language model (LLM).
     Attributes:
         llm_handler_service: Service to handle LLM interactions.
-        pertinent_chatbot_use_case: Flag to indicate if the chatbot use case is pertinent.
+        pertinent_chatbot_use_case: Boolean indicating if the chatbot use case is pertinent.    
     Methods:
-        sanity_check_medical_pertinence(prompt: str, conv_history: str = "") -> str:
-            Checks the medical pertinence of the given prompt.
-        sanity_check_chatbot_pertinence(prompt: str, conv_history: str = "") -> str:
-            Checks the pertinence of the given prompt for the chatbot.
-        check(user_input, conv_history=""):
-            Checks if the user input is medically pertinent and chatbot pertinent.
-            Raises MessagePertinenceCheckException if either check fails.
+        sanity_check_medical_pertinence(prompt, conv_history): Checks if the prompt is medically pertinent.
+        sanity_check_chatbot_pertinence(prompt, conv_history): Checks if the prompt is pertinent for the chatbot.
+        check(user_input, conv_history): Runs both pertinence checks and returns standardized results.
     """
     def __init__(self, llm_handler_service, pertinent_chatbot_use_case=False):
         self.llm_handler_service = llm_handler_service

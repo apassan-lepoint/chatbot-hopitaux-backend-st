@@ -1,26 +1,32 @@
+""" 
+number_institutions_analyst.py
+-------------------------
+This module defines the NumberInstitutionsAnalyst class, which detects and validates
+the number of establishments (number_institutions) requested by users in their prompts.
+"""
+
+from app.config.features_config import number_institutions_DEFAULT, number_institutions_MIN, number_institutions_MAX
 from .number_institutions_detection import number_institutionsDetector
 from .number_institutions_validation import NumberInstitutionsValidator
-from app.config.features_config import number_institutions_DEFAULT, number_institutions_MIN, number_institutions_MAX
-from app.utility.logging import get_logger
+from app.utility.functions.logging import get_logger
+
 
 logger = get_logger(__name__)
 
+
 class NumberInstitutionsAnalyst:
     """
-    Service to detect and validate the number of establishments (number_institutions) requested by users.
-    It uses a detector to find the number_institutions in the prompt and a validator to ensure it meets the required criteria.
-
+    Class to detect and validate the number of establishments (number_institutions) from user prompts.
     Attributes:
-        detector (number_institutionsDetector): Instance of the detector for number_institutions.
-        validator (NumberInstitutionsValidator): Instance of the validator for number_institutions.
-        default_number_institutions (int): Default value for number_institutions if none is detected or provided.
-        min_number_institutions (int): Minimum allowed value for number_institutions.
-        max_number_institutions (int): Maximum allowed value for number_institutions.   
+        detector (number_institutionsDetector): Detector for extracting number_institutions from prompts.
+        validator (NumberInstitutionsValidator): Validator for ensuring number_institutions is within acceptable bounds.
+        default_number_institutions (int): Default number of institutions to use if none is specified.
+        min_number_institutions (int): Minimum allowable number of institutions.
+        max_number_institutions (int): Maximum allowable number of institutions.
     Methods:
-        process_number_institutions(prompt: str, conv_history: str = "", user_number_institutions: int = None) -> int:
-            Analyzes the prompt and conversation history to detect and validate the number_institutions value.
-            If a user-provided value is given, it will be used; otherwise, the detected value will be validated against the default, minimum, and maximum limits.
-            Returns the final validated number_institutions value.      
+        process_number_institutions(prompt, conv_history="", user_number_institutions=None):
+            Detects and validates the number_institutions value from the prompt.
+            Returns a dict with number_institutions, detection_method, cost, and token_usage.      
     """
     def __init__(self, model=None):
         self.detector = number_institutionsDetector(model)

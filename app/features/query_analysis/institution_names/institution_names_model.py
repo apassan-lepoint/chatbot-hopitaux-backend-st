@@ -1,3 +1,9 @@
+""" 
+institution_names_model.py
+---------------------------------
+This file contains the data model for institution names and their ranking metadata.
+"""
+
 from dataclasses import dataclass
 from typing import Optional
 

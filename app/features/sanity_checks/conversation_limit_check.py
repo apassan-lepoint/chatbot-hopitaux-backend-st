@@ -1,4 +1,11 @@
+"""
+conversation_limit_check.py
+----------------------------
+This module defines a class to check if a conversation has reached the maximum number of messages allowed.
+"""
+
 from app.config.features_config import MAX_MESSAGES, ERROR_MESSAGES
+
 
 class ConversationLimitCheckException(Exception):
     pass

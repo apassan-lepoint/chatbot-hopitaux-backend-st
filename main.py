@@ -6,7 +6,7 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import router
-from app.utility.logging import get_logger
+from app.utility.functions.logging import get_logger
 
 
 
