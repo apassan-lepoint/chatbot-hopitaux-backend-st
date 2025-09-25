@@ -16,7 +16,7 @@ def normalize_text(string, mode="string_matching"):
     """
     Normalizes text for different use cases using unidecode for accent removal.
     mode="string_matching": robust matching (accents, lowercase, remove French articles/prepositions, punctuation, collapse spaces)
-    mode="web_link": accent removal and apostrophe-to-hyphen for web links
+    mode="web_link": accent removal, apostrophe-to-hyphen, spaces-to-hyphen, lowercase for web links
     """
     logger.debug(f"Normalizing text: '{string}' with mode='{mode}'")
     if not isinstance(string, str):
@@ -25,7 +25,7 @@ def normalize_text(string, mode="string_matching"):
     string_no_accents = unidecode.unidecode(string)
     logger.debug(f"After unidecode: '{string_no_accents}'")
     if mode == "web_link":
-        string_fin = string_no_accents.replace("'", '-')
+        string_fin = string_no_accents.replace("'", '-').lower().replace(' ', '-')
         logger.debug(f"Web link normalized: '{string_fin}'")
         return string_fin
     elif mode == "string_matching":

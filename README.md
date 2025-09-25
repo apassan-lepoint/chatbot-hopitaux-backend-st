@@ -137,6 +137,10 @@ Test API: http://localhost:8000/docs
 To test with curl in another terminal: curl -X POST "http://localhost:8000/ask" -H "Content-Type: application/json" -d '{"prompt": "Quel est le meilleur hopitqux a Paris ?"}'
 
 
+# Running Unit Tests
+PYTHONPATH=. pytest unit_tests/test_sanity_checks.py --maxfail=5 --disable-warnings -v
+chatbot_hop/bin/python3.11 -m pytest unit_tests/test_pipeline_orchestrator.py --maxfail=5 --disable-warnings -v
+
 # Contact
 Anuradha (Annie) Passan - apassan@ext.lepoint.fr, apassan@eulidia.com
 Benjamin L'Hyver - blhyver@eulidia.com

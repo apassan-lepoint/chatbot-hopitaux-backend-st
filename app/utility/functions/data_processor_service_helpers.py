@@ -46,14 +46,16 @@ def haversine(lat1, lon1, lat2, lon2):
 
 
 def add_distance_column(df, loc_lat, loc_lon):
-        df = df.copy()
-        df["distance_km"] = df.apply(
-            lambda row: haversine(
-                row["ETABLISSEMENT_LATITUDE"], row["ETABLISSEMENT_LONGITUDE"], loc_lat, loc_lon
-            ),
-            axis=1
-        )
+    df = df.copy()
+    if df.empty:
         return df
+    df["distance_km"] = df.apply(
+        lambda row: haversine(
+            row["ETABLISSEMENT_LATITUDE"], row["ETABLISSEMENT_LONGITUDE"], loc_lat, loc_lon
+        ),
+        axis=1
+    )
+    return df
 
 
 def process_other_query_with_coordinates_fallback(ranking_df, specialty: str, location_final: str, location_level_final: str, institution_type: str, number_institutions: int):
