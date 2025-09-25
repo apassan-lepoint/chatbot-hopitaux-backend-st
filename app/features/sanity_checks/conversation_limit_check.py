@@ -1,4 +1,11 @@
-from app.config.features_config import MAX_MESSAGES, WARNING_MESSAGES
+"""
+conversation_limit_check.py
+----------------------------
+This module defines a class to check if a conversation has reached the maximum number of messages allowed.
+"""
+
+from app.config.features_config import MAX_MESSAGES, ERROR_MESSAGES
+
 
 class ConversationLimitCheckException(Exception):
     pass
@@ -15,4 +22,5 @@ class ConversationLimitChecker:
         Checks if the conversation has reached the maximum number of messages allowed.
         """
         if len(conversation) > self.max_messages:
-            raise ConversationLimitCheckException(WARNING_MESSAGES["conversation_limit"])
+            return {"passed": False, "error": ERROR_MESSAGES["conversation_limit"].format(self.max_messages), "detection_method": "rule"}
+        return {"passed": True}

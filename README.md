@@ -14,7 +14,6 @@ BackendChatbotHopitaux/
 ├── main.py
 ├── app/
 │   ├── api/
-│   │   ├── dependencies.py 
 │   │   └── routes.py
 │   ├── config/
 │   │   ├── features_config.py
@@ -25,14 +24,14 @@ BackendChatbotHopitaux/
 │   │   │  ├── llm_responder.py
 │   │   │  └── multi_turn.py
 │   │   ├── query_analysis/
-│   │   │  ├── city/
-│   │   │  │   ├── city_analyst.py
-│   │   │  │   ├── city_detection.py
-│   │   │  │   └── city_validation.py
-│   │   │  ├── institution_name/
-│   │   │  │   ├── institution_name_analyst.py
-│   │   │  │   ├── institution_name_detection.py
-│   │   │  │   └── institution_name_validation.py
+│   │   │  ├── location/
+│   │   │  │   ├── location_analyst.py
+│   │   │  │   ├── location_detection.py
+│   │   │  │   └── location_validation.py
+│   │   │  ├── institution_names/
+│   │   │  │   ├── institution_names_analyst.py
+│   │   │  │   ├── institution_names_detection.py
+│   │   │  │   └── institution_names_validation.py
 │   │   │  ├── institution_type/
 │   │   │  │   ├── institution_type_analyst.py
 │   │   │  │   ├── institution_type_detection.py
@@ -57,7 +56,8 @@ BackendChatbotHopitaux/
 │   ├── services/
 │   │   ├── data_processing_service.py
 │   │   ├── llm_handler_service.py
-│   │   └── pipeline_orchestrator_service.py
+│   │   ├── pipeline_orchestrator_service.py
+│   │   └── conversation_service.py
 │   ├── snowflake_db/
 │   │   ├── query.py
 │   │   └── snowflake_connector.py
@@ -73,8 +73,6 @@ BackendChatbotHopitaux/
 ├── Streamlit/
 │   ├── st_app.py
 │   ├── st_config.py
-│   ├── st_message_handler.py
-│   ├── st_specialty_handler.py
 │   ├── st_ui_components.py
 │   └── st_utility.py
 ├── data/
@@ -87,22 +85,25 @@ BackendChatbotHopitaux/
 If you want to launch the Streamlit app, you should create a python environnement with the packages from the "requirement.txt" file and then run the main.py file. 
 Additionally, you will need an API Key from Open AI and paste it in the '.env' file  to use our model: "gpt-4o-mini".
 
+# Python environment 
+You should have Python 3.11
 
 # Running the app locally in your python terminal. 
 1. Go to the project folder where you created your virtual environment and activate it: source chatbot_hop/bin/activate
    1. If you haven't set up your local environment, follow the below steps: 
       1. Navigate to your local project directory
-      2. Create a new virtual environment named chatbot_hop : python3 -m venv chatbot_hop
+      2. Create a new virtual environment named chatbot_hop : python3.11 -m venv chatbot_hop
       3. Activate the virtual environment: source chatbot_hop/bin/activate
       4. Install all required packages from requirements.txt: 
          1. pip install --upgrade pip
-         2. pip install -r requirements.txt
+         2. Sometimes you might need to run the following (dependency for spacy) : pip install blis
+         3. pip install -r requirements.txt
 2. To get FastAPI up and running : uvicorn main:app --reload
    1. Note: to get out of the FastAPI in the terminal, press CTRL+C
 3. Navigate to another terminal (keep FastAPI running in original terminal) once the application is started up and activate your virtual environment again: source chatbot_hop/bin/activate
-4. In the new terminal run the following: python3 test_api.py
+4. In the new terminal run the following: python3.11 test_api.py
 
-**Note:** if you get an error about not having SSL certificates, run the following command in the terminal where you activated your python virtual environment: python -m pip install --upgrade certifi
+**Note:** if you get an error about not having SSL certificates, run the following command in the terminal where you activated your python virtual environment: python3.11 -m pip install --upgrade certifi
 
 
 # Code organization
@@ -120,7 +121,25 @@ At a high level, here is how the chatbot works:
 4. Then the backend will get correct tables from the excel files and apply the proper filters and transformations to the tables to generate the list of institutions for the response and the relevant links in the hospital class ranking webpages. 
 5. The backend puts together the final response to the user. 
 
-The above process is managed by the PipelineOrchestrator class in app/services/pipeline_orchestrator.py which is called when creating both the Streamlit and FastAPI applications.
+The above process is managed by the PipelineOrchestratorServiceclass in app/services/pipeline_orchestrator.py which is called when creating both the Streamlit and FastAPI applications.
+
+# Swagger Documentation 
+To open Swagger UI on your browser: http://127.0.0.1:8000/docs
+It will show the request/response schemas from your pydantic_models.
+
+To open the ReDoc UI (spec-style documentation) in your browser: http://127.0.0.1:8000/redoc
+
+# Docker
+To build the docker image run: docker build -t my-chatbot:latest .
+To run the Docker image locally: docker run -p 8000:8000 my-chatbot:latest
+Health check: curl http://localhost:8000/health
+Test API: http://localhost:8000/docs 
+To test with curl in another terminal: curl -X POST "http://localhost:8000/ask" -H "Content-Type: application/json" -d '{"prompt": "Quel est le meilleur hopitqux a Paris ?"}'
+
+
+# Running Unit Tests
+PYTHONPATH=. pytest unit_tests/test_sanity_checks.py --maxfail=5 --disable-warnings -v
+chatbot_hop/bin/python3.11 -m pytest unit_tests/test_pipeline_orchestrator.py --maxfail=5 --disable-warnings -v
 
 # Contact
 Anuradha (Annie) Passan - apassan@ext.lepoint.fr, apassan@eulidia.com

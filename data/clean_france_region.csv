@@ -1,0 +1,14 @@
+REGION_NORMALIZED,LONGITUDE_DECIMAL,LATITUDE_DECIMAL,COMMUNE_CENTRE_NORMALIZED,REGION,LONGITUDE,LATITUDE,COMMUNE_CENTRE
+alsace champagne ardenne lorraine,5.619444444444445,48.689166666666665,void meuse,Alsace Champagne-Ardenne Lorraine,"5°37'10"" E","48°41'21""",Void (Meuse)
+aquitaine limousin poitou charentes,0.19777777777777777,45.19222222222222,saint vincent jalmoutiers dordogne,Aquitaine Limousin Poitou-Charentes,"0°11'52"" E","45°11'32""",Saint-Vincent-Jalmoutiers (Dordogne)
+auvergne rhone alpes,4.538055555555555,45.51583333333333,cellieu loire,Auvergne Rhône-Alpes,"4°32'17"" E","45°30'57""",Cellieu (Loire)
+bourgogne franche comte,4.809166666666666,47.23527777777778,gergeuil cote d or,Bourgogne Franche-Comté,"4°48'33"" E","47°14'07""",Gergeuil (Côte-d'Or)
+bretagne,-2.838611111111111,48.17972222222222,saint caradec cotes d armor,Bretagne,"2°50'19"" O","48°10'47""",Saint-Caradec (Côtes d'Armor)
+centre val loire,1.6852777777777779,47.480555555555554,vernou en sologne loir et cher,Centre-Val de Loire,"1°41'07"" E","47°28'50""",Vernou-en-Sologne (Loir-et-Cher)
+corse,9.105277777777777,42.14972222222222,vivario haute corse,Corse,"9°06'19"" E","42°08'59""",Vivario (Haute-Corse)
+ile france,2.504722222222222,48.70916666666667,brunoy essonne,Île-de-France,"2°30'17"" E","48°42'33""",Brunoy (Essonne)
+languedoc roussillon midi pyrenees,2.1372222222222224,43.702222222222225,lautrec tarn,Languedoc-Roussillon Midi-Pyrénées,"2°08'14"" E","43°42'08""",Lautrec (Tarn)
+nord pas calais picardie,2.7752777777777777,49.96611111111111,confins eclusier vaux suzanne maricourt somme,Nord-Pas-de-Calais Picardie,"2°46'31"" E","49°57'58""","confins Éclusier-Vaux, Suzanne, Maricourt (Somme)"
+normandie,0.10666666666666667,49.12111111111111,houblonniere calvados,Normandie,"0°06'24"" E","49°07'16""",La Houblonnière (Calvados)
+pays loire,-0.8238888888888889,47.474722222222226,limite saint augustin bois becon granits maine et loire,Pays de la Loire,"0°49'26"" O","47°28'29""","limite Saint-Augustin-des-Bois, Bécon-les-Granits (Maine-et-Loire)"
+provence alpes cote d azur,6.053333333333333,43.955000000000005,entrevennes alpes haute provence,Provence-Alpes-Côte d'Azur,"6°03'12"" E","43°57'18""",Entrevennes (Alpes-de-Haute-Provence)

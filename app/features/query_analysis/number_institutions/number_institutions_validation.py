@@ -1,29 +1,36 @@
+""" 
+number_institutions validation module.
+-------------------------------
+This module provides a class for validating and finalizing the number_institutions parameter.
+"""
 from app.config.features_config import number_institutions_MIN, number_institutions_MAX
 
-class number_institutionsValidation:
+
+class NumberInstitutionsValidator:
     """
-    Class for validating number_institutions values.
-    It checks if the provided number_institutions is within the allowed range
-    and provides a method to finalize the number_institutions value based on user input,
-    detected values, and a default value.
+    A class to validate and finalize the number_institutions parameter. 
+    It ensures the value is within a specified range and selects the most appropriate value
+    from user input, detected value, or a default.  
     Attributes:
-        min_number_institutions (int): Minimum allowed number_institutions value.
-        max_number_institutions (int): Maximum allowed number_institutions value.   
+        min_number_institutions (int): Minimum allowed value for number_institutions.
+        max_number_institutions (int): Maximum allowed value for number_institutions.
     Methods:
         validate_number_institutions(number_institutions: int) -> bool:
             Validates if the number_institutions value is within the allowed range.
         finalize_number_institutions(user_number_institutions: int, detected_number_institutions: int, default_number_institutions: int = 3) -> int:
-            Normalizes number_institutions value by choosing the most appropriate one.  
+            Normalizes number_institutions value by choosing the most appropriate one.      
     """
     def __init__(self):
         self.min_number_institutions = number_institutions_MIN
         self.max_number_institutions = number_institutions_MAX
+
 
     def validate_number_institutions(self, number_institutions: int) -> bool:
         """
         Validates if the number_institutions value is within the allowed range.
         """
         return self.min_number_institutions <= number_institutions <= self.max_number_institutions
+
 
     def finalize_number_institutions(self, user_number_institutions: int, detected_number_institutions: int, default_number_institutions: int = 3) -> int:
         """

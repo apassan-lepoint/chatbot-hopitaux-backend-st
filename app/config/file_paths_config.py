@@ -1,5 +1,7 @@
 """
-This file contains configuration settings for the chatbot application.
+file_paths_config.py
+---------------------------------
+This file contains the file paths configuration for the application.
 """
 
 import os
@@ -11,9 +13,12 @@ HISTORY_DIR = os.path.join(REPO_ROOT, "history")
 
 PATHS={
     "mapping_word_path": os.path.join(DATA_DIR, "resultats_llm_v5.csv"),
-    "ranking_file_path": os.path.join(DATA_DIR, "classments-hopitaux-cliniques-2024.xlsx"),
-    "ranking_overall_private_path": os.path.join(DATA_DIR, "Tableaux_d'honneur_2024_PRIVE.csv"),
-    "ranking_overall_public_path": os.path.join(DATA_DIR, "Tableaux_d'honneur_2024_PUBLIC.csv"),
-    "hospital_coordinates_path": os.path.join(DATA_DIR, "fichier_hopitaux_avec_coordonnees_avec_privacitee.xlsx"),
-    "history_path": os.path.join(HISTORY_DIR, "results_history.csv")
+    "france_regions": os.path.join(DATA_DIR, "clean_france_region.csv"),
+    "france_departments": os.path.join(DATA_DIR, "clean_france_dept.csv"),
+    "france_communes": os.path.join(DATA_DIR, "clean_france_commune.csv"),
+    "ranking_file_path": os.path.join(DATA_DIR, "classments-hopitaux-cliniques-2024.xlsx"), # TODO delete 
+    "ranking_overall_private_path": os.path.join(DATA_DIR, "Tableaux_d'honneur_2024_PRIVE.csv"), # TODO delete
+    "ranking_overall_public_path": os.path.join(DATA_DIR, "Tableaux_d'honneur_2024_PUBLIC.csv"), # TODO delete
+    "hospital_coordinates_path": os.path.join(DATA_DIR, "fichier_hopitaux_avec_coordonnees_avec_privacitee.xlsx"), # TODO delete
+    "history_path": os.path.join(HISTORY_DIR, "results_history_mvp.csv")
     }

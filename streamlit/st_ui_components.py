@@ -1,7 +1,3 @@
-"""
-This module defines the UI components for the Streamlit application.
-"""
-
 import streamlit as st
 from app.utility.logging import get_logger
 from st_utility import create_example_button
@@ -53,7 +49,15 @@ class UIComponents:
         """
         if st.sidebar.button(UI_NEW_CONVERSATION_BUTTON):
             logger.info("User requested new conversation")
-            self.reset_callback()
+            # Directly reset all relevant session state keys here
+            st.session_state.conversation = []
+            st.session_state.user_selected_specialty = None
+            st.session_state.multiple_specialties = None
+            st.session_state.prompt = ""
+            st.session_state.specialty = ""
+            st.session_state.specialty_context = None
+            st.session_state.selected_option = None
+            st.session_state.original_prompt = ""
             st.rerun()
     
     

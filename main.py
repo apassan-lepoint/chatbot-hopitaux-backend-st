@@ -6,7 +6,7 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import router
-from app.utility.logging import get_logger
+from app.utility.functions.logging import get_logger
 
 
 
@@ -25,9 +25,21 @@ def create_app() -> FastAPI:
     logger.info("Creating FastAPI app")
     app = FastAPI(
         title="Chatbot Hôpitaux",
-        description="API for hospital ranking chatbot",
-        version="1.0.0"
-    )
+        description=(
+            "API for the hospital ranking chatbot.\n\n"
+            "Endpoints:\n"
+            "- **/ask**: Single-turn Q&A\n"
+            "- **/chat**: Multi-turn conversations\n\n"
+        ),
+        version="1.0.0", 
+        contact={
+            "name": "Chatbot Hôpitaux Support",
+            "email": "apassan@ext.lepoint.fr"
+        },
+        docs_url="/docs", # Swagger UI
+        redoc_url="/redoc", # ReDoc documentation
+        openapi_url="/openapi.json" # OpenAPI schema URL
+    ) 
 
     # Add CORS middleware to allow frontend-backend communication
     app.add_middleware(
