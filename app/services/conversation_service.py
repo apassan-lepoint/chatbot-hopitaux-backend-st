@@ -14,6 +14,8 @@ from app.utility.functions.logging import get_logger
 from app.config.features_config import ERROR_MESSAGES
 from app.utility.functions.formatting_helpers import format_links # TODO NEED TO FIGURE OUT A WAY TO DELETE
 
+# TODO : add unit testing for this class
+
 
 class ConversationService:
     """
